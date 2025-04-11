@@ -1,0 +1,193 @@
+pragma language_version >= 0.12.1;
+
+import CompactStandardLibrary;
+
+// fire/ice can go past block
+// physical doesn't
+// you can either be neutral (fire/ice do normal damage) or you can have higher/lower resistances to them
+// do we want them to all be 1 to 10 or just {weak fire, strong ice}/{balanced}/{strong fire, weak ice}?
+
+export enum EFFECT_TYPE {
+    attack_phys,
+    attack_fire,
+    attack_ice,
+    block,
+    generate,
+}
+
+export struct Effect {
+    effect_type: EFFECT_TYPE,
+    // damage for attacks, defense for blocks, type of energy for generation
+    amount: Uint<32>,
+    is_aoe: Boolean,
+}
+
+export struct Ability {
+    effect: Maybe<Effect>,
+    on_energy: Vector<3, Maybe<Effect>>,
+    //on_damage: Maybe<Effect>,
+}
+
+export struct EnemyStats {
+    physical_def: Uint<32>,
+    fire_def: Uint<32>,
+    ice_def: Uint<32>,
+}
+
+// TODO: move into an instanced battle data (unless we can compose contracts)
+export ledger enemy_damage_0: Uint<32>;
+export ledger enemy_damage_1: Uint<32>;
+export ledger enemy_damage_2: Uint<32>;
+export ledger enemy_block_0: Uint<32>;
+export ledger enemy_block_1: Uint<32>;
+export ledger enemy_block_2: Uint<32>;
+export ledger enemy_hp_0: Uint<32>;
+export ledger enemy_hp_1: Uint<32>;
+export ledger enemy_hp_2: Uint<32>;
+
+export ledger player_damage_0: Uint<32>;
+export ledger player_damage_1: Uint<32>;
+export ledger player_damage_2: Uint<32>;
+export ledger player_block_0: Uint<32>;
+export ledger player_block_1: Uint<32>;
+export ledger player_block_2: Uint<32>;
+export ledger player_hp_0: Uint<32>;
+export ledger player_hp_1: Uint<32>;
+export ledger player_hp_2: Uint<32>;
+
+constructor() {
+    enemy_hp_0 = 0;
+    enemy_hp_1 = 0;
+    enemy_hp_2 = 0;
+    player_hp_0 = 0;
+    player_hp_1 = 0;
+    player_hp_2 = 0;
+}
+
+
+// export circuit resolve_abilities(abilities: Vector<3, Ability>, stats: EnemyStats, target: Uint<32>): [] {
+//     enemy_damage_0 = (enemy_damage_0 + ((abilities[0].effect.is_some && (abilities[0].effect.value.is_aoe || target == 0)) as Uint<1>) * (((abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * abilities[0].effect.value.amount + ((abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (abilities[0].effect.value.amount)) + ((abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * abilities[0].effect.value.amount) as Uint<32>;
+// }
+
+export circuit combat_round(abilities: Vector<3, Ability>, stats: Vector<3, EnemyStats>, target: Uint<32>): [] {
+    INSERT_PLAYER_BLOCK_CODE_HERE
+
+    INSERT_PLAYER_DAMAGE_CODE_HERE
+
+    
+
+    if (enemy_block_0 < player_damage_0) {
+        player_hp_0 = (player_hp_0 + player_damage_0 - enemy_block_0) as Uint<32>;
+    }
+    if (enemy_block_1 < player_damage_1) {
+        player_hp_1 = (player_hp_1 + player_damage_1 - enemy_block_1) as Uint<32>;
+    }
+    if (enemy_block_2 < player_damage_2) {
+        player_hp_2 = (player_hp_2 + player_damage_2 - enemy_block_2) as Uint<32>;
+    }
+
+    if (player_block_0 < enemy_damage_0) {
+        enemy_hp_0 = (enemy_hp_0 + enemy_damage_0 - player_block_0) as Uint<32>;
+    }
+    if (player_block_1 < enemy_damage_1) {
+        enemy_hp_1 = (enemy_hp_1 + enemy_damage_1 - player_block_1) as Uint<32>;
+    }
+    if (player_block_2 < enemy_damage_2) {
+        enemy_hp_2 = (enemy_hp_2 + enemy_damage_2 - player_block_2) as Uint<32>;
+    }
+
+    // enemy_damage_0 = (enemy_damage_0 + ((abilities[0].effect.is_some && (abilities[0].effect.value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[0].effect.value, stats) + (abilities[1].effect.is_some && (abilities[1].effect.value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[1].effect.value, stats) + (abilities[2].effect.is_some && (abilities[2].effect.value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[2].effect.value, stats)) as Uint<32>;
+    // enemy_damage_1 = (enemy_damage_1 + ((abilities[1].effect.is_some && (abilities[1].effect.value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[1].effect.value, stats)) as Uint<32>;
+    // enemy_damage_2 = (enemy_damage_2 + ((abilities[2].effect.is_some && (abilities[2].effect.value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[2].effect.value, stats)) as Uint<32>;
+
+//    bool = fold(generates_color<0>, false, abilities);
+    // if (generates_color(0, abilities[0]) || generates_color(0, abilities[1]) || generates_color(0, abilities[2])) {
+    //     if (abilities[0].on_energy[0].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[0].on_energy[0].is_some && (abilities[0].on_energy[0].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[0].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[0].on_energy[0].is_some && (abilities[0].on_energy[0].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[0].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[0].on_energy[0].is_some && (abilities[0].on_energy[0].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[0].on_energy[0].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[1].on_energy[0].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[1].on_energy[0].is_some && (abilities[1].on_energy[0].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[1].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[1].on_energy[0].is_some && (abilities[1].on_energy[0].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[1].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[1].on_energy[0].is_some && (abilities[1].on_energy[0].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[1].on_energy[0].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[2].on_energy[0].is_some) {
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[0].is_some && (abilities[2].on_energy[0].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[2].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[0].is_some && (abilities[2].on_energy[0].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[2].on_energy[0].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[0].is_some && (abilities[2].on_energy[0].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[2].on_energy[0].value, stats)) as Uint<32>;
+    //     }
+    // }
+    // if (generates_color(1, abilities[0]) || generates_color(1, abilities[1]) || generates_color(1, abilities[2])) {
+    //     if (abilities[0].on_energy[1].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[0].on_energy[1].is_some && (abilities[0].on_energy[1].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[0].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[0].on_energy[1].is_some && (abilities[0].on_energy[1].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[0].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[0].on_energy[1].is_some && (abilities[0].on_energy[1].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[0].on_energy[1].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[1].on_energy[1].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[1].on_energy[1].is_some && (abilities[1].on_energy[1].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[1].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[1].on_energy[1].is_some && (abilities[1].on_energy[1].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[1].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[1].on_energy[1].is_some && (abilities[1].on_energy[1].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[1].on_energy[1].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[2].on_energy[1].is_some) {
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[1].is_some && (abilities[2].on_energy[1].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[2].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[1].is_some && (abilities[2].on_energy[1].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[2].on_energy[1].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[1].is_some && (abilities[2].on_energy[1].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[2].on_energy[1].value, stats)) as Uint<32>;
+    //     }
+    // }
+    // if (generates_color(2, abilities[0]) || generates_color(2, abilities[1]) || generates_color(2, abilities[2])) {
+    //     if (abilities[0].on_energy[2].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[0].on_energy[2].is_some && (abilities[0].on_energy[2].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[0].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[0].on_energy[2].is_some && (abilities[0].on_energy[2].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[0].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[0].on_energy[2].is_some && (abilities[0].on_energy[2].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[0].on_energy[2].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[1].on_energy[2].is_some) {
+    //         enemy_damage_0 = (enemy_damage_0 + ((abilities[1].on_energy[2].is_some && (abilities[1].on_energy[2].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[1].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_1 = (enemy_damage_1 + ((abilities[1].on_energy[2].is_some && (abilities[1].on_energy[2].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[1].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[1].on_energy[2].is_some && (abilities[1].on_energy[2].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[1].on_energy[2].value, stats)) as Uint<32>;
+    //     }
+    //     if (abilities[2].on_energy[2].is_some) {
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[2].is_some && (abilities[2].on_energy[2].value.is_aoe || target == 0)) as Uint<1>) * effect_damage(abilities[2].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[2].is_some && (abilities[2].on_energy[2].value.is_aoe || target == 1)) as Uint<1>) * effect_damage(abilities[2].on_energy[2].value, stats)) as Uint<32>;
+    //         enemy_damage_2 = (enemy_damage_2 + ((abilities[2].on_energy[2].is_some && (abilities[2].on_energy[2].value.is_aoe || target == 2)) as Uint<1>) * effect_damage(abilities[2].on_energy[2].value, stats)) as Uint<32>;
+    //     }
+    // }
+}
+
+pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
+    return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * effect.amount) as Uint<32>;
+}
+
+pure circuit generates_color(color: Uint<32>, ability: Ability): Boolean {
+    return ability.effect.is_some && ability.effect.value.effect_type == EFFECT_TYPE.generate && ability.effect.value.amount == color;
+}
+
+// export circuit resolve_abilities_2(abilities: Vector<3, Ability>, stats: EnemyStats, target: Uint<32>): [] {
+//     if (abilities[0].effect.is_some && (abilities[0].effect.value.is_aoe || target == 0)) {
+//         if (abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_phys) {
+//             enemy_damage_0 = (enemy_damage_0 + (10 - stats.physical_def) * abilities[0].effect.value.amount) as Uint<32>;
+//         } else if (abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_fire) {
+//             enemy_damage_0 = (enemy_damage_0 + (10 - stats.fire_def) * abilities[0].effect.value.amount) as Uint<32>;
+//         } else if (abilities[0].effect.value.effect_type == EFFECT_TYPE.attack_ice) {
+//             enemy_damage_0 = (enemy_damage_0 + (10 - stats.ice_def) * abilities[0].effect.value.amount) as Uint<32>;
+//         }
+//     }
+//     if (abilities[1].effect.is_some && (abilities[1].effect.value.is_aoe || target == 1)) {
+//         if (abilities[1].effect.value.effect_type == EFFECT_TYPE.attack_phys) {
+//             enemy_damage_1 = (enemy_damage_1 + (10 - stats.physical_def) * abilities[1].effect.value.amount) as Uint<32>;
+//         } else if (abilities[1].effect.value.effect_type == EFFECT_TYPE.attack_fire) {
+//             enemy_damage_1 = (enemy_damage_1 + (10 - stats.fire_def) * abilities[1].effect.value.amount) as Uint<32>;
+//         } else if (abilities[1].effect.value.effect_type == EFFECT_TYPE.attack_ice) {
+//             enemy_damage_1 = (enemy_damage_1 + (10 - stats.ice_def) * abilities[1].effect.value.amount) as Uint<32>;
+//         }
+//     }
+//     if (abilities[2].effect.is_some && (abilities[2].effect.value.is_aoe || target == 2)) {
+//         if (abilities[2].effect.value.effect_type == EFFECT_TYPE.attack_phys) {
+//             enemy_damage_2 = (enemy_damage_2 + (10 - stats.physical_def) * abilities[2].effect.value.amount) as Uint<32>;
+//         } else if (abilities[2].effect.value.effect_type == EFFECT_TYPE.attack_fire) {
+//             enemy_damage_2 = (enemy_damage_2 + (10 - stats.fire_def) * abilities[2].effect.value.amount) as Uint<32>;
+//         } else if (abilities[2].effect.value.effect_type == EFFECT_TYPE.attack_ice) {
+//             enemy_damage_2 = (enemy_damage_2 + (10 - stats.ice_def) * abilities[2].effect.value.amount) as Uint<32>;
+//         }
+//     }
+// }
