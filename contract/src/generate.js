@@ -15,8 +15,8 @@ const max_enemies = [0, 1, 2];
 
 const gen_all_dmg = () => max_enemies.map((enemy) => `player_damage_${enemy} = (${gen_base_dmg(enemy)} + ${gen_energy_dmg(enemy)}) as Uint<32>;`).join('\n    ');
 
-const gen_base_dmg = (enemy) => abilities.map((a) => `((abilities[${a}].effect.is_some && (abilities[${a}].effect.value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].effect.value, stats[${enemy}])`).join(' + ');
-const gen_energy_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && (abilities[${a}].on_energy[${c}].value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, stats[${enemy}])`).join(' + ')).join(' + ');
+const gen_base_dmg = (enemy) => abilities.map((a) => `((abilities[${a}].effect.is_some && (abilities[${a}].effect.value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].effect.value, battle.stats[${enemy}])`).join(' + ');
+const gen_energy_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && (abilities[${a}].on_energy[${c}].value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, battle.stats[${enemy}])`).join(' + ')).join(' + ');
 
 const gen_all_block = () => abilities.map((player) => `player_block_${player} = (${gen_base_block()} + ${gen_energy_block()}) as Uint<32>;`).join('\n    ');
 
