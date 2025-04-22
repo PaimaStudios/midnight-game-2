@@ -46,11 +46,11 @@ export class BrowserDeploymentManager {
   constructor(private readonly logger: Logger) {
   }
 
-  async create(isPractice: boolean): Promise<Game2API> {
+  async create(): Promise<Game2API> {
     console.log('getting providers');
     const providers = await this.getProviders();
     console.log('trying to create');
-    return Game2API.deploy(providers, isPractice, this.logger).then((api) => {
+    return Game2API.deploy(providers, this.logger).then((api) => {
       console.log('got create api');
       return api;
     });

@@ -79,7 +79,7 @@ export interface DeployedGame2API {
     readonly state$: Observable<Game2DerivedState>;
 
     start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
-    combat_round: (loadout: PlayerLoadout, battle: BattleConfig) => Promise<BattleRewards | undefined>;
+    combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
 }
 
 /**
@@ -104,7 +104,6 @@ export class Game2API implements DeployedGame2API {
     private constructor(
         public readonly deployedContract: DeployedGame2Contract,
         private readonly providers: Game2Providers,
-        private readonly isPractice: boolean,
         private readonly logger?: Logger,
     ) {
         this.deployedContractAddress = deployedContract.deployTxData.public.contractAddress;
@@ -135,6 +134,9 @@ export class Game2API implements DeployedGame2API {
             (ledgerState, privateState) => {
                 return {
                   enemy_damage: [ledgerState.enemyDamage0, ledgerState.enemyDamage1, ledgerState.enemyDamage2],
+                  activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
+                  activeBattleStates: new Map(ledgerState.activeBattleStates),
+                  players: new Map(ledgerState.players),
                 };
             },
         );
@@ -165,8 +167,8 @@ export class Game2API implements DeployedGame2API {
 
         return txData.private.result;
     }
-    async combat_round(loadout: PlayerLoadout, battle: BattleConfig): Promise<BattleRewards | undefined> {
-        const txData = await this.deployedContract.callTx.combat_round(loadout, battle);
+    async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
+        const txData = await this.deployedContract.callTx.combat_round(battle_id);
 
         this.logger?.trace({
             transactionAdded: {
@@ -187,7 +189,7 @@ export class Game2API implements DeployedGame2API {
      * @returns A `Promise` that resolves with a {@link Game2API} instance that manages the newly deployed
      * {@link DeployedGame2Contract}; or rejects with a deployment error.
      */
-    static async deploy(providers: Game2Providers, isPractice: boolean, logger?: Logger): Promise<Game2API> {
+    static async deploy(providers: Game2Providers, logger?: Logger): Promise<Game2API> {
         logger?.info('deployContract');
 
         const deployedGame2Contract = await deployContract(providers, {
@@ -202,7 +204,7 @@ export class Game2API implements DeployedGame2API {
             },
         });
 
-        return new Game2API(deployedGame2Contract, providers, isPractice, logger);
+        return new Game2API(deployedGame2Contract, providers, logger);
     }
 
     /**
@@ -234,7 +236,7 @@ export class Game2API implements DeployedGame2API {
             },
         });
 
-        return new Game2API(deployedGame2Contract, providers, false, logger);
+        return new Game2API(deployedGame2Contract, providers, logger);
     }
 
     static async getPrivateState(

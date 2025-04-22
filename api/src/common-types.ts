@@ -6,7 +6,7 @@
 
 import { type MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import { type FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { Game2PrivateState, Contract, Witnesses } from 'game2-contract';
+import type { Game2PrivateState, Contract, Witnesses, BattleState, BattleConfig, Player } from 'game2-contract';
 
 /**
  * The private states consumed throughout the application.
@@ -64,4 +64,7 @@ export type DeployedGame2Contract = FoundContract<Game2PrivateState, Game2Contra
  */
 export type Game2DerivedState = {
   enemy_damage: bigint[];
+  activeBattleStates: Map<bigint, BattleState>;
+  activeBattleConfigs: Map<bigint, BattleConfig>;
+  players: Map<bigint, Player>;
 }
