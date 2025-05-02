@@ -63,7 +63,6 @@ export type DeployedGame2Contract = FoundContract<Game2PrivateState, Game2Contra
  * A type that represents the derived combination of public (or ledger), and private state.
  */
 export type Game2DerivedState = {
-  enemy_damage: bigint[];
   activeBattleStates: Map<bigint, BattleState>;
   activeBattleConfigs: Map<bigint, BattleConfig>;
   players: Map<bigint, Player>;

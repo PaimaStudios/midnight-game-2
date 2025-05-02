@@ -29,39 +29,34 @@ export struct Ability {
 
 export struct EnemyStats {
     hp: Uint<32>,
+    // TODO: do we need a more complicated system or is this okay?
+    attack: Uint<32>,
+    block: Uint<32>,
     physical_def: Uint<32>,
     fire_def: Uint<32>,
     ice_def: Uint<32>,
 }
 
-// TODO: move into an instanced battle data (unless we can compose contracts)
-export ledger enemy_damage_0: Uint<32>;
-export ledger enemy_damage_1: Uint<32>;
-export ledger enemy_damage_2: Uint<32>;
-export ledger enemy_block_0: Uint<32>;
-export ledger enemy_block_1: Uint<32>;
-export ledger enemy_block_2: Uint<32>;
-export ledger enemy_hp_0: Uint<32>;
-export ledger enemy_hp_1: Uint<32>;
-export ledger enemy_hp_2: Uint<32>;
+// // TODO: move into an instanced battle data (unless we can compose contracts)
+// export ledger enemy_damage_0: Uint<32>;
+// export ledger enemy_damage_1: Uint<32>;
+// export ledger enemy_damage_2: Uint<32>;
+// export ledger enemy_block_0: Uint<32>;
+// export ledger enemy_block_1: Uint<32>;
+// export ledger enemy_block_2: Uint<32>;
+// export ledger enemy_hp_0: Uint<32>;
+// export ledger enemy_hp_1: Uint<32>;
+// export ledger enemy_hp_2: Uint<32>;
 
-export ledger player_damage_0: Uint<32>;
-export ledger player_damage_1: Uint<32>;
-export ledger player_damage_2: Uint<32>;
-export ledger player_block_0: Uint<32>;
-export ledger player_block_1: Uint<32>;
-export ledger player_block_2: Uint<32>;
-export ledger player_hp_0: Uint<32>;
-export ledger player_hp_1: Uint<32>;
-export ledger player_hp_2: Uint<32>;
+// export ledger player_damage: Uint<32>;
+// export ledger player_block: Uint<32>;
+// export ledger player_hp: Uint<32>;
 
 constructor() {
-    enemy_hp_0 = 0;
-    enemy_hp_1 = 0;
-    enemy_hp_2 = 0;
-    player_hp_0 = 0;
-    player_hp_1 = 0;
-    player_hp_2 = 0;
+    // enemy_hp_0 = 0;
+    // enemy_hp_1 = 0;
+    // enemy_hp_2 = 0;
+    // player_hp = 0;
 }
 
 witness player_secret_key(): Bytes<32>;
@@ -112,18 +107,16 @@ export pure circuit derive_battle_id(battle: BattleConfig): Field {
 
 export struct BattleState {
     deck_i: Uint<32>;
-    deck_map: Vector<7, Uint<32>>;
-    player_hp_0: Uint<32>;
-    player_hp_1: Uint<32>;
-    player_hp_2: Uint<32>;
+    deck_map: Vector<5, Uint<32>>;
+    player_hp: Uint<32>;
     enemy_hp_0: Uint<32>;
     enemy_hp_1: Uint<32>;
     enemy_hp_2: Uint<32>;
 }
 
-circuit draw_ability(battle_id: Field, abilities: Vector<7, Ability>): Ability {
+circuit draw_ability(battle_id: Field, abilities: Vector<5, Ability>): Ability {
     const old_state = active_battle_states.lookup(battle_id);
-    if (old_state.deck_i == 7) {
+    if (old_state.deck_i == 5) {
         shuffle(battle_id);
     }
     const i = active_battle_states.lookup(battle_id).deck_i;
@@ -134,10 +127,8 @@ circuit shuffle(battle_id: Field): [] {
     const old_state = active_battle_states.lookup(battle_id);
     active_battle_states.insert(battle_id, BattleState {
         3, // TODO: randomize
-        [2, 3, 4, 5, 6, 0, 1],// TODO: randomize
-        old_state.player_hp_0,
-        old_state.player_hp_1,
-        old_state.player_hp_2,
+        [2, 3, 4, 0, 1],// TODO: randomize
+        old_state.player_hp,
         old_state.enemy_hp_0,
         old_state.enemy_hp_1,
         old_state.enemy_hp_2
@@ -145,7 +136,7 @@ circuit shuffle(battle_id: Field): [] {
 }
 
 export struct PlayerLoadout {
-    abilities: Vector<7, Ability>,
+    abilities: Vector<5, Ability>,
 }
 
 export pure circuit derive_loadout_id(loadout: PlayerLoadout): Field {
@@ -159,9 +150,9 @@ export circuit start_new_battle(loadout: PlayerLoadout): BattleConfig {
     const player_id = disclose(derive_player_pub_key(player_secret_key()));
     const battle = BattleConfig {
         [
-            EnemyStats { 30, 8, 5, 3 },
-            EnemyStats { 25, 3, 8, 5 },
-            EnemyStats { 20, 5, 3, 8 }
+            EnemyStats { 30, 5, 0, 8, 5, 3 },
+            EnemyStats { 25, 3, 2, 3, 8, 5 },
+            EnemyStats { 15, 4, 4, 5, 3, 8 }
         ],
         3,
         player_id,
@@ -179,10 +170,8 @@ pure circuit init_battlestate(battle: BattleConfig): BattleState {
     return BattleState {
         0,
         // TODO: randomize
-        [0, 5, 2, 3, 4, 1, 6],
+        [0, 2, 3, 4, 1],
         100,// TODO: source from somewhere - also do we want multiple people?
-        100,
-        100,
         battle.stats[0].hp,
         battle.stats[1].hp,
         battle.stats[2].hp
@@ -196,8 +185,8 @@ export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe
     const loadout = active_battle_configs.lookup(battle_id).loadout;
     const result = combat_round_impl(battle_id, [draw_ability(battle_id, loadout.abilities), draw_ability(battle_id, loadout.abilities), draw_ability(battle_id, loadout.abilities)], mock_rand_target());
     active_battle_states.insert(battle_id, result);
-    if (result.player_hp_0 == 0 && result.player_hp_1 == 0 && result.player_hp_2 == 0) {
-        // TODO: how to handle 
+    if (result.player_hp == 0) {
+        // TODO: how to handle
     } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
         // TODO: when and how to generate?
         const reward = BattleRewards {
@@ -218,38 +207,27 @@ pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
 
 circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, target: Uint<32>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
-    // is there a cheap way to use these directly? TODO: test vs lookup() / insert() (probably slow)
-    player_block_0 = 0;
-    player_block_1 = 0;
-    player_block_2 = 0;
-    player_damage_0 = 0;
-    player_damage_1 = 0;
-    player_damage_2 = 0;
-    enemy_block_0 = 0;
-    enemy_block_1 = 0;
-    enemy_block_2 = 0;
-    enemy_damage_0 = 0;
-    enemy_damage_1 = 0;
-    enemy_damage_2 = 0;
+    const old_state = active_battle_states.lookup(battle_id);
 
     INSERT_PLAYER_BLOCK_CODE_HERE
 
     INSERT_PLAYER_DAMAGE_CODE_HERE
 
-    const old_state = active_battle_states.lookup(battle_id);
+    INSERT_ENEMY_BLOCK_CODE_HERE
+
+    INSERT_ENEMY_DAMAGE_CODE_HERE
+
     return BattleState {
         old_state.deck_i,
         old_state.deck_map,
-        enemy_block_0 < player_damage_0 ? (player_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0,
-        enemy_block_1 < player_damage_1 ? (player_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0,
-        enemy_block_2 < player_damage_2 ? (player_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0,
-        player_block_0 < enemy_damage_0 ? (enemy_hp_0 + enemy_damage_0 - player_block_0) as Uint<32> : 0,
-        player_block_1 < enemy_damage_1 ? (enemy_hp_1 + enemy_damage_1 - player_block_1) as Uint<32> : 0,
-        player_block_2 < enemy_damage_2 ? (enemy_hp_2 + enemy_damage_2 - player_block_2) as Uint<32> : 0
+        player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
+        enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0,
+        enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0,
+        enemy_block_2 < player_damage_2 ? (old_state.enemy_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0
     };
 }
 
-pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
+export pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
     return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * effect.amount) as Uint<32>;
 }
 

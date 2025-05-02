@@ -43,8 +43,9 @@ import { Subscriber, Observable, Subscription } from 'rxjs';
 
 import { Button } from './menus/button';
 import { MockGame2API } from './mockapi';
-import { BattleConfig, EFFECT_TYPE, PlayerLoadout, pureCircuits } from 'game2-contract';
+import { Ability, BattleConfig, EFFECT_TYPE, PlayerLoadout, pureCircuits } from 'game2-contract';
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
+import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
@@ -112,6 +113,110 @@ function scaleToWindow(): number {
     return Math.floor(Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT));
 }
 
+export class AbilityWidget extends Phaser.GameObjects.Container {
+    bg: Phaser.GameObjects.NineSlice;
+    ability: Ability;
+
+    constructor(scene: Phaser.Scene, x: number, y: number, ability: Ability) {
+        super(scene, x, y);
+        this.setSize(48, 48);
+        this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 48, 48, 8, 8, 8, 8);
+        this.ability = ability;
+
+        this.add(this.bg);
+        if (ability.effect.is_some) {
+            switch (ability.effect.value.effect_type) {
+                case EFFECT_TYPE.attack_fire:
+                    this.add(scene.add.image(0, 0, 'fire'));
+                    this.add(scene.add.text(0, 8, ability.effect.value.amount.toString(), fontStyle(8)));
+                    break;
+                case EFFECT_TYPE.attack_ice:
+                    this.add(scene.add.image(0, 0, 'ice'));
+                    this.add(scene.add.text(0, 8, ability.effect.value.amount.toString(), fontStyle(8)));
+                    break;
+                case EFFECT_TYPE.attack_phys:
+                    this.add(scene.add.image(0, 0, 'physical'));
+                    this.add(scene.add.text(0, 8, ability.effect.value.amount.toString(), fontStyle(8)));
+                    break;
+                case EFFECT_TYPE.block:
+                    this.add(scene.add.image(0, 0, 'block'));
+                    this.add(scene.add.text(0, 8, ability.effect.value.amount.toString(), fontStyle(8)));
+                    break;
+            }
+        }
+
+        scene.add.existing(this);
+    }
+}
+
+function randomAbility(): Ability {
+    const randomEffect = (enabled: boolean) => {
+        return {
+            is_some: enabled,
+            value: { effect_type: Phaser.Math.Between(0, 3) as EFFECT_TYPE, amount: BigInt(Phaser.Math.Between(1, 4)), is_aoe: false},
+        };
+    };
+    return {
+        effect: randomEffect(true),
+        on_energy: [randomEffect(false), randomEffect(false), randomEffect(false)],
+    };
+}
+
+export class StartBattleMenu extends Phaser.Scene {
+    api: DeployedGame2API;
+    loadout: PlayerLoadout;
+    available: AbilityWidget[];
+    is_chosen: boolean[];
+
+    constructor(api: DeployedGame2API) {
+        super('StartBattleMenu');
+        this.api = api;
+        this.loadout = {
+            abilities: [],
+        };
+        this.available = [];
+        this.is_chosen = [];
+    }
+
+    create() {
+        for (let i = 0; i < 10; ++i) {
+            const ability = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.8, randomAbility());
+            this.available.push(ability);
+            this.is_chosen.push(false);
+            const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.8 - 48, 48, 24, '^', 10, () => {
+                if (this.is_chosen[i]) {
+                    ability.y += 48 + 48;
+                    button.text.text = '^';
+                } else {
+                    ability.y -= 48 + 48;
+                    button.text.text = 'v';
+                }
+                this.is_chosen[i] = !this.is_chosen[i];
+            });
+        }
+        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, () => {
+            this.loadout.abilities = [];
+            for (let i = 0; i < this.is_chosen.length; ++i) {
+                if (this.is_chosen[i]) {
+                    this.loadout.abilities.push(this.available[i].ability);
+                }
+            }
+            if (this.loadout.abilities.length == 5) {
+                this.api.start_new_battle(this.loadout).then((battle) => {
+                    this.scene.remove('TestMenu');
+                    this.scene.add('TestMenu', new TestMenu({
+                        api: this.api,
+                        battle,
+                    }));
+                    this.scene.start('TestMenu');
+                });
+            } else {
+                console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 5)`);
+            }
+        });
+    }
+}
+
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
     api: DeployedGame2API | undefined;
@@ -121,10 +226,16 @@ export class TestMenu extends Phaser.Scene {
     match_buttons: Button[];
     state: Game2DerivedState | undefined;
 
-    constructor() {
+    constructor(resume: { api: DeployedGame2API, battle: BattleConfig } | undefined) {
         super('TestMenu');
-        this.deployProvider = new BrowserDeploymentManager(logger);
         this.match_buttons = [];
+        if (resume != undefined) {
+            setTimeout(() => {
+                this.initApi(resume.api);
+            }, 100);
+        }// else {
+            this.deployProvider = new BrowserDeploymentManager(logger);
+        //}}
     }
 
     preload() {
@@ -132,6 +243,11 @@ export class TestMenu extends Phaser.Scene {
 
         this.load.image('stone_button', 'stone_button.png');
         this.load.image('stone_button_over', 'stone_button_over.png');
+
+        this.load.image('fire', 'fire.png');
+        this.load.image('ice', 'ice.png');
+        this.load.image('physical', 'physical.png');
+        this.load.image('block', 'block.png');
     }
 
     create() {
@@ -155,29 +271,39 @@ export class TestMenu extends Phaser.Scene {
         this.match_buttons.forEach((b) => b.destroy());
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.new_button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
-            api.start_new_battle(makeMockLoadout()).then((battle) => {
-                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * this.match_buttons.length, 320, 24, this.matchStr(battle), 10, () => {
-                    api.combat_round(pureCircuits.derive_battle_id(battle)).then((rewards) => {
-                        if (rewards != undefined) {
-                            button.text.setText(`you won ${rewards.gold} gold!`);
-                        } else {
-                            button.text.setText(this.matchStr(battle));
-                        }
-                    });
-                });
-                this.match_buttons.push(button);
-            })
+            this.scene.remove('StartBattleMenu');
+            this.scene.add('StartBattleMenu', new StartBattleMenu(api));
+            this.scene.start('StartBattleMenu');
         });
     }
 
     private matchStr(battle: BattleConfig): string {
-        const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle))
-        return state != undefined ? `Player HP: ${state.player_hp_0} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
+        const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
+        return state != undefined ? `Player HP: ${state.player_hp} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
     }
 
     private onStateChange(state: Game2DerivedState) {
         console.log('---state change---');
         this.state = state;
+
+
+        this.match_buttons.forEach((b) => b.destroy());
+        console.log(`configs: ${state.activeBattleConfigs.size}   ; states: ${state.activeBattleStates.size}`);
+        let offset = 0;
+        for (const [id, battle] of state.activeBattleConfigs) {
+            console.log(`got battle: ${id}`);
+            const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.matchStr(battle), 10, () => {
+                this.api!.combat_round(pureCircuits.derive_battle_id(battle)).then((rewards) => {
+                    if (rewards != undefined) {
+                        button.text.setText(`you won ${rewards.gold} gold!`);
+                    } else {
+                        button.text.setText(this.matchStr(battle));
+                    }
+                });
+            });
+            this.match_buttons.push(button)
+            offset += 1;
+        }
     }
 }
 

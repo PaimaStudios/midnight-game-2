@@ -133,7 +133,6 @@ export class Game2API implements DeployedGame2API {
             // ...and combine them to produce the required derived state.
             (ledgerState, privateState) => {
                 return {
-                  enemy_damage: [ledgerState.enemyDamage0, ledgerState.enemyDamage1, ledgerState.enemyDamage2],
                   activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
                   activeBattleStates: new Map(ledgerState.activeBattleStates),
                   players: new Map(ledgerState.players),
