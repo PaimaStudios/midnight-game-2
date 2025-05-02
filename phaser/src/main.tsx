@@ -43,9 +43,10 @@ import { Subscriber, Observable, Subscription } from 'rxjs';
 
 import { Button } from './menus/button';
 import { MockGame2API } from './mockapi';
-import { Ability, BattleConfig, EFFECT_TYPE, PlayerLoadout, pureCircuits } from 'game2-contract';
+import { Ability, BattleConfig, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits } from 'game2-contract';
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
 import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
+import { combat_round_logic } from './battle/logic';
 
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
@@ -162,6 +163,47 @@ function randomAbility(): Ability {
     };
 }
 
+// amount is only here to tell what type of generation it is
+// TODO DECISION: should this be the case? the re-use. or should it be separate generation types???
+export function effectTypeToIcon(effectType: EFFECT_TYPE, amount: number): string {
+    switch (effectType) {
+        case EFFECT_TYPE.attack_fire:
+            return 'fire';
+        case EFFECT_TYPE.attack_ice:
+            return 'ice';
+        case EFFECT_TYPE.attack_phys:
+            return 'physical';
+        case EFFECT_TYPE.block:
+            return 'block';
+        case EFFECT_TYPE.generate:
+            return `energy_${amount}`;
+                                                                
+    }
+}
+
+export class BattleEffect extends Phaser.GameObjects.Container {
+    constructor(scene: Phaser.Scene, x: number, y: number, effectType: EFFECT_TYPE, amount: number, onComplete: () => void) {
+        super(scene, x, y);
+
+        if (effectType != EFFECT_TYPE.generate) {
+            this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
+        }
+        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)));
+
+        this.setSize(48, 48);
+        console.log(`BattleEffect START ${effectType} | ${amount}`);
+        scene.tweens.add({
+            targets: this,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => {
+                console.log(`BattleEffect COMPLETE ${effectType} | ${amount}`);
+                onComplete();
+            },
+        });
+    }
+}
+
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
     loadout: PlayerLoadout;
@@ -217,6 +259,15 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 }
 
+function enemyX(config: BattleConfig, enemyIndex: number): number {
+    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
+}
+
+const enemyY = GAME_HEIGHT * 0.4;
+
+const playerX = GAME_WIDTH / 2;
+const playerY = GAME_HEIGHT * 0.8;
+
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
     api: DeployedGame2API | undefined;
@@ -248,6 +299,9 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('ice', 'ice.png');
         this.load.image('physical', 'physical.png');
         this.load.image('block', 'block.png');
+        this.load.image('energy_0', 'energy_0.png');
+        this.load.image('energy_1', 'energy_1.png');
+        this.load.image('energy_2', 'energy_2.png');
     }
 
     create() {
@@ -292,16 +346,43 @@ export class TestMenu extends Phaser.Scene {
         let offset = 0;
         for (const [id, battle] of state.activeBattleConfigs) {
             console.log(`got battle: ${id}`);
-            const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.matchStr(battle), 10, () => {
-                this.api!.combat_round(pureCircuits.derive_battle_id(battle)).then((rewards) => {
-                    if (rewards != undefined) {
-                        button.text.setText(`you won ${rewards.gold} gold!`);
-                    } else {
-                        button.text.setText(this.matchStr(battle));
-                    }
-                });
+            const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.matchStr(battle), 10, async () => {
+                const id = pureCircuits.derive_battle_id(battle);
+                // TODO: handle if state change triggerd by network before UI finished resolving?
+                // or should we more distinctly separate proving and sending?
+                // we will need that for combining multiple rounds if we get proof composition in time
+                const [circuit, ui] = await Promise.all([
+                    // prove and submit circuit
+                    this.api!.combat_round(id),
+                    // run the same logic simultaneously and trigger UI callbacks
+                    combat_round_logic(id, this.state!, {
+                        onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
+                            this.add.existing(new BattleEffect(this, enemyX(battle, enemy), enemyY, EFFECT_TYPE.block, amount, resolve));
+                        }),
+                        onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                            this.add.existing(new BattleEffect(this, enemyX(battle, enemy), enemyY, EFFECT_TYPE.attack_phys, amount, resolve));
+                        }),
+                        onPlayerEffect: (target: number, effect: Effect) => new Promise((resolve) => {
+                            this.add.existing(new BattleEffect(this, playerX, playerY, effect.effect_type, Number(effect.amount), resolve));
+                        }),
+                    }),
+                ]);
+                console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
+                // TODO: check consistency (either here or in onStateChange())
+                //
+                // TODO: move this out of here? it gets reset by onStateChange() and also results in an error:
+                //
+                //    Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'updatePenManager')
+                //       at BBCodeText.updateText (index-eba13966.js:322545:24)
+                //       at BBCodeText.setText (index-eba13966.js:322484:14)
+                //       at index-eba13966.js:393191:23
+                if (ui != undefined) {
+                    button.text.setText(`you won ${ui.gold} gold!`);
+                } else {
+                    button.text.setText(this.matchStr(battle));
+                }
             });
-            this.match_buttons.push(button)
+            this.match_buttons.push(button);
             offset += 1;
         }
     }
