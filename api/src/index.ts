@@ -80,6 +80,9 @@ export interface DeployedGame2API {
 
     start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
     combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
+
+    start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
+    finalize_quest: (quest_id: bigint) => Promise<BattleRewards>;
 }
 
 /**
@@ -135,6 +138,7 @@ export class Game2API implements DeployedGame2API {
                 return {
                   activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
                   activeBattleStates: new Map(ledgerState.activeBattleStates),
+                  quests: new Map(ledgerState.quests),
                   players: new Map(ledgerState.players),
                 };
             },
@@ -178,6 +182,34 @@ export class Game2API implements DeployedGame2API {
         });
 
         return txData.private.result.is_some ? txData.private.result.value : undefined;
+    }
+
+    async start_new_quest(loadout: PlayerLoadout, difficulty: bigint): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.start_new_quest(loadout, difficulty);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'start_new_quest',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+
+        return txData.private.result;
+    }
+
+    async finalize_quest(quest_id: bigint): Promise<BattleRewards> {
+        const txData = await this.deployedContract.callTx.finalize_quest(quest_id);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'finalize_quest',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+
+        return txData.private.result;
     }
 
     /**

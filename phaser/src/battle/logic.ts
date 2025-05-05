@@ -116,10 +116,20 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         if (player_damage[2] > battleConfig.stats[2].block) {
             battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
         }
-        if (gameState.activeBattleStates.get(battle_id)!.enemy_hp_0 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_1 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_2 <= 0) {
-            // TODO how to determine rewards?
-            resolve({ gold: BigInt(Phaser.Math.Between(3, 10)) });
+        if (battleState.player_hp <= 0) {
+            gameState.activeBattleConfigs.delete(battle_id);
+            gameState.activeBattleStates.delete(battle_id);
+
+            resolve({ alive: false, gold: BigInt(0) });
         }
-        resolve(undefined);
+        else if (gameState.activeBattleStates.get(battle_id)!.enemy_hp_0 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_1 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_2 <= 0) {
+            gameState.activeBattleConfigs.delete(battle_id);
+            gameState.activeBattleStates.delete(battle_id);
+
+            // TODO how to determine rewards?
+            resolve({ alive: true, gold: BigInt(Phaser.Math.Between(3, 10)) });
+        } else {
+            resolve(undefined);
+        }
     });
 }
