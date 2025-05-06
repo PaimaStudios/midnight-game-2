@@ -82,7 +82,7 @@ export interface DeployedGame2API {
     combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
 
     start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
-    finalize_quest: (quest_id: bigint) => Promise<BattleRewards>;
+    finalize_quest: (quest_id: bigint) => Promise<BattleRewards | undefined>;
 }
 
 /**
@@ -198,7 +198,7 @@ export class Game2API implements DeployedGame2API {
         return txData.private.result;
     }
 
-    async finalize_quest(quest_id: bigint): Promise<BattleRewards> {
+    async finalize_quest(quest_id: bigint): Promise<BattleRewards | undefined> {
         const txData = await this.deployedContract.callTx.finalize_quest(quest_id);
 
         this.logger?.trace({
@@ -209,7 +209,7 @@ export class Game2API implements DeployedGame2API {
             },
         });
 
-        return txData.private.result;
+        return txData.private.result.is_some ? txData.private.result.value : undefined;
     }
 
     /**

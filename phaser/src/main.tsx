@@ -42,7 +42,7 @@ import { extend } from 'fp-ts/lib/pipeable';
 import { Subscriber, Observable, Subscription } from 'rxjs';
 
 import { Button } from './menus/button';
-import { MockGame2API } from './mockapi';
+import { MOCK_PLAYER_ID, MockGame2API } from './mockapi';
 import { Ability, BattleConfig, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits, QuestConfig } from 'game2-contract';
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
 import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
@@ -195,7 +195,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         scene.tweens.add({
             targets: this,
             alpha: 0,
-            duration: 1000,
+            duration: 500,
             onComplete: () => {
                 console.log(`BattleEffect COMPLETE ${effectType} | ${amount}`);
                 onComplete();
@@ -276,11 +276,105 @@ const enemyY = GAME_HEIGHT * 0.2;
 const playerX = GAME_WIDTH / 2;
 const playerY = GAME_HEIGHT * 0.6;
 
+class Actor extends Phaser.GameObjects.Container {
+    hp: number;
+    maxHp: number;
+    hpText: Phaser.GameObjects.Text;
+    block: number;
+    blockText: Phaser.GameObjects.Text;
+
+    // TODO: ActorConfig or Stats or whatever
+    constructor(scene: Phaser.Scene, x: number, y: number, hp: number, maxHp: number, texture: string) {
+        super(scene, x, y);
+
+        this.hp = hp;
+        this.maxHp = maxHp;
+        this.hpText = scene.add.text(0, 16, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.block = 0;
+        this.blockText = scene.add.text(0, -48, '', fontStyle(12)).setOrigin(0.5, 0.5);
+
+        this.add(this.hpText);
+        this.add(this.blockText);
+
+        this.setHp(hp);
+
+        this.add(scene.add.image(0, 0, texture));
+
+        this.setSize(32, 32);
+
+        scene.add.existing(this);
+    }
+
+    public addBlock(amount: number) {
+        this.setBlock(this.block + amount);
+    }
+
+    public damage(amount: number) {
+        if (amount > this.block) {
+            this.setHp(this.hp - amount + this.block);
+            this.setBlock(0);
+        } else {
+            this.setBlock(this.block - amount);
+        }
+    }
+
+    private setHp(hp: number) {
+        this.hp = Math.max(0, hp);
+        this.hpText.setText(this.hp <= 0 ? 'DEAD' : `${this.hp} / ${this.maxHp} HP`);
+    }
+
+    public setBlock(block: number) {
+        this.block = block;
+        this.blockText.setText(block == 0 ? '' : `${block} Block`);
+    }
+}
+
+export class QuestMenu extends Phaser.Scene {
+    api: DeployedGame2API;
+    questId: bigint;
+    subscription: Subscription;
+    state: Game2DerivedState | undefined;
+
+    constructor(api: DeployedGame2API, questId: bigint) {
+        super('QuestMenu');
+
+        this.api = api;
+        this.questId = questId;
+        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+    }
+
+    create() {
+        this.api.finalize_quest(this.questId).then((rewards) => {
+            if (rewards != undefined) {
+                const str = rewards.alive ? `Quest Complete!\n\nYou won ${rewards.gold} gold!\n\nClick to return.` : `You died :(\nClick to return.`;
+                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.5, str, 16, () => {
+                    this.scene.remove('TestMenu');
+                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
+                    this.scene.start('TestMenu');
+                });
+            } else {
+                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.3, `Quest not finished yet.\n\nClick to return.`, 16, () => {
+                    this.scene.remove('TestMenu');
+                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
+                    this.scene.start('TestMenu');
+                });
+            }
+        });
+    }
+
+    private onStateChange(state: Game2DerivedState) {
+        this.state = state;
+    }
+}
+
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
     battle: BattleConfig;
     state: Game2DerivedState | undefined;
+    player: Actor | undefined;
+    enemies: Actor[];
+    abilityIcons: AbilityWidget[];
 
     constructor(api: DeployedGame2API, battle: BattleConfig) {
         super("ActiveBattle");
@@ -288,10 +382,19 @@ export class ActiveBattle extends Phaser.Scene {
         this.api = api;
         this.battle = battle;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+        this.enemies = [];
+        this.abilityIcons = [];
     }
 
     create() {
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.9, 320, 64, this.matchStr(this.battle), 10, async () => {
+        this.player = new Actor(this, playerX, playerY, 100, 100, 'player');
+        for (let i = 0; i < this.battle.enemy_count; ++i) {
+            const stats = this.battle.stats[i];
+            this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY, Number(stats.hp), Number(stats.hp), 'enemy'));
+        }
+
+        // attack button
+        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.matchStr(this.battle), 10, async () => {
             const id = pureCircuits.derive_battle_id(this.battle);
             // TODO: handle if state change triggerd by network before UI finished resolving?
             // or should we more distinctly separate proving and sending?
@@ -302,16 +405,50 @@ export class ActiveBattle extends Phaser.Scene {
                 // run the same logic simultaneously and trigger UI callbacks
                 combat_round_logic(id, this.state!, {
                     onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
-                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY, EFFECT_TYPE.block, amount, resolve));
+                        this.enemies[enemy].addBlock(amount);
+                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY - 32, EFFECT_TYPE.block, amount, resolve));
                     }),
                     onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY, EFFECT_TYPE.attack_phys, amount, resolve));
+                        this.player?.damage(amount);
+                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY - 32, EFFECT_TYPE.attack_phys, amount, resolve));
                     }),
                     onPlayerEffect: (target: number, effect: Effect) => new Promise((resolve) => {
-                        this.add.existing(new BattleEffect(this, playerX, playerY, effect.effect_type, Number(effect.amount), resolve));
+                        switch (effect.effect_type) {
+                            case EFFECT_TYPE.attack_fire:
+                            case EFFECT_TYPE.attack_ice:
+                            case EFFECT_TYPE.attack_phys:
+                                this.enemies[target].damage(Number(effect.amount));
+                                break;
+                            case EFFECT_TYPE.block:
+                                this.player?.addBlock(Number(effect.amount));
+                                break;
+                            case EFFECT_TYPE.generate:
+                                // TODO
+                                break;
+                        }
+                        this.add.existing(new BattleEffect(this, playerX, playerY - 32, effect.effect_type, Number(effect.amount), resolve));
+                    }),
+                    onPlayerAbilities: (abilities: Ability[]) => new Promise((resolve) => {
+                        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, GAME_HEIGHT * 0.75, ability).setAlpha(0));
+                        this.tweens.add({
+                            targets: this.abilityIcons,
+                            alpha: 1,
+                            duration: 500,
+                            onComplete: () => {
+                                resolve();
+                            },
+                        });
                     }),
                 }),
             ]);
+            this.player?.setBlock(0);
+            for (const enemy of this.enemies) {
+                enemy.setBlock(0);
+            }
+            this.abilityIcons.forEach((a) => a.destroy());
+            this.abilityIcons = [];
+            console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
+            console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
             // TODO: check consistency (either here or in onStateChange())
             //
@@ -321,12 +458,14 @@ export class ActiveBattle extends Phaser.Scene {
             //       at BBCodeText.updateText (index-eba13966.js:322545:24)
             //       at BBCodeText.setText (index-eba13966.js:322484:14)
             //       at index-eba13966.js:393191:23
+            console.log(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
+            console.log(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
             if (ui != undefined) {
                 button.destroy();
                 const battleOverText = ui.alive ? `you won ${ui.gold} gold!` : `you died :(`;
                 new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.6, 256, 96, battleOverText, 24, () => {
                     this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api));
+                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
                     this.scene.start('TestMenu');
                 });
             } else {
@@ -343,13 +482,13 @@ export class ActiveBattle extends Phaser.Scene {
             return 'Click to attack';
         }
         const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        return state != undefined ? `Click to attack.\n\nPlayer HP: ${state.player_hp} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
+        return state != undefined ? `Click to attack.\nPlayer HP: ${state.player_hp} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
     }
 
     private onStateChange(state: Game2DerivedState) {
         console.log(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
-        this.state = state;
+        this.state = structuredClone(state);//Object.assign({}, state);
     }
 }
 
@@ -357,17 +496,22 @@ export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
     api: DeployedGame2API | undefined;
     subscription: Subscription | undefined;
-    text: Phaser.GameObjects.Text | undefined;
+    state: Game2DerivedState | undefined;
+    goldText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     match_buttons: Button[];
-    state: Game2DerivedState | undefined;
 
-    constructor(api: DeployedGame2API | undefined) {
+    
+
+    constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
         this.match_buttons = [];
         if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
+                if (state != undefined) {
+                    this.onStateChange(state);
+                }
             }, 100);
         }// else {
             this.deployProvider = new BrowserDeploymentManager(logger);
@@ -387,6 +531,9 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('energy_0', 'energy_0.png');
         this.load.image('energy_1', 'energy_1.png');
         this.load.image('energy_2', 'energy_2.png');
+
+        this.load.image('player', 'player.png');
+        this.load.image('enemy', 'enemy.png');
     }
 
     create() {
@@ -403,6 +550,7 @@ export class TestMenu extends Phaser.Scene {
             console.log('==========MOCK API========');
             this.initApi(new MockGame2API());
         }));
+        this.goldText = this.add.text(32, 32, '', fontStyle(12));
     }
 
     private initApi(api: DeployedGame2API) {
@@ -435,10 +583,18 @@ export class TestMenu extends Phaser.Scene {
         for (const [id, quest] of state.quests) {
             console.log(`got quest: ${id}`);
             const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.questStr(quest), 10, () => {
-                this.api?.finalize_quest(id)
+                this.scene.remove('QuestMenu');
+                this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
+                this.scene.start('QuestMenu');
             });
             offset += 1;
             this.match_buttons.push(button);
+        }
+
+        // TODO: real player id
+        const player = state.players.get(MOCK_PLAYER_ID);
+        if (player != undefined) {
+            this.goldText?.setText(`Gold: ${player.gold}`);
         }
     }
 }

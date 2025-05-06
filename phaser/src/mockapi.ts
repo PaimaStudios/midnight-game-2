@@ -5,7 +5,7 @@ import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 
 const MOCK_DELAY = 500;
-const MOCK_PLAYER_ID = BigInt(0);
+export const MOCK_PLAYER_ID = BigInt(0);
 
 export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
 
@@ -25,6 +25,8 @@ export class MockGame2API implements DeployedGame2API {
             activeBattleStates: new Map(),
             quests: new Map(),
             players: new Map(),
+            ui: undefined,
+            circuit: undefined
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -87,16 +89,19 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public finalize_quest(quest_id: bigint): Promise<BattleRewards> {
+    public finalize_quest(quest_id: bigint): Promise<BattleRewards | undefined> {
         return this.response(() => {
-            const quest = this.mockState.quests.get(quest_id)!;
-            this.mockState.quests.delete(quest_id);
-            const reward = {
-                alive: true,
-                gold: BigInt(500) + quest.difficulty * BigInt(100), 
-            };
-            this.addRewards(MOCK_PLAYER_ID, reward);
-            return reward;
+            if (Math.random() > 0.5) {
+                const quest = this.mockState.quests.get(quest_id)!;
+                this.mockState.quests.delete(quest_id);
+                const reward = {
+                    alive: true,
+                    gold: BigInt(500) + quest.difficulty * BigInt(100),
+                };
+                this.addRewards(MOCK_PLAYER_ID, reward);
+                return reward;
+            }
+            return undefined;
         });
     }
 
@@ -109,12 +114,16 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     private response<T>(body: () => T): Promise<T> {
-        return new Promise((resolve) => setTimeout(() => {
-            const ret = body();
+        return new Promise((resolve, reject) => setTimeout(() => {
+            try {
+                const ret = body();
+                resolve(ret);
+            } catch (e) {
+                reject(e);
+            }
             setTimeout(() => {
                 this.subscriber?.next(this.mockState);
             }, MOCK_DELAY);
-            resolve(ret);
         }, MOCK_DELAY));
     }
 }

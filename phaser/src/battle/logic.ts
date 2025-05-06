@@ -6,6 +6,7 @@ export type CombatCallbacks = {
     onEnemyBlock: (enemy: number, amount: number) => Promise<void>;
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
     onPlayerEffect: (target: number, effect: Effect) => Promise<void>;
+    onPlayerAbilities: (abilities: Ability[]) => Promise<void>;
 };
 
 
@@ -15,7 +16,11 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         // TODO: combat
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
-
+        if (uiHooks != undefined) {
+            gameState.ui = true;
+        } else {
+            gameState.circuit = true;
+        }
         const draw = (): Ability => {
             battleState.deck_i += BigInt(1);
             if (battleState.deck_i == BigInt(5)) {
@@ -36,23 +41,15 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         let player_damage = [BigInt(0), BigInt(0), BigInt(0)];
         let energy = [false, false, false];
 
+        // enemy damage
         let enemy_damage = BigInt(0);
         const enemy_hp = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
         for (let i = 0; i < battleConfig.enemy_count; ++i) {
             if (enemy_hp[i] > 0) {
-
-                const damage = battleConfig.stats[i].attack;
-                 enemy_damage += damage;
                 // do not change vars for block since it's directly checked during player against enemy damage code
-                
-                if (uiHooks != undefined) {
-                    const block = Number(battleConfig.stats[i].block);
-                    if (block != 0) {
-                        await uiHooks.onEnemyBlock(i, block);
-                    }
-                    if (Number(damage) != 0) {
-                        await uiHooks?.onEnemyAttack(i, Number(damage));
-                    }
+                const block = Number(battleConfig.stats[i].block);
+                if (block != 0) {
+                    await uiHooks?.onEnemyBlock(i, block);
                 }
             }
         }
@@ -60,9 +57,8 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         const resolveEffect = async (effect: { is_some: boolean, value: Effect }, target: number) => {
             for (let enemy = 0; enemy < 3; ++enemy) {
                 if (effect.is_some && (effect.value.is_aoe || target == enemy)) {
-                    if (uiHooks != undefined) {
-                        await uiHooks.onPlayerEffect(enemy, effect.value);
-                    }
+                    await uiHooks?.onPlayerEffect(enemy, effect.value);
+
                     switch (effect.value.effect_type) {
                         case EFFECT_TYPE.attack_fire:
                         case EFFECT_TYPE.attack_ice:
@@ -80,6 +76,8 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 }
             }
         };
+
+        await uiHooks?.onPlayerAbilities(abilities);
 
         // TODO: don't target dead enemies
         const targets = abilities.map(() => Phaser.Math.Between(0, Number(battleConfig.enemy_count) - 1))
@@ -103,6 +101,17 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         //     }
         // });
 
+        // enemy damage
+        for (let i = 0; i < battleConfig.enemy_count; ++i) {
+            if (enemy_hp[i] > 0) {
+                const damage = battleConfig.stats[i].attack;
+                 enemy_damage += damage;
+                if (Number(damage) != 0) {
+                    await uiHooks?.onEnemyAttack(i, Number(damage));
+                }
+            }
+        }
+
         
         if (enemy_damage > player_block) {
             battleState.player_hp -= enemy_damage - player_block;
@@ -116,19 +125,23 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         if (player_damage[2] > battleConfig.stats[2].block) {
             battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
         }
+        console.log(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
         if (battleState.player_hp <= 0) {
             gameState.activeBattleConfigs.delete(battle_id);
             gameState.activeBattleStates.delete(battle_id);
 
+            console.log(`YOU DIED`);
             resolve({ alive: false, gold: BigInt(0) });
         }
-        else if (gameState.activeBattleStates.get(battle_id)!.enemy_hp_0 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_1 <= 0 || gameState.activeBattleStates.get(battle_id)!.enemy_hp_2 <= 0) {
+        else if (battleState.enemy_hp_0 <= 0 && battleState.enemy_hp_1 <= 0 && battleState.enemy_hp_2 <= 0) {
             gameState.activeBattleConfigs.delete(battle_id);
             gameState.activeBattleStates.delete(battle_id);
 
+            console.log(`YOU WON`);
             // TODO how to determine rewards?
             resolve({ alive: true, gold: BigInt(Phaser.Math.Between(3, 10)) });
         } else {
+            console.log(`CONTINUE BATTLE`);
             resolve(undefined);
         }
     });

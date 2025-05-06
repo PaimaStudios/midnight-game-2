@@ -175,7 +175,7 @@ export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field
 }
 
 // TODO: do we need a separate QuestRewards?
-export circuit finalize_quest(quest_id: Field): BattleRewards {
+export circuit finalize_quest(quest_id: Field): Maybe<BattleRewards> {
     const quest = quests.lookup(quest_id);
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     
@@ -193,7 +193,7 @@ export circuit finalize_quest(quest_id: Field): BattleRewards {
 
     quests.remove(quest_id);
 
-    return reward;
+    return some<BattleRewards>(reward);
 }
 
 export circuit start_new_battle(loadout: PlayerLoadout): BattleConfig {
