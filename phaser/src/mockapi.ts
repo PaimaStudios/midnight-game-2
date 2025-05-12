@@ -23,8 +23,22 @@ export class MockGame2API implements DeployedGame2API {
         this.mockState = {
             activeBattleConfigs: new Map(),
             activeBattleStates: new Map(),
+            allAbilities: new Map([
+                pureCircuits.ability_base_phys(),
+                pureCircuits.ability_base_block(),
+                pureCircuits.ability_base_fire_aoe(),
+                pureCircuits.ability_base_ice(),
+            ].map((ability) => [pureCircuits.derive_ability_id(ability), ability])),
             quests: new Map(),
-            players: new Map(),
+            player: {
+                gold: BigInt(0),
+            },
+            playerAbilities: new Map([
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_phys()), BigInt(4)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_block()), BigInt(4)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
+            ]),
             ui: undefined,
             circuit: undefined
         };
@@ -67,7 +81,7 @@ export class MockGame2API implements DeployedGame2API {
         console.log(` round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
         return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
             if (ret != undefined) {
-                this.addRewards(MOCK_PLAYER_ID, ret);
+                this.addRewards(ret);
             }
             setTimeout(() => {
                 this.subscriber?.next(this.mockState);
@@ -98,7 +112,7 @@ export class MockGame2API implements DeployedGame2API {
                     alive: true,
                     gold: BigInt(500) + quest.difficulty * BigInt(100),
                 };
-                this.addRewards(MOCK_PLAYER_ID, reward);
+                this.addRewards(reward);
                 return reward;
             }
             return undefined;
@@ -106,11 +120,8 @@ export class MockGame2API implements DeployedGame2API {
     }
 
 
-    private addRewards(playerId: bigint, rewards: BattleRewards) {
-        const oldGold = this.mockState.players.get(playerId)?.gold ?? BigInt(0);
-        this.mockState.players.set(playerId, {
-            gold: oldGold + rewards.gold,
-        });
+    private addRewards(rewards: BattleRewards) {
+        this.mockState.player.gold += rewards.gold;
     }
 
     private response<T>(body: () => T): Promise<T> {

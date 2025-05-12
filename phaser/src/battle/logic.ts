@@ -21,7 +21,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         } else {
             gameState.circuit = true;
         }
-        const draw = (): Ability => {
+        const draw = (): bigint => {
             battleState.deck_i += BigInt(1);
             if (battleState.deck_i == BigInt(5)) {
                 battleState.deck_i = BigInt(0);
@@ -77,19 +77,19 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         };
 
-        await uiHooks?.onPlayerAbilities(abilities);
+        await uiHooks?.onPlayerAbilities(abilities.map((id) => gameState.allAbilities.get(id)!));
 
         // TODO: don't target dead enemies
         const targets = abilities.map(() => Phaser.Math.Between(0, Number(battleConfig.enemy_count) - 1))
         // TODO: when you have internet check if you can do this with forEach but chaining promises one after the other
         for (let i = 0; i < abilities.length; ++i) {
-            const ability = abilities[i];
+            const ability = gameState.allAbilities.get(abilities[i])!;
             await resolveEffect(ability.effect, targets[i]);
         }
         for (let i = 0; i < 3; ++i) {
             for (let j = 0; j < abilities.length; ++j) {
                 if (energy[i]) {
-                    await resolveEffect(abilities[j].on_energy[i], targets[j]);
+                    await resolveEffect(gameState.allAbilities.get(abilities[j])!.on_energy[i], targets[j]);
                 }
             }
         }

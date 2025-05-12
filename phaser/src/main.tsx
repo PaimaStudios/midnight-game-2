@@ -206,12 +206,13 @@ export class BattleEffect extends Phaser.GameObjects.Container {
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
+    state: Game2DerivedState;
     loadout: PlayerLoadout;
     available: AbilityWidget[];
     chosen: boolean[];
     isQuest: boolean;
 
-    constructor(api: DeployedGame2API, isQuest: boolean) {
+    constructor(api: DeployedGame2API, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
         this.api = api;
         this.loadout = {
@@ -220,19 +221,27 @@ export class StartBattleMenu extends Phaser.Scene {
         this.available = [];
         this.chosen = [];
         this.isQuest = isQuest;
+        this.state = state;
     }
 
     create() {
-        for (let i = 0; i < 10; ++i) {
-            const ability = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.8, randomAbility());
-            this.available.push(ability);
+        let abilities = [];
+        for (const [id, count] of this.state.playerAbilities) {
+            for (let i = 0; i < count; ++i) {
+                abilities.push(id);
+            }
+        }
+        for (let i = 0; i < abilities.length; ++i) {
+            const ability = abilities[i];
+            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.8, this.state.allAbilities.get(ability)!);
+            this.available.push(abilityWidget);
             this.chosen.push(false);
             const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.8 - 48, 48, 24, '^', 10, () => {
                 if (this.chosen[i]) {
-                    ability.y += 48 + 48;
+                    abilityWidget.y += 48 + 48;
                     button.text.text = '^';
                 } else {
-                    ability.y -= 48 + 48;
+                    abilityWidget.y -= 48 + 48;
                     button.text.text = 'v';
                 }
                 this.chosen[i] = !this.chosen[i];
@@ -242,10 +251,10 @@ export class StartBattleMenu extends Phaser.Scene {
             this.loadout.abilities = [];
             for (let i = 0; i < this.chosen.length; ++i) {
                 if (this.chosen[i]) {
-                    this.loadout.abilities.push(this.available[i].ability);
+                    this.loadout.abilities.push(pureCircuits.derive_ability_id(this.available[i].ability));
                 }
             }
-            if (this.loadout.abilities.length == 5) {
+            if (this.loadout.abilities.length == 7) {
                 if (this.isQuest) {
                     // TODO: control difficulty
                     this.api.start_new_quest(this.loadout, BigInt(1)).then((questId) => {
@@ -261,7 +270,7 @@ export class StartBattleMenu extends Phaser.Scene {
                     });
                 }
             } else {
-                console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 5)`);
+                console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
         });
     }
@@ -395,6 +404,7 @@ export class ActiveBattle extends Phaser.Scene {
 
         // attack button
         const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.matchStr(this.battle), 10, async () => {
+            button.visible = false;
             const id = pureCircuits.derive_battle_id(this.battle);
             // TODO: handle if state change triggerd by network before UI finished resolving?
             // or should we more distinctly separate proving and sending?
@@ -460,6 +470,7 @@ export class ActiveBattle extends Phaser.Scene {
             //       at index-eba13966.js:393191:23
             console.log(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
             console.log(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
+            button.visible = true;
             if (ui != undefined) {
                 button.destroy();
                 const battleOverText = ui.alive ? `you won ${ui.gold} gold!` : `you died :(`;
@@ -499,13 +510,13 @@ export class TestMenu extends Phaser.Scene {
     state: Game2DerivedState | undefined;
     goldText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
-    match_buttons: Button[];
+    buttons: Button[];
 
     
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
-        this.match_buttons = [];
+        this.buttons = [];
         if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
@@ -539,34 +550,67 @@ export class TestMenu extends Phaser.Scene {
     create() {
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
-        this.match_buttons.push(new Button(this, 16, 16, 64, 24, 'Deploy', 10, () => {
+        this.buttons.push(new Button(this, 16, 16, 64, 24, 'Deploy', 10, () => {
             console.log('~deploying~');
             this.deployProvider.create().then((api) => {
                 console.log('==========GOT API========');
                 this.initApi(api);
             }).catch((e) => console.error(`Error connecting: ${e}`));
         }));
-        this.match_buttons.push(new Button(this, 96, 16, 64, 24, 'Mock Deploy', 10, () => {
+        this.buttons.push(new Button(this, 96, 16, 64, 24, 'Mock Deploy', 10, () => {
             console.log('==========MOCK API========');
             this.initApi(new MockGame2API());
         }));
         this.goldText = this.add.text(32, 32, '', fontStyle(12));
+        this.indexTest();
+    }
+    indexTest() {
+        const LEN = 7;
+        let used = [0, 0, 0, 0, 0, 0, 0];
+        for (let i_start = 0; i_start < LEN; ++i_start) {
+            for (let j_start = 0; j_start < LEN; ++j_start) {
+                if (j_start == i_start) continue;
+                for (let k_start = 0; k_start < LEN; ++k_start) {
+                    if (k_start == i_start || k_start == j_start) continue;
+                    let i = i_start;
+                    let j = j_start;
+                    let k = k_start;
+                    let current_used = [0, 0, 0, 0, 0, 0, 0];
+                    for (let rounds = 0; rounds < 10; ++rounds) {
+                        ++used[i];
+                        ++used[j];
+                        ++used[k];
+                        ++current_used[i];
+                        ++current_used[j];
+                        ++current_used[k];
+                        i = (i + 1) % LEN;
+                        j = (j + 2) % LEN;
+                        if (i == j) {
+                            j = (j + 1) % LEN;
+                        }
+                        k = (k + 3) % LEN;
+                        if (k == i) {
+                            k = (k + 1) % LEN;
+                        }
+                        if (k == j) {
+                            k = (k + 1) % LEN;
+                        }
+                        if (k == i) {
+                            k = (k + 1) % LEN;
+                        }
+                        if (i == j || j == k || i == k) console.error(`duplicate: ${i}, ${j}, ${k}`);
+                    }
+                    console.log(`${i_start}, ${j_start}, ${k_start} => ${current_used}`);
+                }
+            }
+        }
+        console.log(`indexTest = ${used}`);
     }
 
     private initApi(api: DeployedGame2API) {
         this.api = api;
-        this.match_buttons.forEach((b) => b.destroy());
+        this.buttons.forEach((b) => b.destroy());
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
-        this.new_button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
-            this.scene.remove('StartBattleMenu');
-            this.scene.add('StartBattleMenu', new StartBattleMenu(api, true));
-            this.scene.start('StartBattleMenu');
-        });
-        this.new_button = new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
-            this.scene.remove('StartBattleMenu');
-            this.scene.add('StartBattleMenu', new StartBattleMenu(api, false));
-            this.scene.start('StartBattleMenu');
-        });
     }
 
     private questStr(quest: QuestConfig): string {
@@ -577,8 +621,19 @@ export class TestMenu extends Phaser.Scene {
         console.log('---state change---');
         this.state = state;
 
-
-        this.match_buttons.forEach((b) => b.destroy());
+        this.buttons.forEach((b) => b.destroy());
+        
+        this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
+            this.scene.remove('StartBattleMenu');
+            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
+            this.scene.start('StartBattleMenu');
+        }));
+        this.buttons.push(new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
+            this.scene.remove('StartBattleMenu');
+            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
+            this.scene.start('StartBattleMenu');
+        }));
+       
         let offset = 0;
         for (const [id, quest] of state.quests) {
             console.log(`got quest: ${id}`);
@@ -588,14 +643,10 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.start('QuestMenu');
             });
             offset += 1;
-            this.match_buttons.push(button);
+            this.buttons.push(button);
         }
 
-        // TODO: real player id
-        const player = state.players.get(MOCK_PLAYER_ID);
-        if (player != undefined) {
-            this.goldText?.setText(`Gold: ${player.gold}`);
-        }
+        this.goldText?.setText(`Gold: ${state.player.gold}`);
     }
 }
 
@@ -606,7 +657,7 @@ function makeMockLoadout(): PlayerLoadout {
         on_energy: [mockEffect, mockEffect, mockEffect],
     };
     return {
-        abilities: [mockAbility, mockAbility, mockAbility, mockAbility, mockAbility, mockAbility, mockAbility],
+        abilities: [BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0)],
     };
 }
 
