@@ -131,7 +131,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             gameState.activeBattleStates.delete(battle_id);
 
             console.log(`YOU DIED`);
-            resolve({ alive: false, gold: BigInt(0) });
+            resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
         }
         else if (battleState.enemy_hp_0 <= 0 && battleState.enemy_hp_1 <= 0 && battleState.enemy_hp_2 <= 0) {
             gameState.activeBattleConfigs.delete(battle_id);
@@ -139,7 +139,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
             console.log(`YOU WON`);
             // TODO how to determine rewards?
-            resolve({ alive: true, gold: BigInt(Phaser.Math.Between(3, 10)) });
+            resolve({ alive: true, gold: BigInt(Phaser.Math.Between(3, 10)), ability: { is_some: false, value: BigInt(0) } });
         } else {
             console.log(`CONTINUE BATTLE`);
             resolve(undefined);

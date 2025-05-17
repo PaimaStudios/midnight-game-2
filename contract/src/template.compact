@@ -161,6 +161,7 @@ export struct QuestConfig {
 export struct BattleRewards {
     alive: Boolean;
     gold: Uint<32>;
+    ability: Maybe<Field>;
     // what else?
 }
 
@@ -239,7 +240,25 @@ export circuit register_new_player(): [] {
     player_abilities.lookup(player_id).insert(ability_base_fire_aoe_id, 1);
 }
 
+// both validates and drops from the player's current available abilities
+circuit verify_loadout(loadout: PlayerLoadout): [] {
+    const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    for (const ability_id of loadout.abilities) {
+        const available = player_abilities.lookup(player_id).lookup(ability_id);
+        assert available >= 1 "Invalid loadout";
+        player_abilities.lookup(player_id).insert(ability_id, available - 1);
+    }
+}
+
+circuit return_loadout(loadout: PlayerLoadout): [] {
+    const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    for (const ability_id of loadout.abilities) {
+        player_abilities.lookup(player_id).insert(ability_id, (player_abilities.lookup(player_id).lookup(ability_id) + 1) as Uint<32>);
+    }
+}
+
 export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field {
+    verify_loadout(loadout);
     // TODO: randomize
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     const quest = QuestConfig {
@@ -253,6 +272,11 @@ export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field
     return quest_id;
 }
 
+circuit random_ability(difficulty: Field): Field {
+    // TODO
+    return ability_base_fire_aoe_id;
+}
+
 // TODO: do we need a separate QuestRewards?
 export circuit finalize_quest(quest_id: Field): Maybe<BattleRewards> {
     const quest = quests.lookup(quest_id);
@@ -260,9 +284,18 @@ export circuit finalize_quest(quest_id: Field): Maybe<BattleRewards> {
     
     assert quest.player_pub_key == player_pub_key "Player auth failed";
 
+
+    // TODO: should you lose all abilities if you die?
+    return_loadout(quest.loadout);
+
+    const reward_ability = random_ability(quest.difficulty);
+
+    player_abilities.lookup(player_pub_key).insert(reward_ability, (player_abilities.lookup(player_pub_key).lookup(reward_ability) + 1) as Uint<32>);
+
     const reward = BattleRewards {
         true, // TODO: compute based on loadout + difficulty
-        (500 + quest.difficulty * 100) as Uint<32>
+        (500 + quest.difficulty * 100) as Uint<32>,
+        some<Field>(reward_ability)
     };
 
     if (reward.alive) {
@@ -276,6 +309,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<BattleRewards> {
 }
 
 export circuit start_new_battle(loadout: PlayerLoadout): BattleConfig {
+    verify_loadout(loadout);
     // TODO: randomize
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     const battle = BattleConfig {
@@ -321,13 +355,18 @@ export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe
         
         return some<BattleRewards>(BattleRewards {
             false,
-            0
+            0,
+            none<Field>()
         });
     } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+        // TODO: should you lose all abilities if you die?
+        return_loadout(loadout);
+        
         // TODO: when and how to generate?
         const reward = BattleRewards {
             true,
-            100
+            100,
+            none<Field>()
         };
         const player_stats = players.lookup(disclose(derive_player_pub_key(player_secret_key())));
 

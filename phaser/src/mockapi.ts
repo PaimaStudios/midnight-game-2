@@ -108,9 +108,20 @@ export class MockGame2API implements DeployedGame2API {
             if (Math.random() > 0.5) {
                 const quest = this.mockState.quests.get(quest_id)!;
                 this.mockState.quests.delete(quest_id);
-                const reward = {
+                const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false} };
+                const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
+                const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
+                const ability = {
+                    effect: { is_some: true, value: { effect_type: effectType, amount: BigInt(Phaser.Math.Between(2, 4)), is_aoe: aoe} },
+                    on_energy: [nullEffect, nullEffect, nullEffect],
+                };
+                const abilityId = pureCircuits.derive_ability_id(ability);
+                this.mockState.allAbilities.set(abilityId, ability);
+                this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
+                const reward: BattleRewards = {
                     alive: true,
                     gold: BigInt(500) + quest.difficulty * BigInt(100),
+                    ability: { is_some: true, value: abilityId },
                 };
                 this.addRewards(reward);
                 return reward;

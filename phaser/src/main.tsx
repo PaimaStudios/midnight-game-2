@@ -43,7 +43,7 @@ import { Subscriber, Observable, Subscription } from 'rxjs';
 
 import { Button } from './menus/button';
 import { MOCK_PLAYER_ID, MockGame2API } from './mockapi';
-import { Ability, BattleConfig, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits, QuestConfig } from 'game2-contract';
+import { Ability, BattleConfig, BattleRewards, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits, QuestConfig } from 'game2-contract';
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
 import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { combat_round_logic } from './battle/logic';
@@ -231,6 +231,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 abilities.push(id);
             }
         }
+        abilities = abilities.sort((a, b) => Number(pureCircuits.ability_score(this.state.allAbilities.get(b)!) - pureCircuits.ability_score(this.state.allAbilities.get(a)!)));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.8, this.state.allAbilities.get(ability)!);
@@ -342,7 +343,8 @@ export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
     questId: bigint;
     subscription: Subscription;
-    state: Game2DerivedState | undefined;
+    //state: Game2DerivedState | undefined;
+    rewards: BattleRewards | undefined;
 
     constructor(api: DeployedGame2API, questId: bigint) {
         super('QuestMenu');
@@ -354,25 +356,31 @@ export class QuestMenu extends Phaser.Scene {
 
     create() {
         this.api.finalize_quest(this.questId).then((rewards) => {
-            if (rewards != undefined) {
-                const str = rewards.alive ? `Quest Complete!\n\nYou won ${rewards.gold} gold!\n\nClick to return.` : `You died :(\nClick to return.`;
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.5, str, 16, () => {
-                    this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                    this.scene.start('TestMenu');
-                });
-            } else {
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.3, `Quest not finished yet.\n\nClick to return.`, 16, () => {
-                    this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                    this.scene.start('TestMenu');
-                });
-            }
+            this.rewards = rewards;
         });
     }
 
     private onStateChange(state: Game2DerivedState) {
-        this.state = state;
+        //this.state = state;
+        const rewards = this.rewards!;
+        if (rewards != undefined) {
+            const str = rewards.alive ? `Quest Complete!\nYou won ${rewards.gold} gold!\nClick to return.` : `You died :(\nClick to return.`;
+            new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.4, str, 16, () => {
+                this.scene.remove('TestMenu');
+                this.scene.add('TestMenu', new TestMenu(this.api, state));
+                this.scene.start('TestMenu');
+            });
+            if (rewards.alive && rewards.ability.is_some) {
+                new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.7, state?.allAbilities.get(rewards.ability.value)!);
+                this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.9, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+            }
+        } else {
+            new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.3, `Quest not finished yet.\n\nClick to return.`, 16, () => {
+                this.scene.remove('TestMenu');
+                this.scene.add('TestMenu', new TestMenu(this.api, state));
+                this.scene.start('TestMenu');
+            });
+        }
     }
 }
 
