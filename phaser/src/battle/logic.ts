@@ -21,21 +21,8 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         } else {
             gameState.circuit = true;
         }
-        const draw = (): bigint => {
-            battleState.deck_i += BigInt(1);
-            if (battleState.deck_i == BigInt(5)) {
-                battleState.deck_i = BigInt(0);
-                for (let i = battleState.deck_map.length - 1; i > 0; --i) {
-                    const j = Phaser.Math.Between(0, i);
-                    const temp = battleState.deck_map[i];
-                    battleState.deck_map[i] = battleState.deck_map[j];
-                    battleState.deck_map[j] = temp;
-                }
-            }
-            return battleConfig.loadout.abilities[Number(battleState.deck_map[Number(battleState.deck_i)])];
-        };
 
-        const abilities = [draw(), draw(), draw()];
+        const abilities = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
 
         let player_block = BigInt(0);
         let player_damage = [BigInt(0), BigInt(0), BigInt(0)];

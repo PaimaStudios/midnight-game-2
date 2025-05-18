@@ -63,8 +63,7 @@ export class MockGame2API implements DeployedGame2API {
             const id = pureCircuits.derive_battle_id(battle);
             console.log(`new battle: ${id}`);
             this.mockState.activeBattleStates.set(id, {
-                deck_i: BigInt(0),
-                deck_map: [BigInt(0), BigInt(1), BigInt(2), BigInt(3), BigInt(4)],
+                deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
                 player_hp: BigInt(100),
                 enemy_hp_0: battle.stats[0].hp,
                 enemy_hp_1: battle.stats[1].hp,
@@ -80,6 +79,23 @@ export class MockGame2API implements DeployedGame2API {
     public combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
         console.log(` round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
         return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
+            const battleState = this.mockState.activeBattleStates.get(battle_id)!;
+            // shift deck current abilities
+            const DECK_SIZE = 7;
+            const OFFSETS = [1, 2, 3];
+            for (let i = 0; i < battleState.deck_indices.length; ++i) {
+                battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + OFFSETS[i]) % DECK_SIZE);
+                for (let j = 0; j < i; ++j) {
+                    if (battleState.deck_indices[i] == battleState.deck_indices[j]) {
+                        battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                    }
+                    for ( let k = 0; k < j; ++k) {
+                        if (battleState.deck_indices[i] == battleState.deck_indices[k]) {
+                            battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                        }
+                    }
+                }
+            }
             if (ret != undefined) {
                 this.addRewards(ret);
             }

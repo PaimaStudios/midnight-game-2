@@ -184,42 +184,11 @@ export pure circuit derive_quest_id(quest: QuestConfig): Field {
 }
 
 export struct BattleState {
-    deck_i: Uint<32>;
-    deck_map: Vector<7, Uint<32>>;
+    deck_indices: Vector<3, Uint<32>>;
     player_hp: Uint<32>;
     enemy_hp_0: Uint<32>;
     enemy_hp_1: Uint<32>;
     enemy_hp_2: Uint<32>;
-}
-
-// circuit draw_ability(battle_id: Field, abilities: Vector<7, Ability>): Ability {
-//     const old_state = active_battle_states.lookup(battle_id);
-//     if (old_state.deck_i == 5) {
-//         shuffle(battle_id);
-//     }
-//     const i = active_battle_states.lookup(battle_id).deck_i;
-//     return abilities[0];
-// }
-
-circuit draw_ability(battle_id: Field, abilities: Vector<7, Field>): Ability {
-    const old_state = active_battle_states.lookup(battle_id);
-    if (old_state.deck_i == 5) {
-        shuffle(battle_id);
-    }
-    const i = active_battle_states.lookup(battle_id).deck_i;
-    return all_abilities.lookup(abilities[0]);
-}
-
-circuit shuffle(battle_id: Field): [] {
-    const old_state = active_battle_states.lookup(battle_id);
-    active_battle_states.insert(battle_id, BattleState {
-        3, // TODO: randomize
-        [5, 2, 3, 4, 0, 6, 1],// TODO: randomize
-        old_state.player_hp,
-        old_state.enemy_hp_0,
-        old_state.enemy_hp_1,
-        old_state.enemy_hp_2
-    });
 }
 
 export struct PlayerLoadout {
@@ -332,9 +301,8 @@ export circuit start_new_battle(loadout: PlayerLoadout): BattleConfig {
 
 pure circuit init_battlestate(battle: BattleConfig): BattleState {
     return BattleState {
-        0,
         // TODO: randomize
-        [0, 5, 2, 3, 4, 1, 6],
+        [0, 1, 2],
         100,// TODO: source from somewhere - also do we want multiple people?
         battle.stats[0].hp,
         battle.stats[1].hp,
@@ -342,12 +310,56 @@ pure circuit init_battlestate(battle: BattleConfig): BattleState {
     };
 }
 
+pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
+    if (i == 0) {
+        return array[0];
+    }
+    if (i == 1) {
+        return array[1];
+    }
+    if (i == 0) {
+        return array[2];
+    }
+    if (i == 0) {
+        return array[3];
+    }
+    if (i == 0) {
+        return array[4];
+    }
+    if (i == 0) {
+        return array[5];
+    }
+    return array[6];
+}
+
+// pure circuit add_mod<#n>(start: Uint<0..n>, add: Uint<0..n>): Uint<0..n> {
+//     if (start + add > n) {
+//         return start + add - n;
+//     }
+//     return start + add;
+// }
+pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
+    if (start + add > n) {
+        return (start + add - n) as Uint<32>;
+    }
+    return (start + add) as Uint<32>;
+}
+
 export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe<BattleRewards> {
     assert derive_player_pub_key(disclose(player_secret_key())) == active_battle_configs.lookup(battle_id).player_pub_key "Player auth failed";
     //assert derive_loadout_id(loadout) == active_battle_configs.lookup(battle_id).player_loadout_commit "Loadout hash mismatch";
     // TODO: how to cycle through abilities?
-    const loadout = active_battle_configs.lookup(battle_id).loadout;
-    const result = combat_round_impl(battle_id, [draw_ability(battle_id, loadout.abilities), draw_ability(battle_id, loadout.abilities), draw_ability(battle_id, loadout.abilities)], mock_rand_target());
+
+    const config = active_battle_configs.lookup(battle_id);
+    const loadout = config.loadout;
+    const state = active_battle_states.lookup(battle_id);
+    const round_abilities = [
+        all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[0])),
+        all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[1])),
+        all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[2])),
+    ];
+    
+    const result = combat_round_impl(battle_id, round_abilities, mock_rand_target());
     active_battle_states.insert(battle_id, result);
     if (result.player_hp == 0) {
         active_battle_configs.remove(battle_id);
@@ -389,6 +401,8 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
 
+    // CODE-GENERATE START
+
     INSERT_PLAYER_BLOCK_CODE_HERE
 
     INSERT_PLAYER_DAMAGE_CODE_HERE
@@ -397,9 +411,24 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
 
+// code-gen'd
+    INSERT_DECK_INDEX_CALCULATION_CODE_HERE
+
+    // CODE-GENERATE END
+
+// hand-written
+    // const new_deck_0 = add_mod(old_state.deck_0, 1, 7);
+    
+    // const new_deck_1_attempt = add_mod(old_state.deck_1, 2, 7);
+    // const new_deck_1 = new_deck_1_attempt == new_deck_0 ? add_mod(new_deck_1_attempt, 1, 7) : new_deck_1_attempt;
+    
+    // const new_deck_2_attempt_0 = add_mod(old_state.deck_2, 3, 7);
+    // const new_deck_2_attempt_1 = new_deck_2_attempt_0 == new_deck_0 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
+    // const new_deck_2_attempt_2 = new_deck_2_attempt_0 == new_deck_1 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
+    // const new_deck_2 = new_deck_2_attempt_0 == new_deck_0 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
+
     return BattleState {
-        old_state.deck_i,
-        old_state.deck_map,
+        INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
         player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
         enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0,
         enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0,

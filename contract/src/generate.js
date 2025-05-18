@@ -1,20 +1,25 @@
 //const fs = require('fs');
 import fs from 'fs';
 
-function generate_resolve_abilities() {
+function codegen_placeholders() {
     let templateCode = fs.readFileSync('src/template.compact').toString();
     const replaced = templateCode
         .replaceAll('INSERT_PLAYER_DAMAGE_CODE_HERE', gen_player_dmg())
         .replaceAll('INSERT_PLAYER_BLOCK_CODE_HERE', gen_player_block())
         .replaceAll('INSERT_ENEMY_DAMAGE_CODE_HERE', gen_enemy_dmg())
-        .replaceAll('INSERT_ENEMY_BLOCK_CODE_HERE', gen_enemy_block());
+        .replaceAll('INSERT_ENEMY_BLOCK_CODE_HERE', gen_enemy_block())
+        .replaceAll('INSERT_DECK_INDEX_CALCULATION_CODE_HERE', gen_deck_index_calculation())
+        .replaceAll('INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE', gen_deck_index_eval());
     fs.writeFileSync('src/game2.compact', `// AUTO-GENERATED - **DO NOT MODIFY**\n// PLEASE CHANGE template.compact INSTEAD!\n\n${replaced}`);
 }
 
-const abilities = [0, 1, 2];
+const DECK_SIZE = 7;
+const HAND_SIZE = 3;
+
+const abilities = new Array(HAND_SIZE).fill(0).map((_, i) => i);
 const colors = [0, 1, 2];
 const max_enemies = [0, 1, 2];
-
+const decK_increments = [1, 2, 3, 4];
 
 
 // player
@@ -38,5 +43,40 @@ const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => 
 const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.stats[${enemy}].block as Uint<32>;`).join('\n    ');
 
 
+// deck indices
 
-generate_resolve_abilities();
+const gen_deck_index_calculation = () => abilities.map((a) => {
+    let code = '';
+    const line = (s) => {
+        code += `\n    ${s}`;
+    };
+    const attempts = (n) => n == 1 ? 1 : attempts(n - 1) + n;
+
+    line(`const new_deck_${a}${a == 0 ? '' : '_attempt_0'} = add_mod(old_state.deck_indices[${a}], ${decK_increments[a]}, ${DECK_SIZE});`);
+    let attempt = 1;
+    // i = other ability
+    // j = cycle through previous other abilities in case attempt i causes conflict with previous index j
+    for (let i = 0; i < a; ++i) {
+        line(`const new_deck_${a}${attempt == attempts(a) ? '' : `_attempt_${attempt}`} = new_deck_${a}_attempt_${attempt - 1} == new_deck_${i} ? add_mod(new_deck_${a}_attempt_${attempt - 1}, 1, 7) : new_deck_${a}_attempt_${attempt - 1};`);
+        ++attempt;
+        for (let j = 0; j < i; ++j) {
+            line(`const new_deck_${a}${attempt == attempts(a) ? '' : `_attempt_${attempt}`} = new_deck_${a}_attempt_${attempt - 1} == new_deck_${j} ? add_mod(new_deck_${a}_attempt_${attempt - 1}, 1, 7) : new_deck_${a}_attempt_${attempt - 1};`);
+            ++attempt;
+        }
+    }
+
+    // 0,1,0
+    // next:
+    // 0,1,0,2,0,1
+    // then:
+    // 0,1,0,2,0,1,3,0,1,2
+
+    return code;
+}).join('\n    ');
+
+const gen_deck_index_eval = () => `[${abilities.map((a) => `new_deck_${a}`).join()}]`;
+
+
+
+
+codegen_placeholders();
