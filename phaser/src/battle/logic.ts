@@ -1,21 +1,28 @@
 import { call } from "@midnight-ntwrk/midnight-js-contracts";
-import { Game2DerivedState } from "game2-api";
+import { Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleRewards, Effect, EFFECT_TYPE, Game2PrivateState, pureCircuits } from "game2-contract";
 
 export type CombatCallbacks = {
     onEnemyBlock: (enemy: number, amount: number) => Promise<void>;
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
-    onPlayerEffect: (target: number, effect: Effect) => Promise<void>;
+    onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => Promise<void>;
     onPlayerAbilities: (abilities: Ability[]) => Promise<void>;
 };
 
+// we need to sync this with the contract's RNG indexing once that's possible
+function randIntBetween(nonce: Uint8Array, index: number, min: number, max: number): number {
+    const range = BigInt(max - min + 1);
+    const rng = pureCircuits.hashUtil(nonce, BigInt(index));
+    return min + Number(rng % range);
+}
 
 // gameState is both input and output. it is modified during execution
 export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
     return new Promise(async (resolve) => {
-        // TODO: combat
+        console.log(`combat_round_logc(${safeJSONString(gameState)}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
+        const rng = pureCircuits.fakeTempRng(battleState, battleConfig);
         if (uiHooks != undefined) {
             gameState.ui = true;
         } else {
@@ -44,19 +51,20 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         const resolveEffect = async (effect: { is_some: boolean, value: Effect }, target: number) => {
             for (let enemy = 0; enemy < 3; ++enemy) {
                 if (effect.is_some && (effect.value.is_aoe || target == enemy)) {
-                    await uiHooks?.onPlayerEffect(enemy, effect.value);
-
                     switch (effect.value.effect_type) {
                         case EFFECT_TYPE.attack_fire:
                         case EFFECT_TYPE.attack_ice:
                         case EFFECT_TYPE.attack_phys:
                             const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
+                            await uiHooks?.onPlayerEffect(enemy, effect.value.effect_type, Number(dmg));
                             player_damage[enemy] += dmg;
                             break;
                         case EFFECT_TYPE.block:
+                            await uiHooks?.onPlayerEffect(enemy, effect.value.effect_type, Number(effect.value.amount));
                             player_block += effect.value.amount;
                             break;
                         case EFFECT_TYPE.generate:
+                            await uiHooks?.onPlayerEffect(enemy, effect.value.effect_type, Number(effect.value.amount));
                             energy[Number(effect.value.amount)] = true;
                             break;
                     }
@@ -67,7 +75,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         await uiHooks?.onPlayerAbilities(abilities.map((id) => gameState.allAbilities.get(id)!));
 
         // TODO: don't target dead enemies
-        const targets = abilities.map(() => Phaser.Math.Between(0, Number(battleConfig.enemy_count) - 1))
+        const targets = abilities.map((_, i) => randIntBetween(rng, i, 0, Number(battleConfig.enemy_count) - 1));
         // TODO: when you have internet check if you can do this with forEach but chaining promises one after the other
         for (let i = 0; i < abilities.length; ++i) {
             const ability = gameState.allAbilities.get(abilities[i])!;
@@ -99,7 +107,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         }
 
-        
         if (enemy_damage > player_block) {
             battleState.player_hp -= enemy_damage - player_block;
         }
@@ -114,22 +121,17 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         }
         console.log(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
         if (battleState.player_hp <= 0) {
-            gameState.activeBattleConfigs.delete(battle_id);
-            gameState.activeBattleStates.delete(battle_id);
-
             console.log(`YOU DIED`);
             resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
         }
         else if (battleState.enemy_hp_0 <= 0 && battleState.enemy_hp_1 <= 0 && battleState.enemy_hp_2 <= 0) {
-            gameState.activeBattleConfigs.delete(battle_id);
-            gameState.activeBattleStates.delete(battle_id);
-
             console.log(`YOU WON`);
             // TODO how to determine rewards?
-            resolve({ alive: true, gold: BigInt(Phaser.Math.Between(3, 10)), ability: { is_some: false, value: BigInt(0) } });
+            resolve({ alive: true, gold: BigInt(randIntBetween(rng, 1000, 50, 200)), ability: { is_some: false, value: BigInt(0) } });
         } else {
             console.log(`CONTINUE BATTLE`);
             resolve(undefined);
         }
+        console.log(`end state[${uiHooks == undefined}]: ${safeJSONString(gameState)}`);
     });
 }

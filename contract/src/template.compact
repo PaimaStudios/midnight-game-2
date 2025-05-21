@@ -55,6 +55,14 @@ export sealed ledger ability_base_block_id: Field;
 export sealed ledger ability_base_fire_aoe_id: Field;
 export sealed ledger ability_base_ice_id: Field;
 
+export pure circuit hashUtil(nonce1: Bytes<32>, nonce2: Field): Field {
+    return transient_commit<Bytes<32>>(nonce1, nonce2);
+}
+
+export pure circuit fakeTempRng(state: BattleState, config: BattleConfig): Bytes<32> {
+    return persistent_commit<BattleState>(state, persistent_hash<BattleConfig>(config));
+}
+
 export pure circuit ability_score(ability: Ability): Uint<32> {
     return (3 * effect_score(ability.effect) + effect_score(ability.on_energy[0]) + effect_score(ability.on_energy[1]) + effect_score(ability.on_energy[2])) as Uint<32>;
 }

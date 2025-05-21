@@ -98,6 +98,8 @@ export class MockGame2API implements DeployedGame2API {
             }
             if (ret != undefined) {
                 this.addRewards(ret);
+                this.mockState.activeBattleConfigs.delete(battle_id);
+                this.mockState.activeBattleStates.delete(battle_id);
             }
             setTimeout(() => {
                 this.subscriber?.next(this.mockState);
