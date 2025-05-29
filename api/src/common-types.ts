@@ -50,14 +50,14 @@ export type Game2CircuitKeys = Exclude<keyof Game2Contract['impureCircuits'], nu
  *
  * @public
  */
-export type Game2Providers = MidnightProviders<Game2CircuitKeys, PrivateStates>;
+export type Game2Providers = MidnightProviders<Game2CircuitKeys, 'game2PrivateState', Game2PrivateState>;
 
 /**
  * A {@link Game2Contract} that has been deployed to the network.
  *
  * @public
  */
-export type DeployedGame2Contract = FoundContract<Game2PrivateState, Game2Contract>;
+export type DeployedGame2Contract = FoundContract<Game2Contract>;
 
 /**
  * A type that represents the derived combination of public (or ledger), and private state.

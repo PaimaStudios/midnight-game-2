@@ -123,6 +123,7 @@ constructor() {
     ability_base_block_id = register_ability(ability_base_block());
     ability_base_fire_aoe_id = register_ability(ability_base_fire_aoe());
     ability_base_ice_id = register_ability(ability_base_ice());
+    players.reset_to_default();
 }
 
 witness player_secret_key(): Bytes<32>;

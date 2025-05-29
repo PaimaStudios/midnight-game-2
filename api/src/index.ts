@@ -6,7 +6,7 @@
 
 import { type ContractAddress, convert_bigint_to_Uint8Array } from '@midnight-ntwrk/compact-runtime';
 import { type Logger } from 'pino';
-import type { Game2DerivedState, Game2Contract, Game2Providers, DeployedGame2Contract } from './common-types.js';
+import type { Game2DerivedState, Game2Contract, Game2Providers, DeployedGame2Contract, PrivateStates } from './common-types.js';
 import {
     type Game2PrivateState,
     Contract,
@@ -22,7 +22,7 @@ import {
   // Command,
 } from 'game2-contract';
 import * as utils from './utils/index.js';
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { combineLatest, map, tap, from, type Observable } from 'rxjs';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -140,7 +140,7 @@ export class Game2API implements DeployedGame2API {
                   activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
                   activeBattleStates: new Map(ledgerState.activeBattleStates),
                   quests: new Map(ledgerState.quests),
-                  player: ledgerState.players.lookup(playerId),
+                  player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : { gold: BigInt(0) },
                   playerAbilities: new Map(ledgerState.playerAbilities.lookup(playerId)),
                   allAbilities: new Map(ledgerState.allAbilities),
                 };
@@ -226,8 +226,8 @@ export class Game2API implements DeployedGame2API {
     static async deploy(providers: Game2Providers, logger?: Logger): Promise<Game2API> {
         logger?.info('deployContract');
 
-        const deployedGame2Contract = await deployContract(providers, {
-            privateStateKey: 'game2PrivateState',
+        const deployedGame2Contract: FoundContract<Game2Contract> = await deployContract(providers, {
+            privateStateId: 'game2PrivateState',
             contract: game2ContractInstance,
             initialPrivateState: await Game2API.getPrivateState(providers.privateStateProvider),
             //args: [],
@@ -260,7 +260,7 @@ export class Game2API implements DeployedGame2API {
         const deployedGame2Contract = await findDeployedContract(providers, {
             contractAddress,
             contract: game2ContractInstance,
-            privateStateKey: 'game2PrivateState',
+            privateStateId: 'game2PrivateState',
             initialPrivateState: await Game2API.getPrivateState(providers.privateStateProvider),
         });
 
