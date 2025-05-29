@@ -66,7 +66,7 @@ export type Game2DerivedState = {
   activeBattleStates: Map<bigint, BattleState>;
   activeBattleConfigs: Map<bigint, BattleConfig>;
   quests: Map<bigint, QuestConfig>;
-  player: Player;
+  player?: Player;
   playerAbilities: Map<bigint, bigint>;
   allAbilities: Map<bigint, Ability>;
   // for debugging - TODO remove

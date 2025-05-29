@@ -212,6 +212,8 @@ export pure circuit derive_loadout_id(loadout: PlayerLoadout): Field {
 
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    players.insert(player_id, Player { 0 });
+    player_abilities.insert_default(player_id);
     player_abilities.lookup(player_id).insert(ability_base_phys_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_ice_id, 1);

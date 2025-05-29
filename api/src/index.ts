@@ -78,6 +78,8 @@ export interface DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
 
+    register_new_player: () => Promise<void>;
+
     start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
     combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
 
@@ -140,8 +142,8 @@ export class Game2API implements DeployedGame2API {
                   activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
                   activeBattleStates: new Map(ledgerState.activeBattleStates),
                   quests: new Map(ledgerState.quests),
-                  player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : { gold: BigInt(0) },
-                  playerAbilities: new Map(ledgerState.playerAbilities.lookup(playerId)),
+                  player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
+                  playerAbilities: new Map(ledgerState.playerAbilities.member(playerId) ? ledgerState.playerAbilities.lookup(playerId) : []),
                   allAbilities: new Map(ledgerState.allAbilities),
                 };
             },
@@ -159,6 +161,17 @@ export class Game2API implements DeployedGame2API {
      */
     readonly state$: Observable<Game2DerivedState>;
    
+    async register_new_player(): Promise<void> {
+        const txData = await this.deployedContract.callTx.register_new_player();
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'register_new_player',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+    }
 
     async start_new_battle(loadout: PlayerLoadout): Promise<BattleConfig> {
         const txData = await this.deployedContract.callTx.start_new_battle(loadout);
