@@ -33,12 +33,7 @@ export class MockGame2API implements DeployedGame2API {
             player: {
                 gold: BigInt(0),
             },
-            playerAbilities: new Map([
-                [pureCircuits.derive_ability_id(pureCircuits.ability_base_phys()), BigInt(4)],
-                [pureCircuits.derive_ability_id(pureCircuits.ability_base_block()), BigInt(4)],
-                [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
-                [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
-            ]),
+            playerAbilities: new Map(),
             ui: undefined,
             circuit: undefined
         };
