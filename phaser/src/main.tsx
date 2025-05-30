@@ -468,8 +468,8 @@ export class ActiveBattle extends Phaser.Scene {
             }
             this.abilityIcons.forEach((a) => a.destroy());
             this.abilityIcons = [];
-            console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
-            console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
+            //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
+            //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
             // TODO: check consistency (either here or in onStateChange())
             //

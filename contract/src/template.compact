@@ -212,7 +212,7 @@ export pure circuit derive_loadout_id(loadout: PlayerLoadout): Field {
 
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
-    players.insert(player_id, Player { 0 });
+    players.insert(player_id, Player { 5 });
     player_abilities.insert_default(player_id);
     player_abilities.lookup(player_id).insert(ability_base_phys_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
@@ -350,10 +350,11 @@ pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
 //     return start + add;
 // }
 pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
-    if (start + add > n) {
-        return (start + add - n) as Uint<32>;
-    }
-    return (start + add) as Uint<32>;
+    // if (start + add > n) {
+    //     return (start + add - n) as Uint<32>;
+    // }
+    // return (start + add) as Uint<32>;
+    return (start + add - (((start + add > n) as Uint<1>) * n)) as Uint<32>;
 }
 
 export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe<BattleRewards> {
