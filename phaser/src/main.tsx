@@ -468,8 +468,8 @@ export class ActiveBattle extends Phaser.Scene {
             }
             this.abilityIcons.forEach((a) => a.destroy());
             this.abilityIcons = [];
-            console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
-            console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
+            //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
+            //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
             // TODO: check consistency (either here or in onStateChange())
             //
@@ -633,31 +633,36 @@ export class TestMenu extends Phaser.Scene {
         this.state = state;
 
         this.buttons.forEach((b) => b.destroy());
-        
-        this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
-            this.scene.remove('StartBattleMenu');
-            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
-            this.scene.start('StartBattleMenu');
-        }));
-        this.buttons.push(new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
-            this.scene.remove('StartBattleMenu');
-            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
-            this.scene.start('StartBattleMenu');
-        }));
-       
-        let offset = 0;
-        for (const [id, quest] of state.quests) {
-            console.log(`got quest: ${id}`);
-            const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.questStr(quest), 10, () => {
-                this.scene.remove('QuestMenu');
-                this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
-                this.scene.start('QuestMenu');
-            });
-            offset += 1;
-            this.buttons.push(button);
-        }
 
-        this.goldText?.setText(`Gold: ${state.player.gold}`);
+        if (state.player != undefined) {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
+                this.scene.remove('StartBattleMenu');
+                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
+                this.scene.start('StartBattleMenu');
+            }));
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
+                this.scene.remove('StartBattleMenu');
+                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
+                this.scene.start('StartBattleMenu');
+            }));
+        
+            let offset = 0;
+            for (const [id, quest] of state.quests) {
+                console.log(`got quest: ${id}`);
+                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.questStr(quest), 10, () => {
+                    this.scene.remove('QuestMenu');
+                    this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
+                    this.scene.start('QuestMenu');
+                });
+                offset += 1;
+                this.buttons.push(button);
+            }
+            this.goldText?.setText(`Gold: ${state.player.gold}`);
+        } else {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, () => {
+                this.api!.register_new_player();
+            }));
+        }
     }
 }
 

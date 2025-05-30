@@ -42,6 +42,20 @@ export class MockGame2API implements DeployedGame2API {
         }, MOCK_DELAY);
     }
 
+    public register_new_player(): Promise<void> {
+        return this.response(() => {
+            this.mockState.player = {
+                gold: BigInt(0),
+            };
+            this.mockState.playerAbilities = new Map([
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_phys()), BigInt(4)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_block()), BigInt(4)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
+                [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
+            ]);
+        });
+    }
+
     public start_new_battle(loadout: PlayerLoadout): Promise<BattleConfig> {
         return this.response(() => {
             console.log(`from ${this.mockState.activeBattleConfigs.size}`);
@@ -125,7 +139,7 @@ export class MockGame2API implements DeployedGame2API {
                 const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
                 const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
                 const ability = {
-                    effect: { is_some: true, value: { effect_type: effectType, amount: BigInt(Phaser.Math.Between(2, 4)), is_aoe: aoe} },
+                    effect: { is_some: true, value: { effect_type: effectType, amount: BigInt(Phaser.Math.Between(2, 4)), is_aoe: aoe } },
                     on_energy: [nullEffect, nullEffect, nullEffect],
                 };
                 const abilityId = pureCircuits.derive_ability_id(ability);
@@ -145,7 +159,7 @@ export class MockGame2API implements DeployedGame2API {
 
 
     private addRewards(rewards: BattleRewards) {
-        this.mockState.player.gold += rewards.gold;
+        this.mockState.player!.gold += rewards.gold;
     }
 
     private response<T>(body: () => T): Promise<T> {
