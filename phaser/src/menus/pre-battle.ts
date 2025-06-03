@@ -28,6 +28,7 @@ export class StartBattleMenu extends Phaser.Scene {
 
     create() {
         let abilities = [];
+        console.log(`player abilities: ${this.state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
         for (const [id, count] of this.state.playerAbilities) {
             for (let i = 0; i < count; ++i) {
                 abilities.push(id);
@@ -36,15 +37,15 @@ export class StartBattleMenu extends Phaser.Scene {
         abilities = abilities.sort((a, b) => Number(pureCircuits.ability_score(this.state.allAbilities.get(b)!) - pureCircuits.ability_score(this.state.allAbilities.get(a)!)));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.8, this.state.allAbilities.get(ability)!);
+            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.75, this.state.allAbilities.get(ability)!);
             this.available.push(abilityWidget);
             this.chosen.push(false);
-            const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.8 - 48, 48, 24, '^', 10, () => {
+            const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.75 - 64, 48, 24, '^', 10, () => {
                 if (this.chosen[i]) {
-                    abilityWidget.y += 48 + 48;
+                    abilityWidget.y += 48 + 80;
                     button.text.text = '^';
                 } else {
-                    abilityWidget.y -= 48 + 48;
+                    abilityWidget.y -= 48 + 80;
                     button.text.text = 'v';
                 }
                 this.chosen[i] = !this.chosen[i];
