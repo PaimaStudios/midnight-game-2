@@ -1,0 +1,1 @@
+Helper package for compiling Compact contracts. This should never need to be modified. Taken from the Midnight bboard example. This package can be ignored entirely after the initial `npm install` here.

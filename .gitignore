@@ -2,3 +2,10 @@
 .turbo
 node_modules/
 dist/
+.DS_Store
+.vite
+.env
+contract/src/managed
+contract/src/game2.compact
+contract/coverage
+contract/reports
