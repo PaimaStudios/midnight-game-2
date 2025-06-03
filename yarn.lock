@@ -4617,6 +4617,7 @@ __metadata:
   resolution: "game2-contract@workspace:contract"
   dependencies:
     "@midnight-ntwrk/compact": "workspace:*"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"
