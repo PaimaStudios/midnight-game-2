@@ -1,3 +1,4 @@
 .yarn
+.turbo
 node_modules/
-contract/dist/
+dist/
