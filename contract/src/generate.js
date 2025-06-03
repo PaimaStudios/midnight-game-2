@@ -1,4 +1,11 @@
-//const fs = require('fs');
+/**
+ * Code generation for the game's contract.
+ * 
+ * Many parts of combat code would be incredibly tedious and error-prone to hand-write.
+ * Instead of several 3000 character lines with only different variable names or array indices
+ * we generate that code here and replace the placeholder strings in the contract.
+ */
+
 import fs from 'fs';
 
 function codegen_placeholders() {

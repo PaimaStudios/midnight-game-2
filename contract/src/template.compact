@@ -413,7 +413,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
 
-    // CODE-GENERATE START
+    // CODE-GENERATION START
 
     INSERT_PLAYER_BLOCK_CODE_HERE
 
@@ -423,21 +423,9 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
 
-// code-gen'd
     INSERT_DECK_INDEX_CALCULATION_CODE_HERE
 
-    // CODE-GENERATE END
-
-// hand-written
-    // const new_deck_0 = add_mod(old_state.deck_0, 1, 7);
-    
-    // const new_deck_1_attempt = add_mod(old_state.deck_1, 2, 7);
-    // const new_deck_1 = new_deck_1_attempt == new_deck_0 ? add_mod(new_deck_1_attempt, 1, 7) : new_deck_1_attempt;
-    
-    // const new_deck_2_attempt_0 = add_mod(old_state.deck_2, 3, 7);
-    // const new_deck_2_attempt_1 = new_deck_2_attempt_0 == new_deck_0 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
-    // const new_deck_2_attempt_2 = new_deck_2_attempt_0 == new_deck_1 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
-    // const new_deck_2 = new_deck_2_attempt_0 == new_deck_0 ? add_mod(new_deck_2_attempt_0, 1, 7) : new_deck_2_attempt_0;
+    // CODE-GENERATION END
 
     return BattleState {
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
