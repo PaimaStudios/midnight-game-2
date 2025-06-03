@@ -30,9 +30,7 @@ export class MockGame2API implements DeployedGame2API {
                 pureCircuits.ability_base_ice(),
             ].map((ability) => [pureCircuits.derive_ability_id(ability), ability])),
             quests: new Map(),
-            player: {
-                gold: BigInt(0),
-            },
+            player: undefined,
             playerAbilities: new Map(),
             ui: undefined,
             circuit: undefined
@@ -53,6 +51,9 @@ export class MockGame2API implements DeployedGame2API {
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
             ]);
+            for (let i = 0; i < 10; ++i) {
+                this.givePlayerRandomAbility(BigInt(1));
+            }
         });
     }
 
@@ -135,20 +136,12 @@ export class MockGame2API implements DeployedGame2API {
             if (Math.random() > 0.5) {
                 const quest = this.mockState.quests.get(quest_id)!;
                 this.mockState.quests.delete(quest_id);
-                const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false} };
-                const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
-                const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
-                const ability = {
-                    effect: { is_some: true, value: { effect_type: effectType, amount: BigInt(Phaser.Math.Between(2, 4)), is_aoe: aoe } },
-                    on_energy: [nullEffect, nullEffect, nullEffect],
-                };
-                const abilityId = pureCircuits.derive_ability_id(ability);
-                this.mockState.allAbilities.set(abilityId, ability);
-                this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
+
+                
                 const reward: BattleRewards = {
                     alive: true,
                     gold: BigInt(500) + quest.difficulty * BigInt(100),
-                    ability: { is_some: true, value: abilityId },
+                    ability: { is_some: true, value: this.givePlayerRandomAbility(quest.difficulty) },
                 };
                 this.addRewards(reward);
                 return reward;
@@ -160,6 +153,46 @@ export class MockGame2API implements DeployedGame2API {
 
     private addRewards(rewards: BattleRewards) {
         this.mockState.player!.gold += rewards.gold;
+    }
+
+    private givePlayerRandomAbility(difficulty: bigint): bigint {
+        const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
+        const randomEffect = (factor: number, canBeGenerate: boolean) => {
+            const effectType = Phaser.Math.Between(0, canBeGenerate ? 4 : 3) as EFFECT_TYPE;
+            const aoe = effectType != EFFECT_TYPE.block && effectType != EFFECT_TYPE.generate ? Math.random() > 0.7 : false;
+            return {
+                is_some: true,
+                value: {
+                    effect_type: effectType,
+                    amount: BigInt(effectType == EFFECT_TYPE.generate ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty))),
+                    is_aoe: aoe
+                }
+            };
+        };
+        const triggers = [nullEffect, nullEffect, nullEffect];
+        const color = Phaser.Math.Between(0, 5);
+        if (color < triggers.length) {
+            // triggers[0] = randomEffect(2);
+            // triggers[1] = randomEffect(2);
+            // triggers[2] = randomEffect(2);
+            if (Math.random() > 0.7) {
+                for (let i = 0; i < 3; ++i) {
+                    if (i != color) {
+                        triggers[i] = randomEffect(1, false);
+                    }
+                }
+            } else {
+                triggers[color] = randomEffect(2, false);
+            }
+        }
+        const ability = {
+            effect: randomEffect(color < triggers.length ? 1 : 2, true),
+            on_energy: triggers,
+        };
+        const abilityId = pureCircuits.derive_ability_id(ability);
+        this.mockState.allAbilities.set(abilityId, ability);
+        this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
+        return abilityId;
     }
 
     private response<T>(body: () => T): Promise<T> {
