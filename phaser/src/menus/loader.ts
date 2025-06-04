@@ -1,4 +1,3 @@
-import { defaultMaxListeners } from "events";
 import { fontStyle, GAME_WIDTH, GAME_HEIGHT, } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 
