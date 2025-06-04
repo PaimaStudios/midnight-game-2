@@ -48,6 +48,7 @@ import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
 import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { combat_round_logic } from './battle/logic';
 import { TestMenu } from './menus/main';
+import { Loader } from './menus/loader';
 
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
@@ -121,7 +122,10 @@ const config = {
     type: Phaser.AUTO,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    scene: [TestMenu],
+    scene: [
+        TestMenu,
+        Loader,
+    ],
     render: {
         pixelArt: true,
     },
