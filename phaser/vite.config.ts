@@ -14,13 +14,7 @@ export default defineConfig({
     target: "esnext",
     minify: false,
   },
-  plugins: [
-    wasm(),
-    react({
-      include: "**/*.tsx",
-    }),
-    viteCommonjs()
-  ],
+  plugins: [wasm(), react(), viteCommonjs()],
   optimizeDeps: {
     esbuildOptions: {
       target: "esnext",
@@ -60,9 +54,6 @@ export default defineConfig({
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
-    },
-    watch: {
-      usePolling: true
     },
   },
 });
