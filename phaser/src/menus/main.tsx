@@ -1,12 +1,14 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
 import { Button } from "./button";
+import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
+import BBCodeText from "phaser3-rex-plugins/plugins/gameobjects/tagtext/bbcodetext/BBCodeText";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -115,9 +117,12 @@ export class TestMenu extends Phaser.Scene {
         } else {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, async () => {
-                this.scene.pause().launch('Loader');
                 console.log('Registering new player...');
+                this.scene.pause().launch('Loader');
+                const loader = this.scene.get('Loader') as Loader;
+                loader.setText("Submitting Proof...");
                 await this.api!.register_new_player();
+                loader.setText("Waiting on chain update...");
                 this.events.on('stateChange', () => {
                     this.scene.resume().stop('Loader');
                     console.log('Registered new player');
