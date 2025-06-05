@@ -5,7 +5,7 @@ const defaultLoaderText = `Loading`;
 const fontSize = 14;
 
 export class Loader extends Phaser.Scene {
-    private text: string;
+    private text: string;  // Update this using the setText() method
     private bbcodetext?: BBCodeText;
     animateDots: boolean;
 
