@@ -7,7 +7,7 @@ const fontSize = 14;
 export class Loader extends Phaser.Scene {
     private text: string;
     private bbcodetext?: BBCodeText;
-    private animateDots: boolean;
+    animateDots: boolean;
 
     constructor(text?: string, animateDots?: boolean) {
         super('Loader');
@@ -25,6 +25,7 @@ export class Loader extends Phaser.Scene {
 
     update() {
         if (this.bbcodetext !== undefined && this.animateDots) {
+            // Animate dots in the loader text
             const time = this.game.getTime()
             const cycle = Math.floor(time / 300) % 4;
             this.bbcodetext.setText(this.text + '.'.repeat(cycle));
