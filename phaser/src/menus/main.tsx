@@ -120,9 +120,9 @@ export class TestMenu extends Phaser.Scene {
                 console.log('Registering new player...');
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
-                loader.setText("Submitting Proof...");
+                loader.setText("Submitting Proof");
                 await this.api!.register_new_player();
-                loader.setText("Waiting on chain update...");
+                loader.setText("Waiting on chain update");
                 this.events.on('stateChange', () => {
                     this.scene.resume().stop('Loader');
                     console.log('Registered new player');
