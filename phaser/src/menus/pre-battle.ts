@@ -5,6 +5,7 @@ import { Button } from "./button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { ActiveBattle } from "./battle";
+import { Loader } from "./loader";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -51,7 +52,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.chosen[i] = !this.chosen[i];
             });
         }
-        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, () => {
+        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, async () => {
             this.loadout.abilities = [];
             for (let i = 0; i < this.chosen.length; ++i) {
                 if (this.chosen[i]) {
@@ -67,7 +68,12 @@ export class StartBattleMenu extends Phaser.Scene {
                         this.scene.start('TestMenu');
                     });
                 } else {
-                    this.api.start_new_battle(this.loadout).then((battle) => {
+                    console.log(`starting new battle...`);
+                    this.scene.pause().launch('Loader');
+                    const loader = this.scene.get('Loader') as Loader;
+                    loader.setText("Submitting Proof");
+                    await this.api.start_new_battle(this.loadout).then((battle) => {
+                        this.scene.stop('Loader');
                         this.scene.remove('ActiveBattle');
                         this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle));
                         this.scene.start('ActiveBattle');
