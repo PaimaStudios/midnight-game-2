@@ -8,7 +8,6 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
-import BBCodeText from "phaser3-rex-plugins/plugins/gameobjects/tagtext/bbcodetext/BBCodeText";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
