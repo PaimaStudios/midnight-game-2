@@ -39,19 +39,6 @@ export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
 
 
-export const style = {
-        fontFamily: 'Calibri, Arial, Helvetica, sans-serif',
-        fontSize: '14px',
-        color: '#666',
-        padding: { left: 0, bottom: 10 },
-        underline: {
-            color: '#1e90ff',
-            thickness: 1,
-            offset: 3,
-        }
-    } as Phaser.Types.GameObjects.Text.TextStyle
-
-
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
         ...extra,
@@ -59,16 +46,6 @@ export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Tex
         fontFamily: 'yana',
         color: '#f5f5ed'  // 'white'
     };
-}
-
-export function fontStyleDict(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): unknown {
-    return {
-        ...extra,
-        fontSize: fontSize * 2,  // this font is really small for some reason, so double it
-        fontFamily: 'yana',
-        color: '#f5f5ed'  // 'white'
-    };
-
 }
 
 // only converts bigint, but this is the only problem we have with printing ledger types
