@@ -16,7 +16,14 @@ function randIntBetween(nonce: Uint8Array, index: number, min: number, max: numb
     return min + Number(rng % range);
 }
 
-// gameState is both input and output. it is modified during execution
+/**
+ * Runs a simulation of the combat round lgoic found in the combat_round() circuit.
+ * 
+ * @param battle_id Battle to be simulated. Looked up into gameState
+ * @param gameState Current game's state. This is both input and output. Modified during execution.
+ * @param uiHooks Optional callbacks that can hook into UI animations when calling this for frontend simulation.
+ * @returns Rewards from the battle if it is completed (all enemies died or player died). or undefined if it remains in progress
+ */
 export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
     return new Promise(async (resolve) => {
         console.log(`combat_round_logc(${safeJSONString(gameState)}, ${uiHooks == undefined})`);

@@ -1,3 +1,10 @@
+/**
+ * Main hub menu.
+ * 
+ * For now this also contains both deploying and player registration but that can be refactored later.
+ * 
+ * This contains a list of active quests as well as buttons to initiate new quests or new battles.
+ */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
 import { Button } from "./button";
