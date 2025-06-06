@@ -4642,7 +4642,7 @@ __metadata:
     http-server: "npm:^14.1.1"
     jest: "npm:^29.7.0"
     phaser: "npm:3.87.0"
-    phaser3-rex-plugins: "npm:1.80.12"
+    phaser3-rex-plugins: "npm:1.80.16"
     typescript: "npm:^5.2.2"
     vite: "npm:^4.5.1"
     vite-plugin-wasm: "npm:^3.4.1"
@@ -7239,9 +7239,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"phaser3-rex-plugins@npm:1.80.12":
-  version: 1.80.12
-  resolution: "phaser3-rex-plugins@npm:1.80.12"
+"phaser3-rex-plugins@npm:1.80.16":
+  version: 1.80.16
+  resolution: "phaser3-rex-plugins@npm:1.80.16"
   dependencies:
     dagre: "npm:^0.8.5"
     eventemitter3: "npm:^3.1.2"
@@ -7252,7 +7252,7 @@ __metadata:
     mustache: "npm:^4.2.0"
     papaparse: "npm:^5.4.1"
     webfontloader: "npm:^1.6.28"
-  checksum: 10c0/b4fbde0e2de7bfe88313b535c67f0d89af7596339a7d2e05664aeea78f733ae132c0c56f3c05dd00e82ccaa9c734b5fffb9b243b8f22927530db7d5f10d7316e
+  checksum: 10c0/9b6323fe9d3ffd905199a3b5da3f6d7231c92d4ba7c03b1e86b106ad23761515bd647fabfeb60ce18c059836086a3a2b18c075c33bc1173adb31181c868cbc53
   languageName: node
   linkType: hard
 
