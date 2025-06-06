@@ -1,5 +1,5 @@
 /**
- * API requivalent to Game2API from the API crate, but instead of communicating with the blockchain and
+ * API equivalent to Game2API from the API crate, but instead of communicating with the blockchain and
  * proving all transactions, it mocks it out and handles all logic within javascript.
  * 
  * This is helpful for development of the frontend without the latency that the on-chain API has.

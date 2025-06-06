@@ -15,9 +15,12 @@ export enum EFFECT_TYPE {
     generate,
 }
 
+// a note on attack base damage:
+// damage is subject to resistances in EnemyStats and can be up to 10 times higher (when the enemy has no resistance)
+// TODO: how to handle this in the UI? Multiply by 10? or 5 to get 'average' with >5 being 'resistance' and <5 being 'weakness'?
 export struct Effect {
     effect_type: EFFECT_TYPE,
-    // damage for attacks, defense for blocks, type of energy for generation
+    // base damage for attacks, defense for blocks, type of energy for generation (range [0, 2] only)
     amount: Uint<32>,
     is_aoe: Boolean,
 }

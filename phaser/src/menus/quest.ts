@@ -1,5 +1,5 @@
 /**
- * Screen to check if a quest has compelted yet, and if it is, to receive rewards.
+ * Screen to check if a quest has completed yet, and if it is, to receive rewards.
  * 
  * TODO: Right now we only have a way to check if a quest is completed.
  *       In the future once BlockContext contains the height we can

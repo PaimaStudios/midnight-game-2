@@ -85,18 +85,21 @@ export interface DeployedGame2API {
      */
     register_new_player: () => Promise<void>;
 
+
     /**
      * Start a new active battle
      * @param loadout Abilities used in this battle. They will be (temporarily) removed until battle end.
-     * @returns The config corresponding to 
+     * @returns The config corresponding to the created battle.
      */
     start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
+
     /**
      * Run a combat round of an already existing active battle
      * @param battle_id Battle to attempt a combat round of
      * @returns Rewards if battle is complete (win or lose), or undefined if not
      */
     combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
+
 
     /**
      * Start a new quest
@@ -105,6 +108,7 @@ export interface DeployedGame2API {
      * @returns The quest ID of the new quest
      */
     start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
+
     /**
      * Attempt to finish a quest
      * 

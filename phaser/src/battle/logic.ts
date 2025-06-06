@@ -3,13 +3,19 @@ import { Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleRewards, Effect, EFFECT_TYPE, Game2PrivateState, pureCircuits } from "game2-contract";
 
 export type CombatCallbacks = {
+    // triggered when an enemy blocks. enemy is the enemy that blocks
     onEnemyBlock: (enemy: number, amount: number) => Promise<void>;
+    // triggered when an enemy attacks. there are no enemy attack types (atm) and enemy is which enemy attacks (since only 1 player)
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
+    // triggered when a player's ability causes an effect (directly or via trigger)
+    // reminder: `amount` is the color for EFFECT_TYPE.generate (range [0, 2])
     onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => Promise<void>;
+    // triggered at the start of a round to show which abilities are being played this round
     onPlayerAbilities: (abilities: Ability[]) => Promise<void>;
+    // TODO: add callback right before each triggered energy causes effects?
 };
 
-// we need to sync this with the contract's RNG indexing once that's possible
+// we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
 function randIntBetween(nonce: Uint8Array, index: number, min: number, max: number): number {
     const range = BigInt(max - min + 1);
     const rng = pureCircuits.hashUtil(nonce, BigInt(index));
@@ -17,9 +23,9 @@ function randIntBetween(nonce: Uint8Array, index: number, min: number, max: numb
 }
 
 /**
- * Runs a simulation of the combat round lgoic found in the combat_round() circuit.
+ * Runs a simulation of the combat round logic found in the combat_round() circuit.
  * 
- * @param battle_id Battle to be simulated. Looked up into gameState
+ * @param battle_id Battle to be simulated. This is looked up int gameState so the battle must have been created first
  * @param gameState Current game's state. This is both input and output. Modified during execution.
  * @param uiHooks Optional callbacks that can hook into UI animations when calling this for frontend simulation.
  * @returns Rewards from the battle if it is completed (all enemies died or player died). or undefined if it remains in progress
