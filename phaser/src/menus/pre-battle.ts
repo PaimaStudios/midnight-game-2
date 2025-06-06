@@ -1,3 +1,6 @@
+/**
+ * Pre-Battle and Pre-Quest ability selection screen
+ */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget } from "../ability";

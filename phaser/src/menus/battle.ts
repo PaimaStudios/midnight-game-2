@@ -1,3 +1,6 @@
+/**
+ * Active battle scene and relevant files.
+ */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "./button";

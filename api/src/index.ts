@@ -1,5 +1,5 @@
 /**
- * Provides types and utilities for working with bulletin board contracts.
+ * Provides types and utilities for working with deployed (on-chain) Game2 contracts
  *
  * @packageDocumentation
  */
@@ -72,38 +72,55 @@ export function safeJSONString(obj: object): string {
 }
 
 /**
- * An API for a deployed bulletin board.
+ * Game2's Contract API. Corresponds directly to the exported circuits.
  */
 export interface DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
 
+    /**
+     * Register a new player and give them the default abilities.
+     * Populates all ledger states indexed by the player ID
+     * Uses the player_secret_key() witness as the player ID
+     */
     register_new_player: () => Promise<void>;
 
+
+    /**
+     * Start a new active battle
+     * @param loadout Abilities used in this battle. They will be (temporarily) removed until battle end.
+     * @returns The config corresponding to the created battle.
+     */
     start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
+
+    /**
+     * Run a combat round of an already existing active battle
+     * @param battle_id Battle to attempt a combat round of
+     * @returns Rewards if battle is complete (win or lose), or undefined if not
+     */
     combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
 
+
+    /**
+     * Start a new quest
+     * 
+     * @param loadout Abilities used in this quest. They will be (temporarily) removed until battle end.
+     * @returns The quest ID of the new quest
+     */
     start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
+
+    /**
+     * Attempt to finish a quest
+     * 
+     * @param quest_id Quest to try to end
+     * @returns Rewards if quest is complete (win or lose), or undefined if not
+     */
     finalize_quest: (quest_id: bigint) => Promise<BattleRewards | undefined>;
 }
 
 /**
- * Provides an implementation of {@link DeployedGame2API} by adapting a deployed bulletin board
- * contract.
- *
- * @remarks
- * The `Game2PrivateState` is managed at the DApp level by a private state provider. As such, this
- * private state is shared between all instances of {@link Game2API}, and their underlying deployed
- * contracts. The private state defines a `'secretKey'` property that effectively identifies the current
- * user, and is used to determine if the current user is the poster of the message as the observable
- * contract state changes.
- *
- * In the future, Midnight.js will provide a private state provider that supports private state storage
- * keyed by contract address. This will remove the current workaround of sharing private state across
- * the deployed bulletin board contracts, and allows for a unique secret key to be generated for each bulletin
- * board that the user interacts with.
+ * Provides an implementation of {@link DeployedGame2API} that interacts with the provided prover and submits transactions on-chain
  */
-// TODO: Update Game2API to use contract level private state storage.
 export class Game2API implements DeployedGame2API {
     /** @internal */
     private constructor(
@@ -129,6 +146,7 @@ export class Game2API implements DeployedGame2API {
                     }),
                   ),
                 ),
+                // TODO: update this comment since this does change but we worked around it in pvp-arena
                 // ...private state...
                 //    since the private state of the bulletin board application never changes, we can query the
                 //    private state once and always use the same value with `combineLatest`. In applications
@@ -229,9 +247,9 @@ export class Game2API implements DeployedGame2API {
     }
 
     /**
-     * Deploys a new bulletin board contract to the network.
+     * Deploys a new Game2 contract to the network.
      *
-     * @param providers The bulletin board providers.
+     * @param providers The game's providers.
      * @param logger An optional 'pino' logger to use for logging.
      * @returns A `Promise` that resolves with a {@link Game2API} instance that manages the newly deployed
      * {@link DeployedGame2Contract}; or rejects with a deployment error.
@@ -255,10 +273,10 @@ export class Game2API implements DeployedGame2API {
     }
 
     /**
-     * Finds an already deployed bulletin board contract on the network, and joins it.
+     * Finds an already deployed Game2 contract on the network, and joins it.
      *
-     * @param providers The bulletin board providers.
-     * @param contractAddress The contract address of the deployed bulletin board contract to search for and join.
+     * @param providers The game's providers.
+     * @param contractAddress The contract address of the deployed gamecontract to search for and join.
      * @param logger An optional 'pino' logger to use for logging.
      * @returns A `Promise` that resolves with a {@link Game2API} instance that manages the joined
      * {@link DeployedGame2Contract}; or rejects with an error.

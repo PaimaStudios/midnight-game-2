@@ -1,3 +1,6 @@
+/**
+ * Generic Button UI object. Taken from pvp-arena. Might be replaced with rex-ui
+ */
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 
