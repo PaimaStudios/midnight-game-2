@@ -117,6 +117,7 @@ export class TestMenu extends Phaser.Scene {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, async () => {
                 console.log('Registering new player...');
+                // Launch the loader scene to display during the API call
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
                 loader.setText("Submitting Proof");
