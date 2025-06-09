@@ -21,10 +21,10 @@ export class TestMenu extends Phaser.Scene {
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
         this.buttons = [];
-        if (api !== undefined) {
+        if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
-                if (state !== undefined) {
+                if (state != undefined) {
                     this.onStateChange(state);
                 }
             }, 100);

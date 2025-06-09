@@ -11,7 +11,7 @@ export class Loader extends Phaser.Scene {
     constructor(text?: string, animateDots?: boolean) {
         super('Loader');
 
-        this.text = text || defaultLoaderText;
+        this.text = text ?? defaultLoaderText;
         this.animateDots = animateDots !== undefined ? animateDots : true;
     }
 
@@ -33,7 +33,7 @@ export class Loader extends Phaser.Scene {
 
     setText(text: string) {
         this.text = text;
-        if (this.scene.isActive() && this.textObject !== undefined) {
+        if (this.textObject !== undefined) {
             this.textObject.setText(text);
         }
     }

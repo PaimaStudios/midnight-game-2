@@ -30,7 +30,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
-            this.enemies.push(new Actor(this, this.enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy'));
+            this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy'));
         }
 
         // attack button
@@ -48,11 +48,11 @@ export class ActiveBattle extends Phaser.Scene {
                     onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
                         this.enemies[enemy].addBlock(amount);
                         //console.log(`enemy [${amount}] blocked for ${}`);
-                        this.add.existing(new BattleEffect(this, this.enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
+                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                     }),
                     onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
                         this.player?.damage(amount);
-                        this.add.existing(new BattleEffect(this, this.enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
                     }),
                     onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => new Promise((resolve) => {
                         switch (effectType) {
@@ -129,10 +129,6 @@ export class ActiveBattle extends Phaser.Scene {
         return state != undefined ? `Click to attack.\nPlayer HP: ${state.player_hp} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
     }
 
-    private enemyX(config: BattleConfig, enemyIndex: number): number {
-        return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
-    }
-
     private onStateChange(state: Game2DerivedState) {
         console.log(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
@@ -142,6 +138,9 @@ export class ActiveBattle extends Phaser.Scene {
 }
 
 
+const enemyX = (config: BattleConfig, enemyIndex: number): number => {
+    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
+}
 const enemyY = () => GAME_HEIGHT * 0.2;
 
 const playerX = () => GAME_WIDTH / 2;
