@@ -33,7 +33,7 @@ export class Loader extends Phaser.Scene {
 
     setText(text: string) {
         this.text = text;
-        if (this.textObject !== undefined) {
+        if (this.scene.isActive() && this.textObject !== undefined) {
             this.textObject.setText(text);
         }
     }
