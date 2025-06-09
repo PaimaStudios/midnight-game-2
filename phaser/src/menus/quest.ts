@@ -5,7 +5,6 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { Button } from "./button";
 import { AbilityWidget } from "../ability";
-import { Loader } from "./loader";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -23,23 +22,13 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     create() {
-        this.scene.pause().launch('Loader');
-        const loader = this.scene.get('Loader') as Loader;
-        loader.setText("Submitting Proof");
-        console.log(`Finalizing quest ${this.questId}`);
         this.api.finalize_quest(this.questId).then((rewards) => {
             this.rewards = rewards;
-
-            loader.setText("Waiting on chain update");
-            this.events.on('stateChange', () => {
-                this.scene.resume().stop('Loader');
-            });
         });
     }
 
     private onStateChange(state: Game2DerivedState) {
-        this.events.emit('stateChange', state);
-
+        //this.state = state;
         const rewards = this.rewards!;
         if (rewards != undefined) {
             const str = rewards.alive ? `Quest Complete!\nYou won ${rewards.gold} gold!\nClick to return.` : `You died :(\nClick to return.`;
