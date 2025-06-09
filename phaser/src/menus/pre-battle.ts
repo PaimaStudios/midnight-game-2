@@ -73,7 +73,6 @@ export class StartBattleMenu extends Phaser.Scene {
                     // Launch the loader scene to display during the API call
                     this.scene.pause().launch('Loader');
                     const loader = this.scene.get('Loader') as Loader;
-                    console.log(loader)
                     loader.setText("Submitting Proof");
                     await this.api.start_new_battle(this.loadout).then((battle) => {
                         this.scene.stop('Loader');
