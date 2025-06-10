@@ -1,6 +1,5 @@
-import { call } from "@midnight-ntwrk/midnight-js-contracts";
 import { Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleRewards, Effect, EFFECT_TYPE, Game2PrivateState, pureCircuits } from "game2-contract";
+import { Ability, BattleRewards, Effect, EFFECT_TYPE, pureCircuits } from "game2-contract";
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks
