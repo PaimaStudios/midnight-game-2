@@ -1,3 +1,6 @@
+/**
+ * All frontend functionality related to Abilities (outside of battle?)
+ */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "./main";
 
