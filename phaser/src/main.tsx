@@ -1,3 +1,6 @@
+/**
+ * Main entry point into the frontend. Sets up Phaser
+ */
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import '@midnight-ntwrk/dapp-connector-api';
 import './globals';

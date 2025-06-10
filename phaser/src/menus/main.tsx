@@ -1,3 +1,10 @@
+/**
+ * Main hub menu.
+ * 
+ * For now this also contains both deploying and player registration but that can be refactored later.
+ * 
+ * This contains a list of active quests as well as buttons to initiate new quests or new battles.
+ */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
 import { Button } from "./button";
@@ -48,6 +55,9 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('energy_2', 'energy_2.png');
         this.load.image('arrow', 'arrow.png');
         this.load.image('aoe', 'aoe.png');
+        this.load.image('energy_flash_0', 'energy_flash_0.png');
+        this.load.image('energy_flash_1', 'energy_flash_1.png');
+        this.load.image('energy_flash_2', 'energy_flash_2.png');
 
         this.load.image('player', 'player.png');
         this.load.image('enemy', 'enemy.png');

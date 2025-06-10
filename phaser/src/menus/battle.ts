@@ -1,3 +1,6 @@
+/**
+ * Active battle scene and relevant files.
+ */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "./button";
@@ -6,6 +9,9 @@ import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget } from "../ability";
 import { combat_round_logic } from "../battle/logic";
+
+const abilityInUseY = () => GAME_HEIGHT * 0.8;
+const abilityIdleY = () => GAME_HEIGHT * 0.9;
 
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
@@ -71,13 +77,56 @@ export class ActiveBattle extends Phaser.Scene {
                         }
                         this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amount, resolve));
                     }),
-                    onPlayerAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, GAME_HEIGHT * 0.75, ability).setAlpha(0));
+                    onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
+                        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
                         this.tweens.add({
                             targets: this.abilityIcons,
                             alpha: 1,
                             duration: 500,
                             onComplete: () => {
+                                resolve();
+                            },
+                        });
+                    }),
+                    onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
+                        const abilityIcons = this.abilityIcons[abilityIndex]
+                        this.tweens.add({
+                            targets: abilityIcons,
+                            y: abilityInUseY(),
+                            delay: 150,
+                            duration: 250,
+                            onComplete: () => {
+                                this.tweens.add({
+                                    targets: energy != undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
+                                    scale: 1.5,
+                                    yoyo: true,
+                                    delay: 100,
+                                    duration: 200,
+                                    onComplete: () => resolve(),
+                                });
+                            },
+                        });
+                    }),
+                    afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
+                        this.tweens.add({
+                            targets: this.abilityIcons[abilityIndex],
+                            y: abilityIdleY(),
+                            delay: 150,
+                            duration: 250,
+                            onComplete: () => {
+                                resolve();
+                            },
+                        });
+                    }),
+                    onEnergyTrigger: (color: number) => new Promise((resolve) => {
+                        const energyFlash = this.add.image(playerX(), playerY(), `energy_flash_${color}`).setAlpha(0);
+                        this.tweens.add({
+                            targets: energyFlash,
+                            alpha: 1,
+                            delay: 500,
+                            duration: 250,
+                            onComplete: () => {
+                                energyFlash.destroy();
                                 resolve();
                             },
                         });
@@ -230,6 +279,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         scene.tweens.add({
             targets: this,
             alpha: 0,
+            delay: 250,
             duration: 500,
             onComplete: () => {
                 //console.log(`BattleEffect COMPLETE ${effectType} | ${amount}`);

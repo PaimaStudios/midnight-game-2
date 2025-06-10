@@ -1,10 +1,17 @@
+/**
+ * API equivalent to Game2API from the API crate, but instead of communicating with the blockchain and
+ * proving all transactions, it mocks it out and handles all logic within javascript.
+ * 
+ * This is helpful for development of the frontend without the latency that the on-chain API has.
+ */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { BattleConfig, BattleRewards, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 
-const MOCK_DELAY = 500;
+// How many milliseconds to wait before responding to API requests and between state refreshes.
+const MOCK_DELAY = 5000;
 export const MOCK_PLAYER_ID = BigInt(0);
 
 export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
@@ -51,6 +58,7 @@ export class MockGame2API implements DeployedGame2API {
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
             ]);
+            // This is one difference vs the on-chain version so we can test effect triggers
             for (let i = 0; i < 10; ++i) {
                 this.givePlayerRandomAbility(BigInt(1));
             }

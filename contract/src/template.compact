@@ -15,15 +15,19 @@ export enum EFFECT_TYPE {
     generate,
 }
 
+// a note on attack base damage:
+// damage is subject to resistances in EnemyStats and can be up to 10 times higher (when the enemy has no resistance)
+// TODO: how to handle this in the UI? Multiply by 10? or 5 to get 'average' with >5 being 'resistance' and <5 being 'weakness'?
 export struct Effect {
     effect_type: EFFECT_TYPE,
-    // damage for attacks, defense for blocks, type of energy for generation
+    // base damage for attacks, defense for blocks, type of energy for generation (range [0, 2] only)
     amount: Uint<32>,
     is_aoe: Boolean,
 }
 
 export struct Ability {
     effect: Maybe<Effect>,
+    // effects triggered by energy generation. one energy triggers all corresponding effects of all abilities
     on_energy: Vector<3, Maybe<Effect>>,
 }
 
@@ -44,29 +48,35 @@ export pure circuit derive_ability_id(ability: Ability): Field {
     return transient_commit<Ability>(ability, 30);
 }
 
+// helper function for creating abilities. returns the ability id
 circuit register_ability(ability: Ability): Field {
     const id = derive_ability_id(ability);
     all_abilities.insert(id, ability);
     return id;
 }
 
+// base abilities given at the start
 export sealed ledger ability_base_phys_id: Field;
 export sealed ledger ability_base_block_id: Field;
 export sealed ledger ability_base_fire_aoe_id: Field;
 export sealed ledger ability_base_ice_id: Field;
 
+// used only be JS impl. TODO: remove or make JS and contract match once byte indexing works
 export pure circuit hashUtil(nonce1: Bytes<32>, nonce2: Field): Field {
     return transient_commit<Bytes<32>>(nonce1, nonce2);
 }
 
+// used only by JS impl. TODO: remove or make JS and contract match once byte indexing works
 export pure circuit fakeTempRng(state: BattleState, config: BattleConfig): Bytes<32> {
     return persistent_commit<BattleState>(state, persistent_hash<BattleConfig>(config));
 }
 
+// ranks how "good" an ability is. higher is better. useful for ordering in the UI
 export pure circuit ability_score(ability: Ability): Uint<32> {
     return (3 * effect_score(ability.effect) + effect_score(ability.on_energy[0]) + effect_score(ability.on_energy[1]) + effect_score(ability.on_energy[2])) as Uint<32>;
 }
 
+// ranks how "good" an effect is. higher is better
 pure circuit effect_score(effect: Maybe<Effect>): Uint<32> {
     const aoe = (1 + (effect.value.is_aoe as Uint<1>));
     const gen = ((effect.value.effect_type == EFFECT_TYPE.generate) as Uint<1>) * 3;
@@ -74,6 +84,7 @@ pure circuit effect_score(effect: Maybe<Effect>): Uint<32> {
     return ((effect.is_some as Uint<1>) * ((aoe * non_gen) + gen)) as Uint<32>;
 }
 
+// starting 4 abilities
 export pure circuit ability_base_phys(): Ability {
     return Ability {
         some<Effect>(Effect {
@@ -126,13 +137,16 @@ constructor() {
     players.reset_to_default();
 }
 
+// used to compute player ID. secret witness only known to the player.
 witness player_secret_key(): Bytes<32>;
 
+// compute player ID from the secret bytes (player_secret_key())
 export pure circuit derive_player_pub_key(sk: Bytes<32>): Field {
     return transient_commit<Bytes<32>>(sk, 1024);
 }
 
 ledger rand_hack: Uint<32>;
+// TODO: remove once byte indexing is implemented. just cycles targets for now
 circuit mock_rand_target(): Uint<0..3> {
     rand_hack = (rand_hack + 1) as Uint<32>;
     if (rand_hack > 2) {
@@ -155,6 +169,8 @@ export struct Player {
     gold: Uint<32>,
     // TODO: more
 }
+
+// registered players. Key is Player ID
 export ledger players: Map<Field, Player>;
 
 // player id -> { ability id -> amount player has } (TODO: modified when sent to battle / quests? or should we only allow battling when not questing?)
@@ -170,6 +186,7 @@ export struct QuestConfig {
 export struct BattleRewards {
     alive: Boolean;
     gold: Uint<32>;
+    // reward ability that has been added to the player's available abilities
     ability: Maybe<Field>;
     // what else?
 }
@@ -204,11 +221,11 @@ export struct PlayerLoadout {
     abilities: Vector<7, Field>,
 }
 
-export pure circuit derive_loadout_id(loadout: PlayerLoadout): Field {
-    // this line adds ~3k to the circuit
-    return transient_commit<PlayerLoadout>(loadout, 100);
-    //return 0 as Field;
-}
+// export pure circuit derive_loadout_id(loadout: PlayerLoadout): Field {
+//     // this line adds ~3k to the circuit
+//     return transient_commit<PlayerLoadout>(loadout, 100);
+//     //return 0 as Field;
+// }
 
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
@@ -230,6 +247,7 @@ circuit verify_loadout(loadout: PlayerLoadout): [] {
     }
 }
 
+// gives player access to all their abilities used in this battle/quest. TODO: do we want to store the currently used ones somewhere?
 circuit return_loadout(loadout: PlayerLoadout): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     for (const ability_id of loadout.abilities) {
@@ -253,7 +271,7 @@ export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field
 }
 
 circuit random_ability(difficulty: Field): Field {
-    // TODO
+    // TODO implement once byte indexing is available
     return ability_base_fire_aoe_id;
 }
 
@@ -321,6 +339,8 @@ pure circuit init_battlestate(battle: BattleConfig): BattleState {
     };
 }
 
+// zk-Circuits can only handle indexing by constants but to handle how deck iteration works
+// we need it to be dynamic, so we use this helper function
 pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
     if (i == 0) {
         return array[0];
@@ -328,16 +348,16 @@ pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
     if (i == 1) {
         return array[1];
     }
-    if (i == 0) {
+    if (i == 2) {
         return array[2];
     }
-    if (i == 0) {
+    if (i == 3) {
         return array[3];
     }
-    if (i == 0) {
+    if (i == 4) {
         return array[4];
     }
-    if (i == 0) {
+    if (i == 5) {
         return array[5];
     }
     return array[6];
@@ -349,12 +369,15 @@ pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
 //     }
 //     return start + add;
 // }
+
+// computes (start + add) % n, ONLY when start + add < 2n (which for our indices is always true)
 pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
-    // if (start + add > n) {
+    // Due to a bug in Compact the below doesn't work so we work around it with binary arithmetic
+    // if (start + add >= n) {
     //     return (start + add - n) as Uint<32>;
     // }
     // return (start + add) as Uint<32>;
-    return (start + add - (((start + add > n) as Uint<1>) * n)) as Uint<32>;
+    return (start + add - (((start + add >= n) as Uint<1>) * n)) as Uint<32>;
 }
 
 export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe<BattleRewards> {
@@ -413,6 +436,8 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
 
+    // See generate.js for an explanation of the code generation
+
     // CODE-GENERATION START
 
     INSERT_PLAYER_BLOCK_CODE_HERE
@@ -436,10 +461,12 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     };
 }
 
+// total damage (after resistances) done by an effect to an enemy
 export pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
     return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * effect.amount) as Uint<32>;
 }
 
+// whether an ability generates a certain color (type) of energy
 pure circuit generates_color(color: Uint<32>, ability: Ability): Boolean {
     return ability.effect.is_some && ability.effect.value.effect_type == EFFECT_TYPE.generate && ability.effect.value.amount == color;
 }
