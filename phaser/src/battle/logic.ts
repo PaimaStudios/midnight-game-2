@@ -11,8 +11,13 @@ export type CombatCallbacks = {
     // reminder: `amount` is the color for EFFECT_TYPE.generate (range [0, 2])
     onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => Promise<void>;
     // triggered at the start of a round to show which abilities are being played this round
-    onPlayerAbilities: (abilities: Ability[]) => Promise<void>;
-    // TODO: add callback right before each triggered energy causes effects?
+    onDrawAbilities: (abilities: Ability[]) => Promise<void>;
+    // triggered when an ability is used. energy == undefined means base effect applying, otherwise it specifies which trigger is being applied
+    onUseAbility: (abilityIndex: number, energy?: number) => Promise<void>;
+    // triggered after an ability has been used (e.g. to re-tween back)
+    afterUseAbility: (abilityIndex: number) => Promise<void>;
+    // triggered before all energy triggers of a given color will be applied
+    onEnergyTrigger: (color: number) => Promise<void>;
 };
 
 // we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
@@ -85,19 +90,29 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         };
 
-        await uiHooks?.onPlayerAbilities(abilities.map((id) => gameState.allAbilities.get(id)!));
+        await uiHooks?.onDrawAbilities(abilities.map((id) => gameState.allAbilities.get(id)!));
 
         // TODO: don't target dead enemies
         const targets = abilities.map((_, i) => randIntBetween(rng, i, 0, Number(battleConfig.enemy_count) - 1));
         // TODO: when you have internet check if you can do this with forEach but chaining promises one after the other
         for (let i = 0; i < abilities.length; ++i) {
             const ability = gameState.allAbilities.get(abilities[i])!;
+            await uiHooks?.onUseAbility(i, undefined);
             await resolveEffect(ability.effect, targets[i]);
+            await uiHooks?.afterUseAbility(i);
         }
         for (let i = 0; i < 3; ++i) {
-            for (let j = 0; j < abilities.length; ++j) {
-                if (energy[i]) {
-                    await resolveEffect(gameState.allAbilities.get(abilities[j])!.on_energy[i], targets[j]);
+            if (energy[i]) {
+                if (abilities.some((id) => gameState.allAbilities.get(id)?.on_energy[i].is_some)) {
+                    await uiHooks?.onEnergyTrigger(i);
+                    for (let j = 0; j < abilities.length; ++j) {
+                        const ability = gameState.allAbilities.get(abilities[j])!;
+                        if (ability.on_energy[i].is_some) {
+                            await uiHooks?.onUseAbility(j, i);
+                            await resolveEffect(ability.on_energy[i], targets[j]);
+                            await uiHooks?.afterUseAbility(j);
+                        }
+                    }
                 }
             }
         }
