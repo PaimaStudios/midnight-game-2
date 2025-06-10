@@ -348,16 +348,16 @@ pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
     if (i == 1) {
         return array[1];
     }
-    if (i == 0) {
+    if (i == 2) {
         return array[2];
     }
-    if (i == 0) {
+    if (i == 3) {
         return array[3];
     }
-    if (i == 0) {
+    if (i == 4) {
         return array[4];
     }
-    if (i == 0) {
+    if (i == 5) {
         return array[5];
     }
     return array[6];
@@ -373,11 +373,11 @@ pure circuit index<T>(array: Vector<7, T>, i: Uint<32>): T {
 // computes (start + add) % n, ONLY when start + add < 2n (which for our indices is always true)
 pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
     // Due to a bug in Compact the below doesn't work so we work around it with binary arithmetic
-    // if (start + add > n) {
+    // if (start + add >= n) {
     //     return (start + add - n) as Uint<32>;
     // }
     // return (start + add) as Uint<32>;
-    return (start + add - (((start + add > n) as Uint<1>) * n)) as Uint<32>;
+    return (start + add - (((start + add >= n) as Uint<1>) * n)) as Uint<32>;
 }
 
 export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe<BattleRewards> {
