@@ -18,12 +18,12 @@ export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
     battle: BattleConfig;
-    state: Game2DerivedState | undefined;
+    state: Game2DerivedState;
     player: Actor | undefined;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
 
-    constructor(api: DeployedGame2API, battle: BattleConfig) {
+    constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
 
         this.api = api;
@@ -31,6 +31,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.enemies = [];
         this.abilityIcons = [];
+        this.state = state;
     }
 
     create() {

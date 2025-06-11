@@ -18,7 +18,6 @@ export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
     questId: bigint;
     subscription: Subscription;
-    //state: Game2DerivedState | undefined;
     rewards: BattleRewards | undefined;
 
     constructor(api: DeployedGame2API, questId: bigint) {
