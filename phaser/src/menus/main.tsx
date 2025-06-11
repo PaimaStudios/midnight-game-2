@@ -8,6 +8,7 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
 import { Button } from "./button";
+import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
@@ -23,8 +24,6 @@ export class TestMenu extends Phaser.Scene {
     goldText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
-
-    
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -95,9 +94,12 @@ export class TestMenu extends Phaser.Scene {
         console.log('---state change---');
         this.state = state;
 
+        this.events.emit('stateChange', state);
+
         this.buttons.forEach((b) => b.destroy());
 
-        if (state.player != undefined) {
+        if (state.player !== undefined) {
+            // We've registered a player, so show the quest and battle buttons
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
@@ -108,7 +110,7 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
                 this.scene.start('StartBattleMenu');
             }));
-        
+
             let offset = 0;
             for (const [id, quest] of state.quests) {
                 console.log(`got quest: ${id}`);
@@ -122,8 +124,19 @@ export class TestMenu extends Phaser.Scene {
             }
             this.goldText?.setText(`Gold: ${state.player.gold}`);
         } else {
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, () => {
-                this.api!.register_new_player();
+            // We haven't registered a player yet, so show the register button
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, async () => {
+                console.log('Registering new player...');
+                // Launch the loader scene to display during the API call
+                this.scene.pause().launch('Loader');
+                const loader = this.scene.get('Loader') as Loader;
+                loader.setText("Submitting Proof");
+                await this.api!.register_new_player();
+                loader.setText("Waiting on chain update");
+                this.events.on('stateChange', () => {
+                    this.scene.resume().stop('Loader');
+                    console.log('Registered new player');
+                });
             }));
         }
     }

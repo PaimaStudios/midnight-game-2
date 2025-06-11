@@ -9,6 +9,7 @@ import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget } from "../ability";
 import { combat_round_logic } from "../battle/logic";
+import { Loader } from "./loader";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.8;
 const abilityIdleY = () => GAME_HEIGHT * 0.9;
@@ -17,12 +18,12 @@ export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
     battle: BattleConfig;
-    state: Game2DerivedState | undefined;
+    state: Game2DerivedState;
     player: Actor | undefined;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
 
-    constructor(api: DeployedGame2API, battle: BattleConfig) {
+    constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
 
         this.api = api;
@@ -30,6 +31,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.enemies = [];
         this.abilityIcons = [];
+        this.state = state;
     }
 
     create() {
@@ -40,99 +42,117 @@ export class ActiveBattle extends Phaser.Scene {
         }
 
         // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.matchStr(this.battle), 10, async () => {
+        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.getAttackButtonString(this.battle), 10, async () => {
             button.visible = false;
             const id = pureCircuits.derive_battle_id(this.battle);
             // TODO: handle if state change triggerd by network before UI finished resolving?
             // or should we more distinctly separate proving and sending?
             // we will need that for combining multiple rounds if we get proof composition in time
-            const [circuit, ui] = await Promise.all([
-                // prove and submit circuit
-                this.api.combat_round(id),
-                // run the same logic simultaneously and trigger UI callbacks
-                combat_round_logic(id, this.state!, {
-                    onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
-                        this.enemies[enemy].addBlock(amount);
-                        //console.log(`enemy [${amount}] blocked for ${}`);
-                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
-                    }),
-                    onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                        this.player?.damage(amount);
-                        this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
-                    }),
-                    onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => new Promise((resolve) => {
-                        switch (effectType) {
-                            case EFFECT_TYPE.attack_fire:
-                            case EFFECT_TYPE.attack_ice:
-                            case EFFECT_TYPE.attack_phys:
-                                //console.log(`enemy ${target} took ${effect.amount} damage`);
-                                this.enemies[target].damage(amount);
-                                break;
-                            case EFFECT_TYPE.block:
-                                this.player?.addBlock(amount);
-                                break;
-                            case EFFECT_TYPE.generate:
-                                // TODO
-                                break;
-                        }
-                        this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amount, resolve));
-                    }),
-                    onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
-                        this.tweens.add({
-                            targets: this.abilityIcons,
-                            alpha: 1,
-                            duration: 500,
-                            onComplete: () => {
-                                resolve();
-                            },
-                        });
-                    }),
-                    onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                        const abilityIcons = this.abilityIcons[abilityIndex]
-                        this.tweens.add({
-                            targets: abilityIcons,
-                            y: abilityInUseY(),
-                            delay: 150,
-                            duration: 250,
-                            onComplete: () => {
-                                this.tweens.add({
-                                    targets: energy != undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
-                                    scale: 1.5,
-                                    yoyo: true,
-                                    delay: 100,
-                                    duration: 200,
-                                    onComplete: () => resolve(),
-                                });
-                            },
-                        });
-                    }),
-                    afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
-                        this.tweens.add({
-                            targets: this.abilityIcons[abilityIndex],
-                            y: abilityIdleY(),
-                            delay: 150,
-                            duration: 250,
-                            onComplete: () => {
-                                resolve();
-                            },
-                        });
-                    }),
-                    onEnergyTrigger: (color: number) => new Promise((resolve) => {
-                        const energyFlash = this.add.image(playerX(), playerY(), `energy_flash_${color}`).setAlpha(0);
-                        this.tweens.add({
-                            targets: energyFlash,
-                            alpha: 1,
-                            delay: 500,
-                            duration: 250,
-                            onComplete: () => {
-                                energyFlash.destroy();
-                                resolve();
-                            },
-                        });
-                    }),
+            let apiDone = false;
+            let loaderStarted = false;
+            
+            const apiPromise = this.api.combat_round(id).then(result => {
+                apiDone = true;
+                if (loaderStarted) {
+                    this.scene.resume().stop('Loader');
+                }
+                return result;
+            });
+            
+            const uiPromise = combat_round_logic(id, this.state!, {
+                onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
+                    this.enemies[enemy].addBlock(amount);
+                    this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
-            ]);
+                onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                    this.player?.damage(amount);
+                    this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                }),
+                onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => new Promise((resolve) => {
+                    switch (effectType) {
+                        case EFFECT_TYPE.attack_fire:
+                        case EFFECT_TYPE.attack_ice:
+                        case EFFECT_TYPE.attack_phys:
+                            this.enemies[target].damage(amount);
+                            break;
+                        case EFFECT_TYPE.block:
+                            this.player?.addBlock(amount);
+                            break;
+                        case EFFECT_TYPE.generate:
+                            // TODO
+                            break;
+                    }
+                    this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amount, resolve));
+                }),
+                onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
+                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                    this.tweens.add({
+                        targets: this.abilityIcons,
+                        alpha: 1,
+                        duration: 500,
+                        onComplete: () => {
+                            resolve();
+                        },
+                    });
+                }),
+                onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
+                    const abilityIcons = this.abilityIcons[abilityIndex];
+                    this.tweens.add({
+                        targets: abilityIcons,
+                        y: abilityInUseY(),
+                        delay: 150,
+                        duration: 250,
+                        onComplete: () => {
+                            this.tweens.add({
+                                targets: energy !== undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
+                                scale: 1.5,
+                                yoyo: true,
+                                delay: 100,
+                                duration: 200,
+                                onComplete: () => resolve(),
+                            });
+                        },
+                    });
+                }),
+                afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
+                    this.tweens.add({
+                        targets: this.abilityIcons[abilityIndex],
+                        y: abilityIdleY(),
+                        delay: 150,
+                        duration: 250,
+                        onComplete: () => {
+                            resolve();
+                        },
+                    });
+                }),
+                onEnergyTrigger: (color: number) => new Promise((resolve) => {
+                    const energyFlash = this.add.image(playerX(), playerY(), `energy_flash_${color}`).setAlpha(0);
+                    this.tweens.add({
+                        targets: energyFlash,
+                        alpha: 1,
+                        delay: 500,
+                        duration: 250,
+                        onComplete: () => {
+                            energyFlash.destroy();
+                            resolve();
+                        },
+                    });
+                }),
+            }).then(result => {
+                if (!apiDone) {
+                    // Display the loading scene if the API call is not done yet
+                    loaderStarted = true;
+                    
+                    this.scene.pause().launch('Loader');
+                    const loader = this.scene.get('Loader') as Loader;
+                    loader.setText("Waiting on chain update");
+                }
+                return result;
+            });
+
+            // Wait for both API and UI to finish
+            const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
+
             this.player?.setBlock(0);
             for (const enemy of this.enemies) {
                 enemy.setBlock(0);
@@ -162,16 +182,16 @@ export class ActiveBattle extends Phaser.Scene {
                     this.scene.start('TestMenu');
                 });
             } else {
-                button.text.setText(this.matchStr(this.battle));
+                button.text.setText(this.getAttackButtonString(this.battle));
             }
         });
     }
 
-    private matchStr(battle: BattleConfig): string {
+    private getAttackButtonString(battle: BattleConfig): string {
         if (this.state != undefined) {
-            console.log(`trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
+            console.log(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
         } else {
-            console.log(`we dont even have the state yet`);
+            console.log(`We dont have the state yet`);
             return 'Click to attack';
         }
         const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
@@ -183,12 +203,13 @@ export class ActiveBattle extends Phaser.Scene {
 
         this.state = structuredClone(state);//Object.assign({}, state);
     }
+
 }
 
-function enemyX(config: BattleConfig, enemyIndex: number): number {
+
+const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-
 const enemyY = () => GAME_HEIGHT * 0.2;
 
 const playerX = () => GAME_WIDTH / 2;

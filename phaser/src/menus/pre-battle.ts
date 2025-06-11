@@ -8,14 +8,18 @@ import { Button } from "./button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { ActiveBattle } from "./battle";
+import { Subscription } from "rxjs";
+import { Loader } from "./loader";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
     state: Game2DerivedState;
     loadout: PlayerLoadout;
+    subscription: Subscription;
     available: AbilityWidget[];
     chosen: boolean[];
     isQuest: boolean;
+    loader: Loader | undefined;
 
     constructor(api: DeployedGame2API, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
@@ -27,6 +31,12 @@ export class StartBattleMenu extends Phaser.Scene {
         this.chosen = [];
         this.isQuest = isQuest;
         this.state = state;
+        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+    }
+
+    onStateChange(state: Game2DerivedState) {
+        // this.state = state;
+        this.events.emit('stateChange', state);
     }
 
     create() {
@@ -54,7 +64,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.chosen[i] = !this.chosen[i];
             });
         }
-        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, () => {
+        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, async () => {
             this.loadout.abilities = [];
             for (let i = 0; i < this.chosen.length; ++i) {
                 if (this.chosen[i]) {
@@ -70,10 +80,22 @@ export class StartBattleMenu extends Phaser.Scene {
                         this.scene.start('TestMenu');
                     });
                 } else {
-                    this.api.start_new_battle(this.loadout).then((battle) => {
-                        this.scene.remove('ActiveBattle');
-                        this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle));
-                        this.scene.start('ActiveBattle');
+                    // Start a new battle
+                    console.log(`starting new battle...`);
+                    // Launch the loader scene to display during the API call
+                    this.scene.pause().launch('Loader');
+                    this.loader = this.scene.get('Loader') as Loader;
+                    this.loader.setText("Submitting Proof");
+                    await this.api.start_new_battle(this.loadout).then((battle) => {
+                        if (this.loader) {
+                            this.loader.setText("Waiting on chain update");
+                        }
+                        this.events.on('stateChange', () => {
+                            this.scene.stop('Loader');
+                            this.scene.remove('ActiveBattloaderle');
+                            this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, this.state));
+                            this.scene.start('ActiveBattle');
+                        });
                     });
                 }
             } else {

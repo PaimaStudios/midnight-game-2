@@ -6,12 +6,12 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
+import { BattleConfig, BattleRewards, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 
-// How many milliseconds to wait before responding to API requests and between state refreshes.
-const MOCK_DELAY = 5000;
+
+const MOCK_DELAY = 500;  // How many milliseconds to wait before responding to API requests and between state refreshes.
 export const MOCK_PLAYER_ID = BigInt(0);
 
 export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
@@ -94,35 +94,37 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
-        console.log(` round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
-        return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
-            const battleState = this.mockState.activeBattleStates.get(battle_id)!;
-            // shift deck current abilities
-            const DECK_SIZE = 7;
-            const OFFSETS = [1, 2, 3];
-            for (let i = 0; i < battleState.deck_indices.length; ++i) {
-                battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + OFFSETS[i]) % DECK_SIZE);
-                for (let j = 0; j < i; ++j) {
-                    if (battleState.deck_indices[i] == battleState.deck_indices[j]) {
-                        battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
-                    }
-                    for ( let k = 0; k < j; ++k) {
-                        if (battleState.deck_indices[i] == battleState.deck_indices[k]) {
+    public async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
+        console.log(`round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
+        return await this.response(async () => {
+            return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
+                const battleState = this.mockState.activeBattleStates.get(battle_id)!;
+                // shift deck current abilities
+                const DECK_SIZE = 7;
+                const OFFSETS = [1, 2, 3];
+                for (let i = 0; i < battleState.deck_indices.length; ++i) {
+                    battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + OFFSETS[i]) % DECK_SIZE);
+                    for (let j = 0; j < i; ++j) {
+                        if (battleState.deck_indices[i] == battleState.deck_indices[j]) {
                             battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                        }
+                        for ( let k = 0; k < j; ++k) {
+                            if (battleState.deck_indices[i] == battleState.deck_indices[k]) {
+                                battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                            }
                         }
                     }
                 }
-            }
-            if (ret != undefined) {
-                this.addRewards(ret);
-                this.mockState.activeBattleConfigs.delete(battle_id);
-                this.mockState.activeBattleStates.delete(battle_id);
-            }
-            setTimeout(() => {
-                this.subscriber?.next(this.mockState);
-            }, MOCK_DELAY);
-            return ret;
+                if (ret != undefined) {
+                    this.addRewards(ret);
+                    this.mockState.activeBattleConfigs.delete(battle_id);
+                    this.mockState.activeBattleStates.delete(battle_id);
+                }
+                setTimeout(() => {
+                    this.subscriber?.next(this.mockState);
+                }, MOCK_DELAY);
+                return ret;
+            });
         });
     }
 

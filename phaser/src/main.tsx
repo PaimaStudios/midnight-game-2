@@ -3,11 +3,7 @@
  */
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import '@midnight-ntwrk/dapp-connector-api';
-import { type Game2DerivedState, type DeployedGame2API, Game2API } from 'game2-api';
 import './globals';
-import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import { LedgerState } from '@midnight-ntwrk/ledger';
-import { BrowserDeploymentManager } from './wallet';
 import * as pino from 'pino';
 
 // TODO: get this properly? it's undefined if i uncomment this
@@ -39,29 +35,19 @@ console.log(`VITE: [\n${JSON.stringify(import.meta.env)}\n]`);
 import 'phaser';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin'
 import BBCodeTextPlugin from 'phaser3-rex-plugins/plugins/bbcodetext-plugin.js';
-//import KeyboardPlugin from 'phaser3-';
-import RoundRectanglePlugin from 'phaser3-rex-plugins/plugins/roundrectangle-plugin.js';
-import { extend } from 'fp-ts/lib/pipeable';
-import { Subscriber, Observable, Subscription } from 'rxjs';
-
-import { Button } from './menus/button';
-import { MOCK_PLAYER_ID, MockGame2API } from './mockapi';
-import { Ability, BattleConfig, BattleRewards, Effect, EFFECT_TYPE, PlayerLoadout, pureCircuits, QuestConfig } from 'game2-contract';
-import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext';
-import { init } from 'fp-ts/lib/ReadonlyNonEmptyArray';
-import { combat_round_logic } from './battle/logic';
 import { TestMenu } from './menus/main';
+import { Loader } from './menus/loader';
 
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
 
+
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
-    // this font is really small for some reason, so double it
     return {
         ...extra,
-        fontSize: fontSize * 2,
+        fontSize: fontSize * 2,  // this font is really small for some reason, so double it
         fontFamily: 'yana',
-        color: '#f5f5ed'//'white'
+        color: '#f5f5ed'  // 'white'
     };
 }
 
@@ -124,7 +110,10 @@ const config = {
     type: Phaser.AUTO,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    scene: [TestMenu],
+    scene: [
+        TestMenu,
+        Loader,
+    ],
     render: {
         pixelArt: true,
     },
