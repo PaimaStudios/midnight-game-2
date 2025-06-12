@@ -3,6 +3,7 @@
  */
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
+import Colors from '../constants/colors';
 
 export class Button extends Phaser.GameObjects.Container {
     bg: Phaser.GameObjects.NineSlice;
@@ -43,7 +44,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.on('pointerover', (pointer: Phaser.Input.Pointer, localX: number, localY: number) => {
             this.bg.visible = false;
             this.bgOver.visible = true;
-            this.text.setColor('#bbbbb3');
+            this.text.setColor(Colors.Peach);
             if (this.helpText != undefined) {
                 if (this.helpText.visible == false) {
                     this.helpText.visible = true;
@@ -59,7 +60,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.on('pointerout', () => {
             this.bg.visible = true;
             this.bgOver.visible = false;
-            this.text.setColor('#f5f5ed');
+            this.text.setColor(Colors.White);
             if (this.helpText != undefined) {
                 this.helpText.visible = false;
                 this.helpText.alpha = 0;
