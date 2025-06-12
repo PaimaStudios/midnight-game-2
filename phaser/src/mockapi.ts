@@ -48,6 +48,8 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public register_new_player(): Promise<void> {
+        // if (Math.random() > 0.5) return Promise.reject(new Error('testing error'));
+        return Promise.reject(new Error('testing error'));
         return this.response(() => {
             this.mockState.player = {
                 gold: BigInt(0),
