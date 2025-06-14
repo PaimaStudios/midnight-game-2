@@ -45,7 +45,7 @@ const gen_energy_player_block = () => abilities.map((a) => colors.map((c) => `((
 
 // enemy
 
-const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `battle.stats[${enemy}].attack`).join(' + ')}) as Uint<32>;`;
+const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `(battle.stats[${enemy}].attack * ((new_enemy_dmg_${enemy} > 0) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
 
 const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.stats[${enemy}].block as Uint<32>;`).join('\n    ');
 
