@@ -4,6 +4,11 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "./main";
 
+/// Adjusts contract-level damage numbers to a base/average amount
+export function contractDamageToBaseUI(amount: number | bigint): number {
+    return Number(amount) * 5;
+}
+
 function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect, xOffset: number, yOffset: number): Phaser.GameObjects.GameObject[] {
     console.log(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
@@ -13,15 +18,15 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     switch (effect.effect_type) {
         case EFFECT_TYPE.attack_fire:
             uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'fire'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_ice:
             uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'ice'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_phys:
             uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'physical'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.block:
             uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'block'));

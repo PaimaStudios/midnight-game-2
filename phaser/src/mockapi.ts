@@ -170,22 +170,37 @@ export class MockGame2API implements DeployedGame2API {
         const randomEffect = (factor: number, canBeGenerate: boolean) => {
             const effectType = Phaser.Math.Between(0, canBeGenerate ? 4 : 3) as EFFECT_TYPE;
             const aoe = effectType != EFFECT_TYPE.block && effectType != EFFECT_TYPE.generate ? Math.random() > 0.7 : false;
+            let amount = -1;
+            switch (effectType) {
+                case EFFECT_TYPE.attack_fire:
+                case EFFECT_TYPE.attack_ice:
+                case EFFECT_TYPE.attack_phys:
+                    amount = Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
+                    break;
+                case EFFECT_TYPE.block:
+                    amount = 5 * Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
+                    break;
+                case EFFECT_TYPE.generate:
+                    amount = Phaser.Math.Between(0, 2);
+                    break;
+            }
             return {
                 is_some: true,
                 value: {
                     effect_type: effectType,
-                    amount: BigInt(effectType == EFFECT_TYPE.generate ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty))),
+                    amount: BigInt(amount),
                     is_aoe: aoe
                 }
             };
         };
         const triggers = [nullEffect, nullEffect, nullEffect];
         const color = Phaser.Math.Between(0, 5);
+        const baseEffect = randomEffect(color < triggers.length ? 1 : 2, true);
         if (color < triggers.length) {
             // triggers[0] = randomEffect(2);
             // triggers[1] = randomEffect(2);
             // triggers[2] = randomEffect(2);
-            if (Math.random() > 0.7) {
+            if (Math.random() > 0.7 || (baseEffect.value.effect_type == EFFECT_TYPE.generate && baseEffect.value.amount == BigInt(color))) {
                 for (let i = 0; i < 3; ++i) {
                     if (i != color) {
                         triggers[i] = randomEffect(1, false);
@@ -196,7 +211,7 @@ export class MockGame2API implements DeployedGame2API {
             }
         }
         const ability = {
-            effect: randomEffect(color < triggers.length ? 1 : 2, true),
+            effect: baseEffect,
             on_energy: triggers,
         };
         const abilityId = pureCircuits.derive_ability_id(ability);
