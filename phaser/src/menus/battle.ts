@@ -135,7 +135,7 @@ export class ActiveBattle extends Phaser.Scene {
                     });
                 }),
                 onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                    const abilityIcons = this.abilityIcons[abilityIndex]
+                    const abilityIcons = this.abilityIcons[abilityIndex];
                     this.tweens.add({
                         targets: abilityIcons,
                         y: abilityInUseY(),
