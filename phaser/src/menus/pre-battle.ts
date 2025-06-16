@@ -92,7 +92,7 @@ export class StartBattleMenu extends Phaser.Scene {
                         }
                         this.events.on('stateChange', () => {
                             this.scene.stop('Loader');
-                            this.scene.remove('ActiveBattloaderle');
+                            this.scene.remove('ActiveBattle');
                             this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, this.state));
                             this.scene.start('ActiveBattle');
                         });

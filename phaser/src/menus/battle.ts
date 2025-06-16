@@ -50,6 +50,8 @@ export class ActiveBattle extends Phaser.Scene {
             // we will need that for combining multiple rounds if we get proof composition in time
             let apiDone = false;
             let loaderStarted = false;
+
+            const clonedState = structuredClone(this.state!);
             
             const apiPromise = this.api.combat_round(id).then(result => {
                 apiDone = true;
@@ -59,30 +61,67 @@ export class ActiveBattle extends Phaser.Scene {
                 return result;
             });
             
-            const uiPromise = combat_round_logic(id, this.state!, {
+            const uiPromise = combat_round_logic(id, clonedState, {
                 onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
                     this.enemies[enemy].addBlock(amount);
+                    //console.log(`enemy [${amount}] blocked for ${}`);
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
                 onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    this.player?.damage(amount);
-                    this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                    const fist = this.add.image(enemyX(this.battle, enemy), enemyY(), 'physical');
+                    this.tweens.add({
+                        targets: fist,
+                        x: playerX(),
+                        y: playerY(),
+                        duration: 100,
+                        onComplete: () => {
+                            fist.destroy();
+                            this.player?.damage(amount);
+                            this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                        }
+                    });
                 }),
-                onPlayerEffect: (target: number, effectType: EFFECT_TYPE, amount: number) => new Promise((resolve) => {
+                onPlayerEffect: (targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
+                    console.log(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
+                    let damageType = undefined;
                     switch (effectType) {
                         case EFFECT_TYPE.attack_fire:
+                            damageType = 'fire';
+                            break;
                         case EFFECT_TYPE.attack_ice:
+                            damageType = 'ice';
+                            break;
                         case EFFECT_TYPE.attack_phys:
-                            this.enemies[target].damage(amount);
+                            damageType = 'physical';
                             break;
                         case EFFECT_TYPE.block:
-                            this.player?.addBlock(amount);
+                            this.player?.addBlock(amounts[0]);
                             break;
                         case EFFECT_TYPE.generate:
                             // TODO
                             break;
                     }
-                    this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amount, resolve));
+                    if (damageType != undefined) {
+                        for (let i = 0; i < targets.length; ++i) {
+                            const target = targets[i];
+                            const amount = amounts[i];
+                            const bullet = this.add.image(playerX(), playerY(), damageType);
+                            this.tweens.add({
+                                targets: bullet,
+                                x: enemyX(this.battle, target),
+                                y: enemyY(),
+                                duration: 150,
+                                onComplete: () => {
+                                    //console.log(`enemy ${target} took ${effect.amount} damage`);
+                                    this.enemies[target].damage(amount);
+                                    this.add.existing(new BattleEffect(this, bullet.x, bullet.y - 32, effectType, amount, resolve));
+                                    bullet.destroy();
+                                },
+                            });
+                        }
+                    } else {
+                        this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amounts[0], resolve));
+                    }
                 }),
                 onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
                     this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
@@ -104,7 +143,7 @@ export class ActiveBattle extends Phaser.Scene {
                         duration: 250,
                         onComplete: () => {
                             this.tweens.add({
-                                targets: energy !== undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
+                                targets: energy != undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
                                 scale: 1.5,
                                 yoyo: true,
                                 delay: 100,
