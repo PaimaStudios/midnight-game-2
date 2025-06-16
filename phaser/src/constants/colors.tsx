@@ -1,21 +1,26 @@
-// Palette: Shiny 16 https://lospec.com/palette-list/shiny-16
+// Palette: NA16 https://lospec.com/palette-list/na16
+// With additional colors
 enum Colors {
-    Black = '#1f1723',
-    Gray = '#8c7f90',
-    LightGray = '#bcb0b3',
-    White = '#e2e2e2',
-    Purple = '#3c2f52',
-    Orange = '#d86830',
-    LightOrange = '#f09548',
-    Red = '#b22741',
-    LightRed = '#f5464c',
-    Yellow = '#efd081',
-    Peach = '#f79c88',
-    Blue = '#4656a5',
-    LightBlue = '#4995f3',
-    Cyan = '#72deeb',
-    Green = '#3ec54b',
-    Lime = '#b4e656',
+    // NA16 Palette Colors
+    SoftBlue = '#8c8fae',
+    Purple = '#584563',
+    DeepPlum = '#3e2137',
+    Brown = '#9a6348',
+    Tan = '#d79b7d',
+    Yellow = '#f5edba',
+    Olive = '#c0c741',
+    Green = '#647d34',
+    Orange = '#e4943a',
+    Red = '#9d303b',
+    Pink = '#d26471',
+    Violet = '#70377f',
+    Turquoise = '#7ec4c1',
+    Blue = '#34859d',
+    DarkGreen = '#17434b',
+    Black = '#1f0e1c',
+
+    // Additional non-NA16 colors
+    White = '#f0f0f0',
 }
 
 export default Colors;

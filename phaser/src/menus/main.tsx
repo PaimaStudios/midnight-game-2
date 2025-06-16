@@ -80,7 +80,7 @@ export class TestMenu extends Phaser.Scene {
             this.initApi(new MockGame2API());
         }));
         this.goldText = this.add.text(32, 32, '', fontStyle(12));
-        this.errorText = this.add.text(82, 64, '', fontStyle(12, { color: Colors.LightRed }));
+        this.errorText = this.add.text(82, 64, '', fontStyle(12, { color: Colors.Red }));
     }
 
     private initApi(api: DeployedGame2API) {
@@ -139,13 +139,13 @@ export class TestMenu extends Phaser.Scene {
                     loader.setText("Waiting on chain update");
                     this.events.on('stateChange', () => {
                         console.log('Registered new player');
+                        this.scene.resume().stop('Loader');
                     });
                 }).catch((e) => {
                     this.errorText?.setText('Error Registering Player. Try again...');
                     console.error(`Error registering new player: ${e}`);
-                }).finally(() => {
                     this.scene.resume().stop('Loader');
-                })
+                });
             }));
         }
     }

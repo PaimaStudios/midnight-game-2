@@ -44,7 +44,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.on('pointerover', (pointer: Phaser.Input.Pointer, localX: number, localY: number) => {
             this.bg.visible = false;
             this.bgOver.visible = true;
-            this.text.setColor(Colors.Peach);
+            this.text.setColor(Colors.Tan);
             if (this.helpText != undefined) {
                 if (this.helpText.visible == false) {
                     this.helpText.visible = true;
