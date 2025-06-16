@@ -37,6 +37,7 @@ import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin'
 import BBCodeTextPlugin from 'phaser3-rex-plugins/plugins/bbcodetext-plugin.js';
 import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
+import Colors from './constants/colors';
 
 export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 360;
@@ -44,10 +45,10 @@ export const GAME_HEIGHT = 360;
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
-        ...extra,
         fontSize: fontSize * 2,  // this font is really small for some reason, so double it
         fontFamily: 'yana',
-        color: '#f5f5ed'  // 'white'
+        color: Colors.White,
+        ...extra,  // Overwrite with any extra styles passed in
     };
 }
 

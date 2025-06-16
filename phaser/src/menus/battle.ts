@@ -35,6 +35,7 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     create() {
+        const loader = this.scene.get('Loader') as Loader;
         this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
@@ -43,23 +44,31 @@ export class ActiveBattle extends Phaser.Scene {
 
         // attack button
         const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.getAttackButtonString(this.battle), 10, async () => {
-            button.visible = false;
             const id = pureCircuits.derive_battle_id(this.battle);
-            // TODO: handle if state change triggerd by network before UI finished resolving?
-            // or should we more distinctly separate proving and sending?
-            // we will need that for combining multiple rounds if we get proof composition in time
+            const clonedState = structuredClone(this.state!);
             let apiDone = false;
             let loaderStarted = false;
 
-            const clonedState = structuredClone(this.state!);
+            button.visible = false;
             
-            const apiPromise = this.api.combat_round(id).then(result => {
-                apiDone = true;
-                if (loaderStarted) {
-                    this.scene.resume().stop('Loader');
+            const retryCombatRound = async (): Promise<any> => {
+                try {
+                    const result = await this.api.combat_round(id);
+                    apiDone = true;
+                    if (loaderStarted) {
+                        this.scene.resume().stop('Loader');
+                    }
+                    return result;
+                } catch (err) {
+                    if (loaderStarted) {
+                        loader.setText("Error connecting to network.. Retrying");
+                    }
+                    console.error(`Network Error during combat_round: ${err}`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return retryCombatRound();
                 }
-                return result;
-            });
+            };
+            const apiPromise = retryCombatRound();
             
             const uiPromise = combat_round_logic(id, clonedState, {
                 onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
@@ -183,7 +192,6 @@ export class ActiveBattle extends Phaser.Scene {
                     loaderStarted = true;
                     
                     this.scene.pause().launch('Loader');
-                    const loader = this.scene.get('Loader') as Loader;
                     loader.setText("Waiting on chain update");
                 }
                 return result;

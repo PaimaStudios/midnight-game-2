@@ -15,6 +15,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
+import Colors from "../constants/colors";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -22,6 +23,7 @@ export class TestMenu extends Phaser.Scene {
     subscription: Subscription | undefined;
     state: Game2DerivedState | undefined;
     goldText: Phaser.GameObjects.Text | undefined;
+    errorText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
 
@@ -78,6 +80,7 @@ export class TestMenu extends Phaser.Scene {
             this.initApi(new MockGame2API());
         }));
         this.goldText = this.add.text(32, 32, '', fontStyle(12));
+        this.errorText = this.add.text(82, 64, '', fontStyle(12, { color: Colors.Red }));
     }
 
     private initApi(api: DeployedGame2API) {
@@ -125,17 +128,23 @@ export class TestMenu extends Phaser.Scene {
             this.goldText?.setText(`Gold: ${state.player.gold}`);
         } else {
             // We haven't registered a player yet, so show the register button
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, async () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, () => {
                 console.log('Registering new player...');
                 // Launch the loader scene to display during the API call
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
                 loader.setText("Submitting Proof");
-                await this.api!.register_new_player();
-                loader.setText("Waiting on chain update");
-                this.events.on('stateChange', () => {
+                this.api!.register_new_player().then(() => {
+                    this.errorText?.setText('');
+                    loader.setText("Waiting on chain update");
+                    this.events.on('stateChange', () => {
+                        console.log('Registered new player');
+                        this.scene.resume().stop('Loader');
+                    });
+                }).catch((e) => {
+                    this.errorText?.setText('Error Registering Player. Try again...');
+                    console.error(`Error registering new player: ${e}`);
                     this.scene.resume().stop('Loader');
-                    console.log('Registered new player');
                 });
             }));
         }
