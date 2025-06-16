@@ -95,8 +95,6 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
-        // if (Math.random() > 0.15) return Promise.reject(new Error('testing error'));
-        // return Promise.reject(new Error('testing error'));
         console.log(`round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
         return await this.response(async () => {
             return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {

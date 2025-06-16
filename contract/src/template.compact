@@ -81,7 +81,8 @@ pure circuit effect_score(effect: Maybe<Effect>): Uint<32> {
     const aoe = (1 + (effect.value.is_aoe as Uint<1>));
     const gen = ((effect.value.effect_type == EFFECT_TYPE.generate) as Uint<1>) * 3;
     const non_gen = ((effect.value.effect_type != EFFECT_TYPE.generate) as Uint<1>) * effect.value.amount;
-    return ((effect.is_some as Uint<1>) * ((aoe * non_gen) + gen)) as Uint<32>;
+    const attack_compensate = (1 + 4 * ((effect.value.effect_type == EFFECT_TYPE.attack_phys || effect.value.effect_type == EFFECT_TYPE.attack_ice || effect.value.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>));
+    return ((effect.is_some as Uint<1>) * ((aoe * non_gen * attack_compensate) + gen)) as Uint<32>;
 }
 
 // starting 4 abilities
@@ -100,7 +101,7 @@ export pure circuit ability_base_block(): Ability {
     return Ability {
         some<Effect>(Effect {
             EFFECT_TYPE.block,
-            2,
+            10,
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()]
@@ -439,12 +440,19 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     // See generate.js for an explanation of the code generation
 
     // CODE-GENERATION START
+    
+    INSERT_ENEMY_BLOCK_CODE_HERE
 
+    
     INSERT_PLAYER_BLOCK_CODE_HERE
 
     INSERT_PLAYER_DAMAGE_CODE_HERE
 
-    INSERT_ENEMY_BLOCK_CODE_HERE
+
+    const new_enemy_dmg_0 = enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0;
+    const new_enemy_dmg_1 = enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0;
+    const new_enemy_dmg_2 = enemy_block_2 < player_damage_2 ? (old_state.enemy_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0;
+
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
 
@@ -455,9 +463,9 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     return BattleState {
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
         player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
-        enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0,
-        enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0,
-        enemy_block_2 < player_damage_2 ? (old_state.enemy_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0
+        new_enemy_dmg_0,
+        new_enemy_dmg_1,
+        new_enemy_dmg_2
     };
 }
 
