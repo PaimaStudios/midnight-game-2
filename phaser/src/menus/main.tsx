@@ -16,6 +16,7 @@ import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import Colors from "../constants/colors";
+import { Store } from "./store";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -112,6 +113,11 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
                 this.scene.start('StartBattleMenu');
+            }));
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.3, 128, 32, 'Store', 14, () => {
+                this.scene.remove('Store');
+                this.scene.add('Store', new Store(this.api!, state));
+                this.scene.start('Store');
             }));
 
             let offset = 0;
