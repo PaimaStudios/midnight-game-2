@@ -43,7 +43,7 @@ export class ActiveBattle extends Phaser.Scene {
         }
 
         // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.getAttackButtonString(this.battle), 10, async () => {
+        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.90, 320, 96, this.getAttackButtonString(this.battle), 10, async () => {
             const id = pureCircuits.derive_battle_id(this.battle);
             const clonedState = structuredClone(this.state!);
             let apiDone = false;
@@ -275,18 +275,18 @@ class Actor extends Phaser.GameObjects.Container {
 
         this.hp = hp;
         this.maxHp = maxHp;
-        this.hpText = scene.add.text(0, 32, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.hpText = scene.add.text(0, 64, '', fontStyle(12)).setOrigin(0.5, 0.5);
         this.block = 0;
-        this.blockText = scene.add.text(0, -48, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.blockText = scene.add.text(0, -96, '', fontStyle(12)).setOrigin(0.5, 0.5);
 
         this.add(this.hpText);
         this.add(this.blockText);
 
         this.setHp(hp);
 
-        this.add(scene.add.image(0, 0, texture));
+        this.add(scene.add.image(0, 0, texture).setScale(2.0));
 
-        this.setSize(32, 32);
+        this.setSize(64, 64);
 
         scene.add.existing(this);
     }

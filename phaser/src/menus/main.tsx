@@ -68,14 +68,14 @@ export class TestMenu extends Phaser.Scene {
     create() {
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
-        this.buttons.push(new Button(this, 16, 16, 64, 24, 'Deploy', 10, () => {
+        this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
             console.log('~deploying~');
             this.deployProvider.create().then((api) => {
                 console.log('==========GOT API========');
                 this.initApi(api);
             }).catch((e) => console.error(`Error connecting: ${e}`));
         }));
-        this.buttons.push(new Button(this, 96, 16, 64, 24, 'Mock Deploy', 10, () => {
+        this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
             console.log('==========MOCK API========');
             this.initApi(new MockGame2API());
         }));
@@ -103,12 +103,12 @@ export class TestMenu extends Phaser.Scene {
 
         if (state.player !== undefined) {
             // We've registered a player, so show the quest and battle buttons
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'New Quest', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 90, 'New Quest', 14, () => {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
                 this.scene.start('StartBattleMenu');
             }));
-            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 128 + 16, GAME_HEIGHT * 0.1, 128, 32, 'New Battle', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 256 + 16, GAME_HEIGHT * 0.1, 256, 90, 'New Battle', 14, () => {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
                 this.scene.start('StartBattleMenu');
@@ -128,7 +128,7 @@ export class TestMenu extends Phaser.Scene {
             this.goldText?.setText(`Gold: ${state.player.gold}`);
         } else {
             // We haven't registered a player yet, so show the register button
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 128, 32, 'Register New Player', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
                 console.log('Registering new player...');
                 // Launch the loader scene to display during the API call
                 this.scene.pause().launch('Loader');

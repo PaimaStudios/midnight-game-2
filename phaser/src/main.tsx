@@ -39,17 +39,16 @@ import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
 import Colors from './constants/colors';
 
-export const GAME_WIDTH = 480/2;
-export const GAME_HEIGHT = 360/2;
+export const GAME_WIDTH = 960;
+export const GAME_HEIGHT = 720;
 
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
-        ...extra,
-        fontSize: fontSize,  // this font is really small for some reason, so double it
+        ...extra,  // Overwrite with any extra styles passed in
+        fontSize: fontSize*4,  // The font renders poorly on some systems if not scaled up
         fontFamily: 'yana',
         color: Colors.White,
-        ...extra,  // Overwrite with any extra styles passed in
     };
 }
 
@@ -112,8 +111,6 @@ const config = {
     type: Phaser.AUTO,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    resolution: window.devicePixelRatio,
-    roundPixels: true,
     scene: [
         TestMenu,
         Loader,
