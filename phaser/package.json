@@ -22,7 +22,7 @@
     "buffer": "^6.0.3",
     "game2-api": "workspace:*",
     "game2-contract": "workspace:*",
-    "phaser": "3.87.0",
+    "phaser": "3.90.0",
     "phaser3-rex-plugins": "1.80.16"
   },
   "devDependencies": {

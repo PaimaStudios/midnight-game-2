@@ -39,16 +39,16 @@ import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
 import Colors from './constants/colors';
 
-export const GAME_WIDTH = 480;
-export const GAME_HEIGHT = 360;
+export const GAME_WIDTH = 960;
+export const GAME_HEIGHT = 720;
 
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
-        fontSize: fontSize * 2,  // this font is really small for some reason, so double it
+        ...extra,  // Overwrite with any extra styles passed in
+        fontSize: fontSize*4,  // The font renders poorly on some systems if not scaled up
         fontFamily: 'yana',
         color: Colors.White,
-        ...extra,  // Overwrite with any extra styles passed in
     };
 }
 
