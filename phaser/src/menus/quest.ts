@@ -13,6 +13,7 @@ import { TestMenu } from "./main";
 import { Button } from "./button";
 import { AbilityWidget } from "../ability";
 import { Loader } from "./loader";
+import Colors from "../constants/colors";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -33,14 +34,23 @@ export class QuestMenu extends Phaser.Scene {
         const loader = this.scene.get('Loader') as Loader;
         loader.setText("Submitting Proof");
         console.log(`Finalizing quest ${this.questId}`);
-        this.api.finalize_quest(this.questId).then((rewards) => {
-            this.rewards = rewards;
 
-            loader.setText("Waiting on chain update");
-            this.events.on('stateChange', () => {
-                this.scene.resume().stop('Loader');
+        const attemptFinalizeQuest = () => {
+            this.api.finalize_quest(this.questId).then((rewards) => {
+                this.rewards = rewards;
+
+                loader.setText("Waiting on chain update");
+                this.events.on('stateChange', () => {
+                    this.scene.resume().stop('Loader');
+                });
+            }).catch((err) => {
+                loader.setText("Error connecting to network.. Retrying");
+                console.error(`Error Finalizing Quest: ${err}`);
+                setTimeout(attemptFinalizeQuest, 2000); // Retry after 2 seconds
             });
-        });
+        };
+
+        attemptFinalizeQuest();
     }
 
     private onStateChange(state: Game2DerivedState) {
