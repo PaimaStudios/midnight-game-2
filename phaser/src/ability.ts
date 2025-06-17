@@ -17,23 +17,23 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     }
     switch (effect.effect_type) {
         case EFFECT_TYPE.attack_fire:
-            uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'fire'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.image(xOffset + 16, yOffset, 'fire'));
+            uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_ice:
-            uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'ice'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.image(xOffset + 16, yOffset, 'ice'));
+            uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_phys:
-            uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'physical'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.image(xOffset + 16, yOffset, 'physical'));
+            uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.block:
-            uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, 'block'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 3, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.image(xOffset + 16, yOffset, 'block'));
+            uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.generate:
-            uiComponents.push(container.scene.add.image(xOffset + 8, yOffset, `energy_${effect.amount}`));
+            uiComponents.push(container.scene.add.image(xOffset + 16, yOffset, `energy_${effect.amount}`));
             break;
     }
     uiComponents.forEach((comp) => container.add(comp));
@@ -60,9 +60,9 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         }
         for (let i = 0; i < ability.on_energy.length; ++i) {
             if (ability.on_energy[i].is_some) {
-                const energyY = 16 + 24 * i - 32;
-                this.add(scene.add.image(-16, energyY, `energy_${i}`));
-                this.add(scene.add.image(-5, energyY, 'arrow'));
+                const energyY = 24 * i;
+                this.add(scene.add.image(-32, energyY, `energy_${i}`));
+                this.add(scene.add.image(-16, energyY, 'arrow'));
                 this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
             }
         }
