@@ -6,7 +6,7 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { BattleConfig, BattleRewards, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 
@@ -157,6 +157,19 @@ export class MockGame2API implements DeployedGame2API {
                 return reward;
             }
             return undefined;
+        });
+    }
+
+    public async sell_ability(ability: Ability): Promise<void> {
+        return this.response(() => {
+            const id = pureCircuits.derive_ability_id(ability);
+            const oldCount = this.mockState.playerAbilities.get(id)!;
+            if (oldCount > BigInt(1)) {
+                this.mockState.playerAbilities.set(id, oldCount - BigInt(1));
+            } else {
+                this.mockState.playerAbilities.delete(id);
+            }
+            this.mockState.player!.gold += pureCircuits.ability_value(ability);
         });
     }
 

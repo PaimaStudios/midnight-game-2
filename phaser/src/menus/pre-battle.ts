@@ -2,7 +2,7 @@
  * Pre-Battle and Pre-Quest ability selection screen
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget } from "../ability";
 import { Button } from "./button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
@@ -12,6 +12,7 @@ import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
 import Colors from "../constants/colors";
+import { Game } from "phaser";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -45,17 +46,10 @@ export class StartBattleMenu extends Phaser.Scene {
     create() {
         this.errorText = this.add.text(82, 10, '', fontStyle(12, { color: Colors.Red }));
 
-        let abilities = [];
-        console.log(`player abilities: ${this.state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
-        for (const [id, count] of this.state.playerAbilities) {
-            for (let i = 0; i < count; ++i) {
-                abilities.push(id);
-            }
-        }
-        abilities = abilities.sort((a, b) => Number(pureCircuits.ability_score(this.state.allAbilities.get(b)!) - pureCircuits.ability_score(this.state.allAbilities.get(a)!)));
+        const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.75, this.state.allAbilities.get(ability)!);
+            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.75, ability);
             this.available.push(abilityWidget);
             this.chosen.push(false);
             const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.75 - 64, 48, 24, '^', 10, () => {
@@ -112,4 +106,19 @@ export class StartBattleMenu extends Phaser.Scene {
             }
         });
     }
+}
+
+export function sortedAbilitiesById(state: Game2DerivedState): bigint[] {
+    let abilities = [];
+    console.log(`player abilities: ${state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
+    for (const [id, count] of state.playerAbilities) {
+        for (let i = 0; i < count; ++i) {
+            abilities.push(id);
+        }
+    }
+    return abilities.sort((a, b) => Number(pureCircuits.ability_score(state.allAbilities.get(b)!) - pureCircuits.ability_score(state.allAbilities.get(a)!)));
+}
+
+export function sortedAbilities(state: Game2DerivedState): Ability[] {
+    return sortedAbilitiesById(state).map((id) => state.allAbilities.get(id)!);
 }
