@@ -249,7 +249,7 @@ export class ActiveBattle extends Phaser.Scene {
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.2;
+const enemyY = () => GAME_HEIGHT * 0.1;
 
 const playerX = () => GAME_WIDTH / 2;
 const playerY = () => GAME_HEIGHT * 0.6;
@@ -267,7 +267,7 @@ class Actor extends Phaser.GameObjects.Container {
 
         this.hp = hp;
         this.maxHp = maxHp;
-        this.hpText = scene.add.text(0, 16, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.hpText = scene.add.text(0, 32, '', fontStyle(12)).setOrigin(0.5, 0.5);
         this.block = 0;
         this.blockText = scene.add.text(0, -48, '', fontStyle(12)).setOrigin(0.5, 0.5);
 

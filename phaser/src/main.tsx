@@ -38,14 +38,14 @@ import BBCodeTextPlugin from 'phaser3-rex-plugins/plugins/bbcodetext-plugin.js';
 import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
 
-export const GAME_WIDTH = 480;
-export const GAME_HEIGHT = 360;
+export const GAME_WIDTH = 480/2;
+export const GAME_HEIGHT = 360/2;
 
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
         ...extra,
-        fontSize: fontSize * 2,  // this font is really small for some reason, so double it
+        fontSize: fontSize,  // this font is really small for some reason, so double it
         fontFamily: 'yana',
         color: '#f5f5ed'  // 'white'
     };
@@ -110,6 +110,8 @@ const config = {
     type: Phaser.AUTO,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
+    resolution: window.devicePixelRatio,
+    roundPixels: true,
     scene: [
         TestMenu,
         Loader,
