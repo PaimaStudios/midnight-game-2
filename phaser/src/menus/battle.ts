@@ -10,6 +10,7 @@ import { Subscription } from "rxjs";
 import { AbilityWidget } from "../ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
+import addScaledImage from "../utils/addScaledImage";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.8;
 const abilityIdleY = () => GAME_HEIGHT * 0.9;
@@ -77,7 +78,7 @@ export class ActiveBattle extends Phaser.Scene {
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
                 onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    const fist = this.add.image(enemyX(this.battle, enemy), enemyY(), 'physical');
+                    const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
                     this.tweens.add({
                         targets: fist,
                         x: playerX(),
@@ -284,7 +285,7 @@ class Actor extends Phaser.GameObjects.Container {
 
         this.setHp(hp);
 
-        this.add(scene.add.image(0, 0, texture).setScale(2.0));
+        this.add(addScaledImage(scene, 0, 0, texture).setScale(2.0));
 
         this.setSize(64, 64);
 

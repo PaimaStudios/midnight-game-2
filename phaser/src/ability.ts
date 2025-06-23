@@ -3,6 +3,7 @@
  */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "./main";
+import addScaledImage from "./utils/addScaledImage";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -13,27 +14,27 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     console.log(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
     if (effect.is_aoe) {
-        uiComponents.push(container.scene.add.image(xOffset + 24, yOffset - 6, 'aoe').setScale(2.0));
+        uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset - 6, 'aoe'));
     }
     switch (effect.effect_type) {
         case EFFECT_TYPE.attack_fire:
-            uiComponents.push(container.scene.add.image(xOffset + 24, yOffset, 'fire').setScale(2.0));
+            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, 'fire'));
             uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_ice:
-            uiComponents.push(container.scene.add.image(xOffset + 24, yOffset, 'ice').setScale(2.0));
+            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, 'ice'));
             uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.attack_phys:
-            uiComponents.push(container.scene.add.image(xOffset + 24, yOffset, 'physical').setScale(2.0));
+            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, 'physical'));
             uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.block:
-            uiComponents.push(container.scene.add.image(xOffset + 24, yOffset, 'block').setScale(2.0));
+            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, 'block'));
             uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
         case EFFECT_TYPE.generate:
-            uiComponents.push(container.scene.add.image(xOffset + 24, yOffset, `energy_${effect.amount}`).setScale(2.0));
+            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, `energy_${effect.amount}`));
             break;
     }
     uiComponents.forEach((comp) => container.add(comp));
@@ -61,8 +62,8 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         for (let i = 0; i < ability.on_energy.length; ++i) {
             if (ability.on_energy[i].is_some) {
                 const energyY = 24 * i;
-                this.add(scene.add.image(-32, energyY, `energy_${i}`));
-                this.add(scene.add.image(-16, energyY, 'arrow'));
+                this.add(addScaledImage(scene, -32, energyY, `energy_${i}`));
+                this.add(addScaledImage(scene, -16, energyY, 'arrow'));
                 this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
             }
         }
