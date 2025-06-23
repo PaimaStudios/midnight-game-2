@@ -339,7 +339,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         if (effectType != EFFECT_TYPE.generate) {
             this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
         }
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)));
+        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)).setScale(4.0));
 
         this.setSize(48, 48);
         //console.log(`BattleEffect START ${effectType} | ${amount}`);
