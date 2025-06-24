@@ -10,6 +10,7 @@ import { Subscription } from "rxjs";
 import { AbilityWidget } from "../ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
+import addScaledImage from "../utils/addScaledImage";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.8;
 const abilityIdleY = () => GAME_HEIGHT * 0.9;
@@ -43,7 +44,7 @@ export class ActiveBattle extends Phaser.Scene {
         }
 
         // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.95, 320, 48, this.getAttackButtonString(this.battle), 10, async () => {
+        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.90, 320, 96, this.getAttackButtonString(this.battle), 10, async () => {
             const id = pureCircuits.derive_battle_id(this.battle);
             const clonedState = structuredClone(this.state!);
             let apiDone = false;
@@ -77,7 +78,7 @@ export class ActiveBattle extends Phaser.Scene {
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
                 onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    const fist = this.add.image(enemyX(this.battle, enemy), enemyY(), 'physical');
+                    const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
                     this.tweens.add({
                         targets: fist,
                         x: playerX(),
@@ -257,7 +258,7 @@ export class ActiveBattle extends Phaser.Scene {
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.2;
+const enemyY = () => GAME_HEIGHT * 0.1;
 
 const playerX = () => GAME_WIDTH / 2;
 const playerY = () => GAME_HEIGHT * 0.6;
@@ -275,18 +276,18 @@ class Actor extends Phaser.GameObjects.Container {
 
         this.hp = hp;
         this.maxHp = maxHp;
-        this.hpText = scene.add.text(0, 16, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.hpText = scene.add.text(0, 64, '', fontStyle(12)).setOrigin(0.5, 0.5);
         this.block = 0;
-        this.blockText = scene.add.text(0, -48, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.blockText = scene.add.text(0, -96, '', fontStyle(12)).setOrigin(0.5, 0.5);
 
         this.add(this.hpText);
         this.add(this.blockText);
 
         this.setHp(hp);
 
-        this.add(scene.add.image(0, 0, texture));
+        this.add(addScaledImage(scene, 0, 0, texture).setScale(2.0));
 
-        this.setSize(32, 32);
+        this.setSize(64, 64);
 
         scene.add.existing(this);
     }
@@ -339,7 +340,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         if (effectType != EFFECT_TYPE.generate) {
             this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
         }
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)));
+        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)).setScale(4.0));
 
         this.setSize(48, 48);
         //console.log(`BattleEffect START ${effectType} | ${amount}`);
