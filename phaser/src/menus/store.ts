@@ -7,6 +7,7 @@ import { Button } from "./button";
 import { Loader } from "./loader";
 import Colors from "../constants/colors";
 import { sortedAbilities } from "./pre-battle";
+import { TestMenu } from "./main";
 
 export class Store extends Phaser.Scene {
     api: DeployedGame2API;
@@ -28,8 +29,8 @@ export class Store extends Phaser.Scene {
     }
 
     create() {
-        this.goldText = this.add.text(32, 32, '', fontStyle(12));
-        this.errorText = this.add.text(82, 10, '', fontStyle(12, { color: Colors.Red }));
+        this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
         this.onStateChange(this.state);
     }
@@ -45,14 +46,14 @@ export class Store extends Phaser.Scene {
 
         this.ui.forEach((o) => o.destroy());
         this.ui = [];
-        let index = 0;
+        const abilityButtonWidth = 96;
         const abilities = sortedAbilities(state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
 
-            this.ui.push(new AbilityWidget(this,  32 + i * 48, GAME_HEIGHT * 0.75, ability));
-            this.ui.push(new Button(this, 32 + i * 48, GAME_HEIGHT * 0.75 - 64, 48, 24, `Sell\n$${value}`, 10, () => {
+            this.ui.push(new AbilityWidget(this,  32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability));
+            this.ui.push(new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 128, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");
@@ -66,10 +67,10 @@ export class Store extends Phaser.Scene {
             }));
         }
         this.goldText?.setText(`Gold: ${state.player!.gold}`);
-        this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 128, 32, 'Back', 14, () => {
-            this.scene.remove('Store');
-            this.scene.add('Store', new Store(this.api!, state));
-            this.scene.start('Store');
+        this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {
+            this.scene.remove('TestMenu');
+            this.scene.add('TestMenu', new TestMenu(this.api, state));
+            this.scene.start('TestMenu');
         }));
     }
 }

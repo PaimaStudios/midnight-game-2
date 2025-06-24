@@ -44,7 +44,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        this.errorText = this.add.text(82, 10, '', fontStyle(12, { color: Colors.Red }));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
         const abilityButtonWidth = 96;
         const abilities = sortedAbilities(this.state);
