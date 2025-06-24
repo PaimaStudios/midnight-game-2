@@ -13,7 +13,6 @@ import { TestMenu } from "./main";
 import { Button } from "./button";
 import { AbilityWidget } from "../ability";
 import { Loader } from "./loader";
-import Colors from "../constants/colors";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;

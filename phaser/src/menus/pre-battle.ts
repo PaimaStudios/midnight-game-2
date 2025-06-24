@@ -46,24 +46,26 @@ export class StartBattleMenu extends Phaser.Scene {
     create() {
         this.errorText = this.add.text(82, 10, '', fontStyle(12, { color: Colors.Red }));
 
+        const abilityButtonWidth = 96;
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const abilityWidget = new AbilityWidget(this, 32 + i * 48, GAME_HEIGHT * 0.75, ability);
+            const abilityWidget = new AbilityWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability);
+
             this.available.push(abilityWidget);
             this.chosen.push(false);
-            const button = new Button(this, 32 + i * 48, GAME_HEIGHT * 0.75 - 64, 48, 24, '^', 10, () => {
+            const button = new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 105, abilityButtonWidth, 48, '^', 10, () => {
                 if (this.chosen[i]) {
-                    abilityWidget.y += 48 + 80;
+                    abilityWidget.y += 48 + 160;
                     button.text.text = '^';
                 } else {
-                    abilityWidget.y -= 48 + 80;
+                    abilityWidget.y -= 48 + 160;
                     button.text.text = 'v';
                 }
                 this.chosen[i] = !this.chosen[i];
             });
         }
-        new Button(this, GAME_WIDTH / 2, 64, 64, 24, 'Start', 10, () => {
+        new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
             this.loadout.abilities = [];
             for (let i = 0; i < this.chosen.length; ++i) {
                 if (this.chosen[i]) {
