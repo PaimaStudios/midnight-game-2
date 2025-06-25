@@ -6,7 +6,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "./button";
 import { Loader } from "./loader";
 import Colors from "../constants/colors";
-import { sortedAbilities } from "./pre-battle";
+import { isStartingAbility, sortedAbilities, sortedAbilitiesById } from "./pre-battle";
 import { TestMenu } from "./main";
 
 export class Store extends Phaser.Scene {
@@ -47,7 +47,7 @@ export class Store extends Phaser.Scene {
         this.ui.forEach((o) => o.destroy());
         this.ui = [];
         const abilityButtonWidth = 96;
-        const abilities = sortedAbilities(state);
+        const abilities = sortedAbilities(state).filter((a) => !isStartingAbility(a));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));

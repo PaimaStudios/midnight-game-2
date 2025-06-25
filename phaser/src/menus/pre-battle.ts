@@ -12,7 +12,6 @@ import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
 import Colors from "../constants/colors";
-import { Game } from "phaser";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -109,6 +108,14 @@ export class StartBattleMenu extends Phaser.Scene {
         });
     }
 }
+
+// TODO: is this a performance issue?
+export const isStartingAbility = (ability: Ability) => {
+    const id = pureCircuits.derive_ability_id(ability);
+    const phys_id = pureCircuits.derive_ability_id(pureCircuits.ability_base_phys());
+    const block_id = pureCircuits.derive_ability_id(pureCircuits.ability_base_block());
+    return id == phys_id || id == block_id;
+};
 
 export function sortedAbilitiesById(state: Game2DerivedState): bigint[] {
     let abilities = [];
