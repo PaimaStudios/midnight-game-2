@@ -256,6 +256,23 @@ circuit return_loadout(loadout: PlayerLoadout): [] {
     }
 }
 
+export pure circuit ability_value(ability: Ability): Uint<32> {
+    const score = ability_score(ability);
+    return (score * score + score) as Uint<32>;
+}
+
+export circuit sell_ability(ability: Ability): [] {
+    const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    const ability_id = derive_ability_id(ability);
+    const available = player_abilities.lookup(player_id).lookup(ability_id);
+    assert available >= 1 "Player does not own ability";
+    assert ability_id != ability_base_block_id && ability_id != ability_base_phys_id "Can't sell base abilities";
+    player_abilities.lookup(player_id).insert(ability_id, available - 1);
+    players.insert(player_id, Player {
+        (players.lookup(player_id).gold + ability_value(ability)) as Uint<32>
+    });
+}
+
 export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field {
     verify_loadout(loadout);
     // TODO: randomize
