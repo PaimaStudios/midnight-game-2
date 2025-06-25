@@ -116,6 +116,13 @@ export interface DeployedGame2API {
      * @returns Rewards if quest is complete (win or lose), or undefined if not
      */
     finalize_quest: (quest_id: bigint) => Promise<BattleRewards | undefined>;
+
+    /**
+     * Sell an ability
+     * 
+     * @param ability The ability to sell. You must own at least 1
+     */
+    sell_ability: (ability: Ability) => Promise<void>;
 }
 
 /**
@@ -244,6 +251,18 @@ export class Game2API implements DeployedGame2API {
         });
 
         return txData.private.result.is_some ? txData.private.result.value : undefined;
+    }
+
+    async sell_ability(ability: Ability): Promise<void> {
+        const txData = await this.deployedContract.callTx.sell_ability(ability);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'sell_ability',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
     }
 
     /**

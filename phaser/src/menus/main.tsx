@@ -16,6 +16,7 @@ import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import Colors from "../constants/colors";
+import { Store } from "./store";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -79,8 +80,8 @@ export class TestMenu extends Phaser.Scene {
             console.log('==========MOCK API========');
             this.initApi(new MockGame2API());
         }));
-        this.goldText = this.add.text(32, 32, '', fontStyle(12));
-        this.errorText = this.add.text(82, 64, '', fontStyle(12, { color: Colors.Red }));
+        this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
     }
 
     private initApi(api: DeployedGame2API) {
@@ -113,11 +114,16 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
                 this.scene.start('StartBattleMenu');
             }));
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 - 256 - 16, GAME_HEIGHT * 0.1, 256, 90, 'Store', 14, () => {
+                this.scene.remove('Store');
+                this.scene.add('Store', new Store(this.api!, state));
+                this.scene.start('Store');
+            }));
 
             let offset = 0;
             for (const [id, quest] of state.quests) {
                 console.log(`got quest: ${id}`);
-                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 32 * offset, 320, 24, this.questStr(quest), 10, () => {
+                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 72 * offset, 320, 64, this.questStr(quest), 10, () => {
                     this.scene.remove('QuestMenu');
                     this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
                     this.scene.start('QuestMenu');
