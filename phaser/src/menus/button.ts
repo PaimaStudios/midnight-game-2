@@ -3,7 +3,7 @@
  */
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
-import Colors from '../constants/colors';
+import { Colors } from '../constants/colors';
 
 export class Button extends Phaser.GameObjects.Container {
     bg: Phaser.GameObjects.NineSlice;

@@ -11,7 +11,8 @@ import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
-import Colors from "../constants/colors";
+import { Colors, colorToNumber } from "../constants/colors";
+import { createPanelElement, createScrollablePanel } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -43,6 +44,24 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
+
+
+        const panel = createScrollablePanel(this, 400, 300, 600);
+        const panelElement = panel.getElement('panel');
+        
+        // Add new child
+        if (panelElement != undefined) {
+            panelElement
+                .add(
+                    createPanelElement(this,
+                        'GGGG',
+                        this.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink))
+                    )
+                )
+            panel.layout()     
+        }
+
+
         this.errorText = this.add.text(82, 10, '', fontStyle(12, { color: Colors.Red }));
 
         let abilities = [];

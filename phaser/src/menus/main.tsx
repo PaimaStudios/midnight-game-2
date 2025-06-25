@@ -15,7 +15,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
-import Colors from "../constants/colors";
+import { Colors } from "../constants/colors";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -37,9 +37,8 @@ export class TestMenu extends Phaser.Scene {
                     this.onStateChange(state);
                 }
             }, 100);
-        }// else {
-            this.deployProvider = new BrowserDeploymentManager(logger);
-        //}}
+        }
+        this.deployProvider = new BrowserDeploymentManager(logger);
     }
 
     preload() {
@@ -81,6 +80,7 @@ export class TestMenu extends Phaser.Scene {
         }));
         this.goldText = this.add.text(32, 32, '', fontStyle(12));
         this.errorText = this.add.text(82, 64, '', fontStyle(12, { color: Colors.Red }));
+        
     }
 
     private initApi(api: DeployedGame2API) {
