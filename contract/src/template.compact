@@ -12,7 +12,6 @@ export enum EFFECT_TYPE {
     attack_fire,
     attack_ice,
     block,
-    generate,
 }
 
 // a note on attack base damage:
@@ -20,7 +19,6 @@ export enum EFFECT_TYPE {
 // TODO: how to handle this in the UI? Multiply by 10? or 5 to get 'average' with >5 being 'resistance' and <5 being 'weakness'?
 export struct Effect {
     effect_type: EFFECT_TYPE,
-    // base damage for attacks, defense for blocks, type of energy for generation (range [0, 2] only)
     amount: Uint<32>,
     is_aoe: Boolean,
 }
@@ -29,6 +27,8 @@ export struct Ability {
     effect: Maybe<Effect>,
     // effects triggered by energy generation. one energy triggers all corresponding effects of all abilities
     on_energy: Vector<3, Maybe<Effect>>,
+    // which type of energy to generate
+    generate_color: Maybe<Uint<0..2>>,
 }
 
 export struct EnemyStats {
@@ -61,7 +61,7 @@ export sealed ledger ability_base_block_id: Field;
 export sealed ledger ability_base_fire_aoe_id: Field;
 export sealed ledger ability_base_ice_id: Field;
 
-// used only be JS impl. TODO: remove or make JS and contract match once byte indexing works
+// used only by JS impl. TODO: remove or make JS and contract match once byte indexing works
 export pure circuit hashUtil(nonce1: Bytes<32>, nonce2: Field): Field {
     return transient_commit<Bytes<32>>(nonce1, nonce2);
 }
@@ -73,16 +73,14 @@ export pure circuit fakeTempRng(state: BattleState, config: BattleConfig): Bytes
 
 // ranks how "good" an ability is. higher is better. useful for ordering in the UI
 export pure circuit ability_score(ability: Ability): Uint<32> {
-    return (3 * effect_score(ability.effect) + effect_score(ability.on_energy[0]) + effect_score(ability.on_energy[1]) + effect_score(ability.on_energy[2])) as Uint<32>;
+    return ((3 * effect_score(ability.effect) + effect_score(ability.on_energy[0]) + effect_score(ability.on_energy[1]) + effect_score(ability.on_energy[2])) * (2 + (ability.generate_color.is_some as Uint<1>))) as Uint<32>;
 }
 
 // ranks how "good" an effect is. higher is better
 pure circuit effect_score(effect: Maybe<Effect>): Uint<32> {
     const aoe = (1 + (effect.value.is_aoe as Uint<1>));
-    const gen = ((effect.value.effect_type == EFFECT_TYPE.generate) as Uint<1>) * 3;
-    const non_gen = ((effect.value.effect_type != EFFECT_TYPE.generate) as Uint<1>) * effect.value.amount;
     const attack_compensate = (1 + 4 * ((effect.value.effect_type == EFFECT_TYPE.attack_phys || effect.value.effect_type == EFFECT_TYPE.attack_ice || effect.value.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>));
-    return ((effect.is_some as Uint<1>) * ((aoe * non_gen * attack_compensate) + gen)) as Uint<32>;
+    return ((effect.is_some as Uint<1>) * (effect.value.amount * aoe * attack_compensate)) as Uint<32>;
 }
 
 // starting 4 abilities
@@ -93,7 +91,8 @@ export pure circuit ability_base_phys(): Ability {
             2,
             false
         }),
-        [none<Effect>(), none<Effect>(), none<Effect>()]
+        [none<Effect>(), none<Effect>(), none<Effect>()],
+        none<Uint<0..2>>()
     };
 }
 
@@ -104,7 +103,8 @@ export pure circuit ability_base_block(): Ability {
             10,
             false
         }),
-        [none<Effect>(), none<Effect>(), none<Effect>()]
+        [none<Effect>(), none<Effect>(), none<Effect>()],
+        none<Uint<0..2>>()
     };
 }
 
@@ -115,7 +115,8 @@ export pure circuit ability_base_fire_aoe(): Ability {
             2,
             true
         }),
-        [none<Effect>(), none<Effect>(), none<Effect>()]
+        [none<Effect>(), none<Effect>(), none<Effect>()],
+        none<Uint<0..2>>()
     };
 }
 
@@ -126,7 +127,8 @@ export pure circuit ability_base_ice(): Ability {
             4,
             false
         }),
-        [none<Effect>(), none<Effect>(), none<Effect>()]
+        [none<Effect>(), none<Effect>(), none<Effect>()],
+        none<Uint<0..2>>()
     };
 }
 
@@ -489,9 +491,4 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
 // total damage (after resistances) done by an effect to an enemy
 export pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
     return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * effect.amount) as Uint<32>;
-}
-
-// whether an ability generates a certain color (type) of energy
-pure circuit generates_color(color: Uint<32>, ability: Ability): Boolean {
-    return ability.effect.is_some && ability.effect.value.effect_type == EFFECT_TYPE.generate && ability.effect.value.amount == color;
 }
