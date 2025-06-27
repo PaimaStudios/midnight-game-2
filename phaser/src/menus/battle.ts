@@ -107,9 +107,6 @@ export class ActiveBattle extends Phaser.Scene {
                         case EFFECT_TYPE.block:
                             this.player?.addBlock(amounts[0]);
                             break;
-                        case EFFECT_TYPE.generate:
-                            // TODO
-                            break;
                     }
                     if (damageType != undefined) {
                         for (let i = 0; i < targets.length; ++i) {
@@ -316,9 +313,7 @@ class Actor extends Phaser.GameObjects.Container {
     }
 }
 
-// amount is only here to tell what type of generation it is
-// TODO DECISION: should this be the case? the re-use. or should it be separate generation types???
-export function effectTypeToIcon(effectType: EFFECT_TYPE, amount: number): string {
+export function effectTypeToIcon(effectType: EFFECT_TYPE): string {
     switch (effectType) {
         case EFFECT_TYPE.attack_fire:
             return 'fire';
@@ -328,8 +323,6 @@ export function effectTypeToIcon(effectType: EFFECT_TYPE, amount: number): strin
             return 'physical';
         case EFFECT_TYPE.block:
             return 'block';
-        case EFFECT_TYPE.generate:
-            return `energy_${amount}`;                                                    
     }
 }
 
@@ -337,10 +330,8 @@ export class BattleEffect extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene, x: number, y: number, effectType: EFFECT_TYPE, amount: number, onComplete: () => void) {
         super(scene, x, y);
 
-        if (effectType != EFFECT_TYPE.generate) {
-            this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
-        }
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType, amount)).setScale(4.0));
+        this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
+        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(4.0));
 
         this.setSize(48, 48);
         //console.log(`BattleEffect START ${effectType} | ${amount}`);
@@ -348,7 +339,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
             targets: this,
             alpha: 0,
             delay: 250,
-            duration: 500,
+            duration: 1500,
             onComplete: () => {
                 //console.log(`BattleEffect COMPLETE ${effectType} | ${amount}`);
                 onComplete();
