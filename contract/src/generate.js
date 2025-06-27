@@ -41,11 +41,8 @@ const gen_player_block = () => `const player_block = (${gen_base_player_block()}
 const gen_base_player_block = () => abilities.map((a) => `((abilities[${a}].effect.is_some as Uint<1>) * ((abilities[${a}].effect.value.effect_type == EFFECT_TYPE.block) as Uint<1>) * abilities[${a}].effect.value.amount)`).join(' + ');
 const gen_energy_player_block = () => abilities.map((a) => colors.map((c) => `(((abilities[${a}].on_energy[${c}].is_some && ${generates_color(a, c)}) as Uint<1>) * ((abilities[${a}].on_energy[${c}].value.effect_type == EFFECT_TYPE.block) as Uint<1>) * abilities[${a}].on_energy[${c}].value.amount)`).join(' + ')).join(' + ');
 
-<<<<<<< HEAD
-=======
 const generates_color = (a, c) => `(${abilities.filter((a2) => a != a2).map((a2) => `(abilities[${a2}].generate_color.is_some && abilities[${a2}].generate_color.value == ${c})`).join(' || ')})`;
 
->>>>>>> origin/main
 // enemy
 
 const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `(battle.stats[${enemy}].attack * ((new_enemy_dmg_${enemy} > 0) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
