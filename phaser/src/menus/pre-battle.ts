@@ -11,8 +11,8 @@ import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
-import { Colors, colorToNumber } from "../constants/colors";
-import { createPanelElement, createScrollablePanel } from "../widgets/scrollable";
+import { Colors } from "../constants/colors";
+import { createScrollablePanel } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -44,21 +44,9 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const panel = createScrollablePanel(this, 400, 300, 600);
-        const panelElement = panel.getElement('panel');
+        const scrollablePanel = createScrollablePanel(this, 400, 300, 600);
+        const scrollablePanelElement = scrollablePanel.getElement('panel');
         
-        // Add new child
-        if (panelElement != undefined) {
-            panelElement
-                .add(
-                    createPanelElement(this,
-                        'GGGG',
-                        this.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink))
-                    )
-                )
-            panel.layout()     
-        }
-
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
         const abilityButtonWidth = 96;
@@ -69,6 +57,7 @@ export class StartBattleMenu extends Phaser.Scene {
 
             this.available.push(abilityWidget);
             this.chosen.push(false);
+
             const button = new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 105, abilityButtonWidth, 48, '^', 10, () => {
                 if (this.chosen[i]) {
                     abilityWidget.y += 48 + 160;
@@ -79,6 +68,14 @@ export class StartBattleMenu extends Phaser.Scene {
                 }
                 this.chosen[i] = !this.chosen[i];
             });
+
+            // Add new child to scrollable panel
+            if (scrollablePanelElement != undefined) {
+                scrollablePanelElement.add(abilityWidget)
+                scrollablePanelElement.add(button)
+            }
+
+            scrollablePanel.layout()
         }
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
             this.loadout.abilities = [];

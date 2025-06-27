@@ -47,7 +47,12 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
     baseEffectUI: Phaser.GameObjects.GameObject[];
     energyEffectUI: Phaser.GameObjects.GameObject[][];
 
-    constructor(scene: Phaser.Scene, x: number, y: number, ability: Ability) {
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        ability: Ability,
+     ) {
         super(scene, x, y);
         this.setSize(96, 150);
         this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 96, 150, 8, 8, 8, 8);

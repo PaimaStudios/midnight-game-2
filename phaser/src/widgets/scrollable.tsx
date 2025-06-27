@@ -19,7 +19,7 @@ class Demo extends Phaser.Scene {
         this.load.scenePlugin({
             key: 'rexuiplugin',
             url: 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexuiplugin.min.js',
-            sceneKey: 'rexUI'
+            sceneKey: 'rexUI',
         });
     }
     create() {
@@ -28,13 +28,7 @@ class Demo extends Phaser.Scene {
         
         // Add new child
         if (panelElement != undefined) {
-            panelElement
-                .add(
-                    createPanelElement(this,
-                        'GGGG',
-                        this.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink))
-                    )
-                )
+            panelElement.add(this.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink)))
             panel.layout()     
         }
     }
@@ -51,16 +45,6 @@ export const createScrollablePanel = function (
         orientation: 'x',
         space: { item: 50, top: 20, bottom: 20 }
     })
-
-    const contentList = ['AAAA', 'BBBB', 'CCCC', 'DDDDD', 'EEEEE', 'FFFFF'];
-    for (var i = 0, cnt = contentList.length; i < cnt; i++) {
-        panel
-            .add(
-                createPanelElement(scene,
-                    contentList[i],
-                    scene.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink)))
-            )
-    }
 
     const scrollablePanel = scene.rexUI.add.scrollablePanel({
             x: 400, y: 300,
@@ -80,17 +64,4 @@ export const createScrollablePanel = function (
             .layout()
 
     return scrollablePanel;
-}
-
-export const createPanelElement = function (scene: Phaser.Scene, content: string, background: any) {
-    return scene.rexUI.add.label({
-        orientation: 'y',
-        width: background.displayWidth,
-        height: background.displayHeight,
-
-        background: background,
-        text: scene.add.text(0, 0, content),
-
-        align: 'center'
-    })
 }
