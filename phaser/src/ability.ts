@@ -4,6 +4,7 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "./main";
 import addScaledImage from "./utils/addScaledImage";
+import Colors from "./constants/colors";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -33,12 +34,21 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
             uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, 'block'));
             uiComponents.push(container.scene.add.text(xOffset - 4, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
             break;
-        case EFFECT_TYPE.generate:
-            uiComponents.push(addScaledImage(container.scene, xOffset + 24, yOffset, `energy_${effect.amount}`));
-            break;
     }
     uiComponents.forEach((comp) => container.add(comp));
     return uiComponents;
+}
+
+export function energyToHexColor(energyColor: number | undefined): Colors {
+    switch (energyColor) {
+        case 0:
+            return Colors.Blue;
+        case 1:
+            return Colors.Green;
+        case 2:
+            return Colors.Violet;
+    }
+    return Colors.Black;
 }
 
 export class AbilityWidget extends Phaser.GameObjects.Container {
@@ -51,6 +61,10 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         super(scene, x, y);
         this.setSize(96, 150);
         this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 96, 150, 8, 8, 8, 8);
+        if (ability.generate_color.is_some) {
+            // TODO: replace with colors.colorToNumber once https://github.com/PaimaStudios/midnight-game-2/pull/25 is merged
+            this.bg.setTint(Phaser.Display.Color.HexStringToColor(energyToHexColor(Number(ability.generate_color.value))).color);
+        }
         this.ability = ability;
         this.baseEffectUI = [];
         this.energyEffectUI = [[], [], []];
@@ -70,17 +84,4 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
 
         scene.add.existing(this);
     }
-}
-
-function randomAbility(): Ability {
-    const randomEffect = (enabled: boolean) => {
-        return {
-            is_some: enabled,
-            value: { effect_type: Phaser.Math.Between(0, 3) as EFFECT_TYPE, amount: BigInt(Phaser.Math.Between(1, 4)), is_aoe: false},
-        };
-    };
-    return {
-        effect: randomEffect(true),
-        on_energy: [randomEffect(false), randomEffect(false), randomEffect(false)],
-    };
 }

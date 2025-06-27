@@ -46,12 +46,12 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             gameState.circuit = true;
         }
 
-        const abilities = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+        const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+        const abilities = abilityIds.map((id) => gameState.allAbilities.get(id)!)
 
         let player_block = BigInt(0);
         const enemy_count = Number(battleConfig.enemy_count);
         let player_damage = new Array(enemy_count).fill(BigInt(0));
-        let energy = [false, false, false];
         let enemy_damage = BigInt(0);
 
         // to be able to early-abort we have this in a lambda
@@ -124,15 +124,11 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                         await uiHooks?.onPlayerEffect(targets, effect.value.effect_type, [Number(effect.value.amount)]);
                         player_block += effect.value.amount;
                         break;
-                    case EFFECT_TYPE.generate:
-                        await uiHooks?.onPlayerEffect(targets, effect.value.effect_type, [Number(effect.value.amount)]);
-                        energy[Number(effect.value.amount)] = true;
-                        break;
                 }
             }
         };
 
-        await uiHooks?.onDrawAbilities(abilities.map((id) => gameState.allAbilities.get(id)!));
+        await uiHooks?.onDrawAbilities(abilities);
 
         // TODO: don't target dead enemies
         const targets = abilities.map((_, i) => randIntBetween(rng, i, 0, Number(battleConfig.enemy_count) - 1));
@@ -145,8 +141,11 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                                   && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
         };
         for (let i = 0; i < abilities.length; ++i) {
-            const ability = gameState.allAbilities.get(abilities[i])!;
+            const ability = abilities[i];
             await uiHooks?.onUseAbility(i, undefined);
+            if (ability.generate_color.is_some) {
+                await uiHooks?.onEnergyTrigger(Number(ability.generate_color.value));
+            }
             await resolveEffect(ability.effect, targets[i]);
             await uiHooks?.afterUseAbility(i);
             if (allEnemiesDead()) {
@@ -155,31 +154,19 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         }
         // energy triggers
-        for (let i = 0; i < 3; ++i) {
-            if (energy[i]) {
-                if (abilities.some((id) => gameState.allAbilities.get(id)?.on_energy[i].is_some)) {
-                    await uiHooks?.onEnergyTrigger(i);
-                    for (let j = 0; j < abilities.length; ++j) {
-                        const ability = gameState.allAbilities.get(abilities[j])!;
-                        if (ability.on_energy[i].is_some) {
-                            await uiHooks?.onUseAbility(j, i);
-                            await resolveEffect(ability.on_energy[i], targets[j]);
-                            await uiHooks?.afterUseAbility(j);
-                            if (allEnemiesDead()) {
-                                return handleEndOfRound();
-                            }
-                        }
+        for (let i = 0; i < abilities.length; ++i) {
+            const ability = abilities[i];
+            for (let c = 0; c < 3; ++c) {
+                if (ability.on_energy[c].is_some && abilities.some((a2, j) => i != j && a2.generate_color.is_some && Number(a2.generate_color.value) == c)) {
+                    await uiHooks?.onUseAbility(i, c);
+                    await resolveEffect(ability.on_energy[c], targets[i]);
+                    await uiHooks?.afterUseAbility(i);
+                    if (allEnemiesDead()) {
+                        return handleEndOfRound();
                     }
                 }
             }
         }
-        // energy.forEach(async (energy, i) => {
-        //     if (energy) {
-        //         abilities.forEach(async (ability, j) => {
-        //             await resolveEffect(ability.on_energy[i], targets[j]);
-        //         });
-        //     }
-        // });
 
 
 

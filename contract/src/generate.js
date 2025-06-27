@@ -34,14 +34,14 @@ const decK_increments = [1, 2, 3, 4];
 const gen_player_dmg = () => max_enemies.map((enemy) => `const player_damage_${enemy} = (${gen_base_player_dmg(enemy)} + ${gen_energy_player_dmg(enemy)}) as Uint<32>;`).join('\n    ');
 
 const gen_base_player_dmg = (enemy) => abilities.map((a) => `((abilities[${a}].effect.is_some && (abilities[${a}].effect.value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].effect.value, battle.stats[${enemy}])`).join(' + ');
-const gen_energy_player_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && (abilities[${a}].on_energy[${c}].value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, battle.stats[${enemy}])`).join(' + ')).join(' + ');
+const gen_energy_player_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && ${generates_color(a, c)} && (abilities[${a}].on_energy[${c}].value.is_aoe || target == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, battle.stats[${enemy}])`).join(' + ')).join(' + ');
 
 const gen_player_block = () => `const player_block = (${gen_base_player_block()} + ${gen_energy_player_block()}) as Uint<32>;`;
 
 const gen_base_player_block = () => abilities.map((a) => `((abilities[${a}].effect.is_some as Uint<1>) * ((abilities[${a}].effect.value.effect_type == EFFECT_TYPE.block) as Uint<1>) * abilities[${a}].effect.value.amount)`).join(' + ');
-const gen_energy_player_block = () => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some as Uint<1>) * ((abilities[${a}].on_energy[${c}].value.effect_type == EFFECT_TYPE.block) as Uint<1>) * abilities[${a}].on_energy[${c}].value.amount)`).join(' + ')).join(' + ');
+const gen_energy_player_block = () => abilities.map((a) => colors.map((c) => `(((abilities[${a}].on_energy[${c}].is_some && ${generates_color(a, c)}) as Uint<1>) * ((abilities[${a}].on_energy[${c}].value.effect_type == EFFECT_TYPE.block) as Uint<1>) * abilities[${a}].on_energy[${c}].value.amount)`).join(' + ')).join(' + ');
 
-
+const generates_color = (a, c) => `(${abilities.filter((a2) => a != a2).map((a2) => `(abilities[${a2}].generate_color.is_some && abilities[${a2}].generate_color.value == ${c})`).join(' || ')})`;
 
 // enemy
 

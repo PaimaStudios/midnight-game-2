@@ -59,7 +59,7 @@ export class MockGame2API implements DeployedGame2API {
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
             ]);
             // This is one difference vs the on-chain version so we can test effect triggers
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 20; ++i) {
                 this.givePlayerRandomAbility(BigInt(1));
             }
         });
@@ -180,9 +180,9 @@ export class MockGame2API implements DeployedGame2API {
 
     private givePlayerRandomAbility(difficulty: bigint): bigint {
         const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
-        const randomEffect = (factor: number, canBeGenerate: boolean) => {
-            const effectType = Phaser.Math.Between(0, canBeGenerate ? 4 : 3) as EFFECT_TYPE;
-            const aoe = effectType != EFFECT_TYPE.block && effectType != EFFECT_TYPE.generate ? Math.random() > 0.7 : false;
+        const randomEffect = (factor: number) => {
+            const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
+            const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
             let amount = -1;
             switch (effectType) {
                 case EFFECT_TYPE.attack_fire:
@@ -192,9 +192,6 @@ export class MockGame2API implements DeployedGame2API {
                     break;
                 case EFFECT_TYPE.block:
                     amount = 5 * Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
-                    break;
-                case EFFECT_TYPE.generate:
-                    amount = Phaser.Math.Between(0, 2);
                     break;
             }
             return {
@@ -207,25 +204,27 @@ export class MockGame2API implements DeployedGame2API {
             };
         };
         const triggers = [nullEffect, nullEffect, nullEffect];
-        const color = Phaser.Math.Between(0, 5);
-        const baseEffect = randomEffect(color < triggers.length ? 1 : 2, true);
-        if (color < triggers.length) {
-            // triggers[0] = randomEffect(2);
-            // triggers[1] = randomEffect(2);
-            // triggers[2] = randomEffect(2);
-            if (Math.random() > 0.7 || (baseEffect.value.effect_type == EFFECT_TYPE.generate && baseEffect.value.amount == BigInt(color))) {
+        const generateColor = Math.random() > 0.7 ? Phaser.Math.Between(0, 2) : null;
+        const triggerColor = Phaser.Math.Between(0, 5);
+        const baseEffect = randomEffect(triggerColor < triggers.length ? 1 : 2);
+        if (triggerColor < triggers.length) {
+            if (Math.random() > 0.7 || (generateColor === triggerColor)) {
                 for (let i = 0; i < 3; ++i) {
-                    if (i != color) {
-                        triggers[i] = randomEffect(1, false);
+                    if (i != triggerColor) {
+                        triggers[i] = randomEffect(1);
                     }
                 }
             } else {
-                triggers[color] = randomEffect(2, false);
+                triggers[triggerColor] = randomEffect(2);
             }
         }
         const ability = {
             effect: baseEffect,
             on_energy: triggers,
+            generate_color: {
+                is_some: generateColor != null,
+                value: BigInt(generateColor ?? 0),
+            },
         };
         const abilityId = pureCircuits.derive_ability_id(ability);
         this.mockState.allAbilities.set(abilityId, ability);
