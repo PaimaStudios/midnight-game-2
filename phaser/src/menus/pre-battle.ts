@@ -45,7 +45,7 @@ export class StartBattleMenu extends Phaser.Scene {
 
     create() {
         const scrollablePanel = createScrollablePanel(this, 400, 300, 600);
-        const scrollablePanelElement = scrollablePanel.getElement('panel');
+        const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
@@ -69,9 +69,7 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityContainer = new AbilityWidgetContainer(this, 0, 0, abilityWidget, button);
 
             // Add new child to scrollable panel
-            if (scrollablePanelElement != undefined) {
-                scrollablePanelElement.add(abilityContainer)
-            }
+            scrollablePanelElement.add(abilityContainer);
 
             scrollablePanel.layout()
 

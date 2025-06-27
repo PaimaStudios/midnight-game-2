@@ -118,16 +118,3 @@ export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
         scene.add.existing(this);
     }
 }
-
-function randomAbility(): Ability {
-    const randomEffect = (enabled: boolean) => {
-        return {
-            is_some: enabled,
-            value: { effect_type: Phaser.Math.Between(0, 3) as EFFECT_TYPE, amount: BigInt(Phaser.Math.Between(1, 4)), is_aoe: false},
-        };
-    };
-    return {
-        effect: randomEffect(true),
-        on_energy: [randomEffect(false), randomEffect(false), randomEffect(false)],
-    };
-}
