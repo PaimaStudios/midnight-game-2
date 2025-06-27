@@ -53,9 +53,9 @@ export class StartBattleMenu extends Phaser.Scene {
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const abilityWidget = new AbilityWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability);
+            const abilityWidget = new AbilityWidget(this, 0, 0, ability);
 
-            const button = new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 105, abilityButtonWidth, 48, '^', 10, () => {
+            const button = new Button(this, 0, 0, abilityButtonWidth, 48, '^', 10, () => {
                 if (this.chosen[i]) {
                     abilityWidget.y += 48 + 160;
                     button.text.text = '^';
