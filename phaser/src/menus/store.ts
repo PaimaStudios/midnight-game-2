@@ -3,7 +3,7 @@ import { BattleConfig, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget } from "../widgets/ability";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
-import { Button } from "./button";
+import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Colors } from "../constants/colors";
 import { isStartingAbility, sortedAbilities } from "./pre-battle";

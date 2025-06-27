@@ -3,8 +3,8 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
-import { AbilityWidget } from "../widgets/ability";
-import { Button } from "./button";
+import { AbilityWidget, AbilityWidgetContainer } from "../widgets/ability";
+import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { ActiveBattle } from "./battle";
@@ -55,9 +55,6 @@ export class StartBattleMenu extends Phaser.Scene {
             const ability = abilities[i];
             const abilityWidget = new AbilityWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability);
 
-            this.available.push(abilityWidget);
-            this.chosen.push(false);
-
             const button = new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 105, abilityButtonWidth, 48, '^', 10, () => {
                 if (this.chosen[i]) {
                     abilityWidget.y += 48 + 160;
@@ -69,13 +66,18 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.chosen[i] = !this.chosen[i];
             });
 
+            const abilityContainer = new AbilityWidgetContainer(this, 0, 0, abilityWidget, button);
+
             // Add new child to scrollable panel
             if (scrollablePanelElement != undefined) {
-                scrollablePanelElement.add(abilityWidget)
-                scrollablePanelElement.add(button)
+                scrollablePanelElement.add(abilityContainer)
             }
 
             scrollablePanel.layout()
+
+            this.available.push(abilityWidget);
+            this.chosen.push(false);
+
         }
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
             this.loadout.abilities = [];

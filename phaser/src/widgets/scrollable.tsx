@@ -8,6 +8,15 @@ declare module 'phaser' {
   }
 }
 
+//
+// Returns a scrollable panel with a horizontal scrollbar.
+// Usage:
+//   const scrollablePanel = createScrollablePanel(this, 400, 300, 600);
+//   const scrollablePanelElement = scrollablePanel.getElement('panel');
+//   scrollablePanelElement.add(yourGameObject1);
+//   scrollablePanelElement.add(yourGameObject2);
+//   scrollablePanelElement.add(yourGameObject3);
+//
 export const createScrollablePanel = function (
     scene: Phaser.Scene,
     x: number, y: number, width: number,
@@ -19,15 +28,11 @@ export const createScrollablePanel = function (
     })
 
     const scrollablePanel = scene.rexUI.add.scrollablePanel({
-            x: 400, y: 300,
-            width: 600,
-
+            x, y, width,
             scrollMode: 1,
-
             panel: {
                 child: panel,
             },
-
             slider: {
                 track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Colors.DeepPlum)),
                 thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Colors.Tan)),

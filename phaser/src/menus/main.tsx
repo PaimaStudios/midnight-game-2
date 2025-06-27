@@ -7,7 +7,7 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
-import { Button } from "./button";
+import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";

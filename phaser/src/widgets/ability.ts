@@ -4,6 +4,7 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "../main";
 import addScaledImage from "../utils/addScaledImage";
+import { Button } from "./button";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -73,6 +74,33 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
             }
         }
 
+        scene.add.existing(this);
+    }
+}
+
+// Ability Widget with optional button
+export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
+    abilityWidget: AbilityWidget;
+    button: Button | undefined;
+
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        abilityWidget: AbilityWidget,
+        button: Button | undefined = undefined,
+    ) {
+        super(scene, x, y)
+        this.setSize(96, 150);
+        this.abilityWidget = abilityWidget;
+        abilityWidget.setPosition(0, 0);
+        this.add(abilityWidget);
+        if (button != undefined) {
+            this.button = button;
+            // Position the button below the abilityWidget, adjust y as needed
+            button.setPosition(0, abilityWidget.height ? abilityWidget.height / 2 + (button.height ? button.height / 2 + 8 : 32) : 96);
+            this.add(button);
+        }
         scene.add.existing(this);
     }
 }
