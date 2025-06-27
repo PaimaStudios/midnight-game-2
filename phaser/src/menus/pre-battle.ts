@@ -44,7 +44,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const scrollablePanel = createScrollablePanel(this, 400, 300, 600);
+        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT/1.6, GAME_WIDTH*0.95, 500);
         const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));

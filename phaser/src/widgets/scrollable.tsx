@@ -19,16 +19,16 @@ declare module 'phaser' {
 //
 export const createScrollablePanel = function (
     scene: Phaser.Scene,
-    x: number, y: number, width: number,
+    x: number, y: number, width: number, height: number
 
 ): RexUIPlugin.ScrollablePanel {
     const panel = scene.rexUI.add.sizer({
         orientation: 'x',
-        space: { item: 50, top: 20, bottom: 20 }
+        space: { item: 10, top: 200, bottom: 10 }
     })
 
     const scrollablePanel = scene.rexUI.add.scrollablePanel({
-            x, y, width,
+            x, y, width, height,
             scrollMode: 1,
             panel: {
                 child: panel,
@@ -37,8 +37,7 @@ export const createScrollablePanel = function (
                 track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Colors.DeepPlum)),
                 thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Colors.Tan)),
             },
-        })
-            .layout()
+        }).layout()
 
     return scrollablePanel;
 }
