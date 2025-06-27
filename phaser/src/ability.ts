@@ -4,6 +4,7 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "./main";
 import addScaledImage from "./utils/addScaledImage";
+import Colors from "./constants/colors";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -38,17 +39,16 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     return uiComponents;
 }
 
-export function energyToHexColor(energyColor: number): string {
-    // TODO: replace with reference to palette once we finalize the energy art
+export function energyToHexColor(energyColor: number | undefined): Colors {
     switch (energyColor) {
         case 0:
-            return '1f1ba6';
+            return Colors.Blue;
         case 1:
-            return '1ba65b';
+            return Colors.Green;
         case 2:
-            return 'a61ba5';
+            return Colors.Violet;
     }
-    return '000000';
+    return Colors.Black;
 }
 
 export class AbilityWidget extends Phaser.GameObjects.Container {
@@ -62,6 +62,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         this.setSize(96, 150);
         this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 96, 150, 8, 8, 8, 8);
         if (ability.generate_color.is_some) {
+            // TODO: replace with colors.colorToNumber once https://github.com/PaimaStudios/midnight-game-2/pull/25 is merged
             this.bg.setTint(Phaser.Display.Color.HexStringToColor(energyToHexColor(Number(ability.generate_color.value))).color);
         }
         this.ability = ability;
