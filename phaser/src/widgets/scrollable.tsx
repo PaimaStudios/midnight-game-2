@@ -8,34 +8,6 @@ declare module 'phaser' {
   }
 }
 
-class Demo extends Phaser.Scene {
-    constructor() {
-        super({
-            key: 'examples'
-        })
-    }
-
-    preload() { 
-        this.load.scenePlugin({
-            key: 'rexuiplugin',
-            url: 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexuiplugin.min.js',
-            sceneKey: 'rexUI',
-        });
-    }
-    create() {
-        const panel = createScrollablePanel(this, 400, 300, 600);
-        const panelElement = panel.getElement('panel');
-        
-        // Add new child
-        if (panelElement != undefined) {
-            panelElement.add(this.rexUI.add.roundRectangle(0, 0, 200, 400, 20, colorToNumber(Colors.Pink)))
-            panel.layout()     
-        }
-    }
-
-    update() { }
-}
-
 export const createScrollablePanel = function (
     scene: Phaser.Scene,
     x: number, y: number, width: number,

@@ -3,7 +3,7 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
-import { AbilityWidget } from "../ability";
+import { AbilityWidget } from "../widgets/ability";
 import { Button } from "./button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";

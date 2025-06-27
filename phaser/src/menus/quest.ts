@@ -11,7 +11,7 @@ import { Subscription } from "rxjs";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { Button } from "./button";
-import { AbilityWidget } from "../ability";
+import { AbilityWidget } from "../widgets/ability";
 import { Loader } from "./loader";
 
 export class QuestMenu extends Phaser.Scene {

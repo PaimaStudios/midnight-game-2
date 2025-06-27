@@ -2,8 +2,8 @@
  * All frontend functionality related to Abilities (outside of battle?)
  */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
-import { fontStyle } from "./main";
-import addScaledImage from "./utils/addScaledImage";
+import { fontStyle } from "../main";
+import addScaledImage from "../utils/addScaledImage";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
