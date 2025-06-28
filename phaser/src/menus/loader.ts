@@ -1,4 +1,5 @@
 import { fontStyle, GAME_WIDTH, GAME_HEIGHT, } from "../main";
+import {Colors, colorToNumber} from "../constants/colors";
 
 const defaultLoaderText = `Loading`;
 const fontSize = 14;
@@ -18,7 +19,7 @@ export class Loader extends Phaser.Scene {
     create() {
         this.scene.bringToTop();  // Ensure this scene is rendered on top of others
 
-        this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x220033, 0.90)
+        this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, colorToNumber(Colors.DeepPlum), 0.90)
         this.textObject = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, this.text, fontStyle(fontSize)).setOrigin(0.5, 0.65);
     }
 

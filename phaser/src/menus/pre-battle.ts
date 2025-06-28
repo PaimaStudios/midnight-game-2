@@ -3,15 +3,16 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
-import { AbilityWidget } from "../ability";
-import { Button } from "./button";
+import { AbilityWidget, AbilityWidgetContainer } from "../widgets/ability";
+import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
-import Colors from "../constants/colors";
+import { Colors } from "../constants/colors";
+import { createScrollablePanel } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -43,17 +44,18 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
+        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT/1.6, GAME_WIDTH*0.95, 500);
+        const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
+        
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
         const abilityButtonWidth = 96;
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const abilityWidget = new AbilityWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability);
+            const abilityWidget = new AbilityWidget(this, 0, 0, ability);
 
-            this.available.push(abilityWidget);
-            this.chosen.push(false);
-            const button = new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 105, abilityButtonWidth, 48, '^', 10, () => {
+            const button = new Button(this, 0, 0, abilityButtonWidth, 48, '^', 10, () => {
                 if (this.chosen[i]) {
                     abilityWidget.y += 48 + 160;
                     button.text.text = '^';
@@ -63,6 +65,17 @@ export class StartBattleMenu extends Phaser.Scene {
                 }
                 this.chosen[i] = !this.chosen[i];
             });
+
+            const abilityContainer = new AbilityWidgetContainer(this, 0, 0, abilityWidget, button);
+
+            // Add new child to scrollable panel
+            scrollablePanelElement.add(abilityContainer);
+
+            scrollablePanel.layout()
+
+            this.available.push(abilityWidget);
+            this.chosen.push(false);
+
         }
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
             this.loadout.abilities = [];

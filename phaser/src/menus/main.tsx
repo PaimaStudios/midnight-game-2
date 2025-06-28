@@ -7,7 +7,7 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
-import { Button } from "./button";
+import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
@@ -15,7 +15,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
-import Colors from "../constants/colors";
+import { Colors } from "../constants/colors";
 import { Store } from "./store";
 
 export class TestMenu extends Phaser.Scene {
@@ -38,9 +38,8 @@ export class TestMenu extends Phaser.Scene {
                     this.onStateChange(state);
                 }
             }, 100);
-        }// else {
-            this.deployProvider = new BrowserDeploymentManager(logger);
-        //}}
+        }
+        this.deployProvider = new BrowserDeploymentManager(logger);
     }
 
     preload() {

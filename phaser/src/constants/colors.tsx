@@ -1,6 +1,6 @@
 // Palette: NA16 https://lospec.com/palette-list/na16
 // With additional colors
-enum Colors {
+export enum Colors {
     // NA16 Palette Colors
     SoftBlue = '#8c8fae',
     Purple = '#584563',
@@ -23,4 +23,7 @@ enum Colors {
     White = '#f0f0f0',
 }
 
-export default Colors;
+export const colorToNumber = (color: Colors): number => {
+    // Helper function to convert Color enum value to hex number
+    return Phaser.Display.Color.HexStringToColor(color).color
+}

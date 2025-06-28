@@ -1,12 +1,12 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { BattleConfig, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
-import { AbilityWidget } from "../ability";
+import { AbilityWidget } from "../widgets/ability";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
-import { Button } from "./button";
+import { Button } from "../widgets/button";
 import { Loader } from "./loader";
-import Colors from "../constants/colors";
-import { isStartingAbility, sortedAbilities, sortedAbilitiesById } from "./pre-battle";
+import { Colors } from "../constants/colors";
+import { isStartingAbility, sortedAbilities } from "./pre-battle";
 import { TestMenu } from "./main";
 
 export class Store extends Phaser.Scene {
