@@ -70,9 +70,9 @@ export class MockGame2API implements DeployedGame2API {
             console.log(`from ${this.mockState.activeBattleConfigs.size}`);
             const battle = {
                 stats: [
-                    { hp: BigInt(30), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
-                    { hp: BigInt(25), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
-                    { hp: BigInt(15), attack: BigInt(4), block: BigInt(4), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) }
+                    { hp: BigInt(60), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
+                    { hp: BigInt(45), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
+                    { hp: BigInt(35), attack: BigInt(4), block: BigInt(4), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) }
                 ],
                 enemy_count: BigInt(3),
                 player_pub_key: MOCK_PLAYER_ID,

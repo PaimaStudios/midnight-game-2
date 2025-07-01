@@ -8,7 +8,7 @@ export type CombatCallbacks = {
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
     // triggered when a player's ability causes an effect (directly or via trigger)
     // reminder: `amount` is the color for EFFECT_TYPE.generate (range [0, 2])
-    onPlayerEffect: (targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => Promise<void>;
+    onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => Promise<void>;
     // triggered at the start of a round to show which abilities are being played this round
     onDrawAbilities: (abilities: Ability[]) => Promise<void>;
     // triggered when an ability is used. energy == undefined means base effect applying, otherwise it specifies which trigger is being applied
@@ -16,7 +16,7 @@ export type CombatCallbacks = {
     // triggered after an ability has been used (e.g. to re-tween back)
     afterUseAbility: (abilityIndex: number) => Promise<void>;
     // triggered before all energy triggers of a given color will be applied
-    onEnergyTrigger: (color: number) => Promise<void>;
+    onEnergyTrigger: (source: number, color: number) => Promise<void>;
 };
 
 // we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
@@ -105,7 +105,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
 
         // player abilities (all)
-        const resolveEffect = async (effect: { is_some: boolean, value: Effect }, target: number) => {
+        const resolveEffect = async (effect: { is_some: boolean, value: Effect }, source: number, target: number) => {
             if (effect.is_some) {
                 const targets = effect.value.is_aoe ? new Array(Number(battleConfig.enemy_count)).fill(0).map((_, i) => i) : [target];
                 switch (effect.value.effect_type) {
@@ -118,10 +118,10 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                             console.log(`[${uiHooks == undefined}] player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
                             return Number(dmg)
                         });
-                        await uiHooks?.onPlayerEffect(targets, effect.value.effect_type, amounts);
+                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
                         break;
                     case EFFECT_TYPE.block:
-                        await uiHooks?.onPlayerEffect(targets, effect.value.effect_type, [Number(effect.value.amount)]);
+                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, [Number(effect.value.amount)]);
                         player_block += effect.value.amount;
                         break;
                 }
@@ -144,9 +144,9 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             const ability = abilities[i];
             await uiHooks?.onUseAbility(i, undefined);
             if (ability.generate_color.is_some) {
-                await uiHooks?.onEnergyTrigger(Number(ability.generate_color.value));
+                await uiHooks?.onEnergyTrigger(i, Number(ability.generate_color.value));
             }
-            await resolveEffect(ability.effect, targets[i]);
+            await resolveEffect(ability.effect, i, targets[i]);
             await uiHooks?.afterUseAbility(i);
             if (allEnemiesDead()) {
                 console.log(`[${uiHooks == undefined}] prematurely ending`);
@@ -159,7 +159,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             for (let c = 0; c < 3; ++c) {
                 if (ability.on_energy[c].is_some && abilities.some((a2, j) => i != j && a2.generate_color.is_some && Number(a2.generate_color.value) == c)) {
                     await uiHooks?.onUseAbility(i, c);
-                    await resolveEffect(ability.on_energy[c], targets[i]);
+                    await resolveEffect(ability.on_energy[c], i, targets[i]);
                     await uiHooks?.afterUseAbility(i);
                     if (allEnemiesDead()) {
                         return handleEndOfRound();
