@@ -111,7 +111,7 @@ export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
         this.add(abilityWidget);
         if (button != undefined) {
             this.button = button;
-            // Position the button below the abilityWidget, adjust y as needed
+            // Position the button below the abilityWidget, adjusting y as needed
             button.setPosition(0, abilityWidget.height / 2 + ( button.height / 2 + 8));
             this.add(button);
         }
