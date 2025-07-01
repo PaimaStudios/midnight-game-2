@@ -2,9 +2,10 @@
  * All frontend functionality related to Abilities (outside of battle?)
  */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
-import { fontStyle } from "./main";
-import addScaledImage from "./utils/addScaledImage";
-import Colors from "./constants/colors";
+import { Button } from "./button";
+import { fontStyle } from "../main";
+import addScaledImage from "../utils/addScaledImage";
+import { Colors } from "../constants/colors";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -57,7 +58,12 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
     baseEffectUI: Phaser.GameObjects.GameObject[];
     energyEffectUI: Phaser.GameObjects.GameObject[][];
 
-    constructor(scene: Phaser.Scene, x: number, y: number, ability: Ability) {
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        ability: Ability,
+     ) {
         super(scene, x, y);
         this.setSize(96, 150);
         this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 96, 150, 8, 8, 8, 8);
@@ -82,6 +88,33 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
             }
         }
 
+        scene.add.existing(this);
+    }
+}
+
+// Ability Widget with optional button
+export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
+    abilityWidget: AbilityWidget;
+    button: Button | undefined;
+
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        abilityWidget: AbilityWidget,
+        button: Button | undefined = undefined,
+    ) {
+        super(scene, x, y)
+        this.setSize(96, 150);
+        this.abilityWidget = abilityWidget;
+        abilityWidget.setPosition(0, 0);
+        this.add(abilityWidget);
+        if (button != undefined) {
+            this.button = button;
+            // Position the button below the abilityWidget, adjusting y as needed
+            button.setPosition(0, abilityWidget.height / 2 + ( button.height / 2 + 8));
+            this.add(button);
+        }
         scene.add.existing(this);
     }
 }

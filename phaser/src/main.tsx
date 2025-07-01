@@ -37,7 +37,7 @@ import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin'
 import BBCodeTextPlugin from 'phaser3-rex-plugins/plugins/bbcodetext-plugin.js';
 import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
-import Colors from './constants/colors';
+import { Colors } from './constants/colors';
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 720;
@@ -119,12 +119,6 @@ const config = {
         pixelArt: true,
     },
     zoom: scaleToWindow(),
-    // physics: {
-    //     default: 'arcade',
-    //     arcade: {
-    //         gravity: { x: 0, y: 200 }
-    //     }
-    // }
     dom: {
         createContainer: true,
     },

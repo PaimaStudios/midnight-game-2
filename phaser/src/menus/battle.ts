@@ -3,11 +3,11 @@
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
-import { Button } from "./button";
+import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
-import { AbilityWidget } from "../ability";
+import { AbilityWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import addScaledImage from "../utils/addScaledImage";
