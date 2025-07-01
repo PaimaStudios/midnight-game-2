@@ -37,6 +37,10 @@ export const createScrollablePanel = function (
                 track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Colors.DeepPlum)),
                 thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Colors.Tan)),
             },
+            mouseWheelScroller: {
+                focus: false,
+                speed: 0.5,
+            },
         }).layout()
 
     return scrollablePanel;
