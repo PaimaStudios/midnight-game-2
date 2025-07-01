@@ -7,7 +7,7 @@ import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
-import { AbilityWidget } from "../widgets/ability";
+import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import addScaledImage from "../utils/addScaledImage";
@@ -23,6 +23,7 @@ export class ActiveBattle extends Phaser.Scene {
     player: Actor | undefined;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
+    spirits: SpiritWidget[];
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
@@ -32,6 +33,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.enemies = [];
         this.abilityIcons = [];
+        this.spirits = [];
         this.state = state;
     }
 
@@ -131,9 +133,10 @@ export class ActiveBattle extends Phaser.Scene {
                     }
                 }),
                 onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY() + 48, ability).setAlpha(0));
+                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY() - 48, ability).setAlpha(0));
                     this.tweens.add({
-                        targets: this.abilityIcons,
+                        targets: [...this.abilityIcons, ...this.spirits],
                         alpha: 1,
                         duration: 500,
                         onComplete: () => {
@@ -142,15 +145,17 @@ export class ActiveBattle extends Phaser.Scene {
                     });
                 }),
                 onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                    const abilityIcons = this.abilityIcons[abilityIndex];
+                    const abilityIcon = this.abilityIcons[abilityIndex];
+                    const spirit = this.spirits[abilityIndex];
                     this.tweens.add({
-                        targets: abilityIcons,
+                        targets: [abilityIcon, spirit],
                         y: abilityInUseY(),
                         delay: 150,
                         duration: 250,
                         onComplete: () => {
                             this.tweens.add({
-                                targets: energy != undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
+                                // TODO: do something to the spirit too
+                                targets: energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI,
                                 scale: 1.5,
                                 yoyo: true,
                                 delay: 100,
@@ -162,7 +167,7 @@ export class ActiveBattle extends Phaser.Scene {
                 }),
                 afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
                     this.tweens.add({
-                        targets: this.abilityIcons[abilityIndex],
+                        targets: [this.abilityIcons[abilityIndex], this.spirits[abilityIndex]],
                         y: abilityIdleY(),
                         delay: 150,
                         duration: 250,
@@ -204,6 +209,8 @@ export class ActiveBattle extends Phaser.Scene {
             }
             this.abilityIcons.forEach((a) => a.destroy());
             this.abilityIcons = [];
+            this.spirits.forEach((s) => s.destroy());
+            this.spirits = [];
             //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
             //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);

@@ -17,6 +17,7 @@ import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import { Colors } from "../constants/colors";
 import { Store } from "./store";
+import { createSpiritAnimations } from "../widgets/ability";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -61,11 +62,28 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('energy_flash_1', 'energy_flash_1.png');
         this.load.image('energy_flash_2', 'energy_flash_2.png');
 
+        this.load.image('orb-atk-fire', 'orb-atk-fire.png');
+        this.load.image('orb-atk-ice', 'orb-atk-ice.png');
+        this.load.image('orb-atk-phys', 'orb-atk-phys.png');
+        this.load.image('orb-def', 'orb-def.png');
+
+        this.load.spritesheet('spirit-atk-fire', 'spirit-atk-fire.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('spirit-atk-ice', 'spirit-atk-ice.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('spirit-atk-phys', 'spirit-atk-phys.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('spirit-def', 'spirit-def.png', { frameWidth: 32, frameHeight: 32 });
+
+        this.load.spritesheet('orb-aura', 'orb-aura.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('spirit-aura', 'spirit-aura.png', { frameWidth: 32, frameHeight: 32 });
+
+
         this.load.image('player', 'player.png');
         this.load.image('enemy', 'goblin.png');
     }
 
     create() {
+        // should this be here or elsehwere? we did this for pvp-arena
+        createSpiritAnimations(this);
+
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
         this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {

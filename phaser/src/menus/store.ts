@@ -1,7 +1,7 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { BattleConfig, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
-import { AbilityWidget } from "../widgets/ability";
+import { AbilityWidget, createSpiritAnimations, SpiritWidget } from "../widgets/ability";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
@@ -32,6 +32,8 @@ export class Store extends Phaser.Scene {
         this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
 
+        createSpiritAnimations(this);
+
         this.onStateChange(this.state);
     }
 
@@ -52,6 +54,7 @@ export class Store extends Phaser.Scene {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
 
+            this.ui.push(new SpiritWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.4, ability));
             this.ui.push(new AbilityWidget(this,  32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability));
             this.ui.push(new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 128, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');

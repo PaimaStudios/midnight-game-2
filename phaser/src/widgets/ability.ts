@@ -5,7 +5,7 @@ import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { Button } from "./button";
 import { fontStyle } from "../main";
 import addScaledImage from "../utils/addScaledImage";
-import { Colors } from "../constants/colors";
+import { Colors, colorToNumber } from "../constants/colors";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -65,6 +65,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         ability: Ability,
      ) {
         super(scene, x, y);
+        this.add(scene.add.image(0, 0, 'enemy'))
         this.setSize(96, 150);
         this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, 96, 150, 8, 8, 8, 8);
         if (ability.generate_color.is_some) {
@@ -117,4 +118,164 @@ export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
         }
         scene.add.existing(this);
     }
+}
+
+const iToRad = 2 * Math.PI / 3;
+
+export class SpiritWidget extends Phaser.GameObjects.Container {
+    aura: Phaser.GameObjects.Sprite | undefined;
+    spirit: Phaser.GameObjects.Sprite;
+    orbs: (OrbWidget | null)[];
+    tick: number;
+
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        ability: Ability,
+     ) {
+        super(scene, x, y);
+
+        this.setSize(128, 128);
+
+        if (ability.generate_color.is_some) {
+            this.aura = scene.add.sprite(0, 0, 'spirit-aura').setTint(colorToNumber(energyTypeToColor(Number(ability.generate_color.value))));
+            this.add(this.aura);
+            // this.aura.anims.play({
+            //     key: spiritAuraIdleKey,
+            //     duration: IDLE_ANIM_TIME,
+            // });
+        }
+
+        // TODO: what if this is null? we currently never have that so maybe we should make it `Effect` not `Maybe<Effect>`, or have a neutral no-armed spirit
+        this.spirit = scene.add.sprite(0, 0, `spirit-${effectTypeFileAffix(ability.effect.value.effect_type)}`);
+        this.add(this.spirit);
+
+        this.tick = Math.random() * 2 * Math.PI;
+
+        this.orbs = [0, 1, 2].map((i) => {
+            if (ability.on_energy[i].is_some) {
+                const trigger = ability.on_energy[i].value;
+                const orb = new OrbWidget(scene, this.orbX(i), this.orbY(i), trigger, i);
+                this.add(orb);
+                return orb;
+            }
+            return null;
+        });
+
+        scene.add.existing(this);
+    }
+
+    preUpdate() {
+        this.orbs.forEach((orb, i) => orb?.setPosition(this.orbX(i), this.orbY(i)));
+        this.tick += 0.015;
+    }
+
+    // TODO: potentially replace with more interesting elliptical orbits that go in front/behind the spirit
+    private orbX(i: number): number {
+        return 32 * Math.cos(i * iToRad + this.tick);
+    }
+
+    private orbY(i: number): number {
+        return -32 * Math.sin(i * iToRad + this.tick);
+    }
+}
+
+export enum ENERGY_TYPE {
+    cyan = 0,
+    yellow = 1,
+    magenta = 2,
+}
+
+export function energyTypeToColor(energyType: ENERGY_TYPE): Colors {
+    switch (energyType) {
+        case ENERGY_TYPE.cyan:
+            return Colors.DarkGreen;
+        case ENERGY_TYPE.yellow:
+            return Colors.Olive;
+        case ENERGY_TYPE.magenta:
+            return Colors.Violet;
+    }
+}
+
+function effectTypeFileAffix(effectType: EFFECT_TYPE): string {
+    switch (effectType) {
+        case EFFECT_TYPE.attack_fire:
+            return 'atk-fire';
+        case EFFECT_TYPE.attack_ice:
+            return 'atk-ice';
+        case EFFECT_TYPE.attack_phys:
+            return 'atk-phys';
+        case EFFECT_TYPE.block:
+            return 'def';
+    }
+}
+
+class OrbWidget extends Phaser.GameObjects.Container {
+    aura: Phaser.GameObjects.Sprite;
+    orb: Phaser.GameObjects.Image;
+
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        effect: Effect,
+        trigger: ENERGY_TYPE,
+     ) {
+        super(scene, x, y);
+
+        this.setSize(16, 16);
+        
+        this.aura = scene.add.sprite(0, 0, 'orb-aura').setTint(colorToNumber(energyTypeToColor(trigger)));
+        this.add(this.aura);
+        // this.aura.anims.play({
+        //     key: orbAuraIdleKey,
+        //     duration: IDLE_ANIM_TIME,
+        // });
+
+        this.orb = scene.add.image(0, 0, `orb-${effectTypeFileAffix(effect.effect_type)}`);
+        this.add(this.orb);
+
+        scene.add.existing(this);
+     }
+}
+
+export const idleAnimKey = 'idle';
+
+export const spiritAuraIdleKey = 'aura-idle';
+
+export const chargeAnimKey = 'charge';
+
+export const orbAuraIdleKey = 'orb-idle';
+
+const IDLE_ANIM_TIME = 1000;
+
+export function createSpiritAnimations(scene: Phaser.Scene) {
+    scene.anims.create({
+        key: idleAnimKey,
+        frames: [0, 1].map((i) => { return { frame: i, key: idleAnimKey }; }),
+        repeat: -1,
+        duration: IDLE_ANIM_TIME,
+    });
+
+    scene.anims.create({
+        key: spiritAuraIdleKey,
+        frames: [0, 1, 2, 0, 1, 0, 1].map((i) => { return { frame: i, key: spiritAuraIdleKey }; }),
+        repeat: -1,
+        duration: IDLE_ANIM_TIME,
+    });
+
+    scene.anims.create({
+        key: chargeAnimKey,
+        frames: [0, 1, 2, 3, 5].map((i) => { return { frame: i, key: chargeAnimKey }; }),
+        repeat: 0,
+        duration: IDLE_ANIM_TIME,
+    });
+
+    scene.anims.create({
+        key: orbAuraIdleKey,
+        frames: [0, 1, 2, 3].map((i) => { return { frame: i, key: orbAuraIdleKey }; }),
+        repeat: -1,
+        duration: IDLE_ANIM_TIME,
+    });
 }
