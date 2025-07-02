@@ -7,13 +7,28 @@ import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
-import { AbilityWidget } from "../widgets/ability";
+import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
-import addScaledImage from "../utils/addScaledImage";
+import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
+import { colorToNumber } from "../constants/colors";
 
-const abilityInUseY = () => GAME_HEIGHT * 0.8;
-const abilityIdleY = () => GAME_HEIGHT * 0.9;
+const abilityInUseY = () => GAME_HEIGHT * 0.65;
+const abilityIdleY = () => GAME_HEIGHT * 0.75;
+
+const enemyX = (config: BattleConfig, enemyIndex: number): number => {
+    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
+}
+const enemyY = () => GAME_HEIGHT * 0.1;
+
+// TODO: keep this? is it an invisible player? or show it somewhere?
+const playerX = () => GAME_WIDTH / 2;
+const playerY = () => GAME_HEIGHT * 0.875;
+
+const spiritX = (spiritIndex: number): number => {
+    return GAME_WIDTH * (spiritIndex + 0.5) / 3;
+}
+const spiritY = () => GAME_HEIGHT * 0.5;
 
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
@@ -23,6 +38,7 @@ export class ActiveBattle extends Phaser.Scene {
     player: Actor | undefined;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
+    spirits: SpiritWidget[];
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
@@ -32,6 +48,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.enemies = [];
         this.abilityIcons = [];
+        this.spirits = [];
         this.state = state;
     }
 
@@ -91,7 +108,7 @@ export class ActiveBattle extends Phaser.Scene {
                         }
                     });
                 }),
-                onPlayerEffect: (targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
+                onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
                     console.log(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
                     let damageType = undefined;
                     switch (effectType) {
@@ -112,7 +129,7 @@ export class ActiveBattle extends Phaser.Scene {
                         for (let i = 0; i < targets.length; ++i) {
                             const target = targets[i];
                             const amount = amounts[i];
-                            const bullet = this.add.image(playerX(), playerY(), damageType);
+                            const bullet = addScaledImage(this, spiritX(source), spiritY(), damageType);
                             this.tweens.add({
                                 targets: bullet,
                                 x: enemyX(this.battle, target),
@@ -127,13 +144,15 @@ export class ActiveBattle extends Phaser.Scene {
                             });
                         }
                     } else {
+                        // TODO: why was this here? in case we forgot to code something???
                         this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amounts[0], resolve));
                     }
                 }),
                 onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
                     this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, spiritY(), ability).setAlpha(0));
                     this.tweens.add({
-                        targets: this.abilityIcons,
+                        targets: [...this.abilityIcons, ...this.spirits],
                         alpha: 1,
                         duration: 500,
                         onComplete: () => {
@@ -142,15 +161,18 @@ export class ActiveBattle extends Phaser.Scene {
                     });
                 }),
                 onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                    const abilityIcons = this.abilityIcons[abilityIndex];
+                    const abilityIcon = this.abilityIcons[abilityIndex];
+                    const spirit = this.spirits[abilityIndex];
                     this.tweens.add({
-                        targets: abilityIcons,
+                        targets: [abilityIcon/*, spirit*/],
                         y: abilityInUseY(),
                         delay: 150,
                         duration: 250,
                         onComplete: () => {
+                            const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
                             this.tweens.add({
-                                targets: energy != undefined ? abilityIcons.energyEffectUI[energy] : abilityIcons.baseEffectUI,
+                                // TODO: do something to the spirit too
+                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement, spirit],
                                 scale: 1.5,
                                 yoyo: true,
                                 delay: 100,
@@ -159,10 +181,19 @@ export class ActiveBattle extends Phaser.Scene {
                             });
                         },
                     });
+                    // shrink orb after use
+                    if (energy != undefined) {
+                        const orb = this.spirits[abilityIndex].orbs[energy]!;
+                        this.tweens.add({
+                            targets: orb,
+                            scale: 1,
+                            duration: 250,
+                        });
+                    }
                 }),
                 afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
                     this.tweens.add({
-                        targets: this.abilityIcons[abilityIndex],
+                        targets: [this.abilityIcons[abilityIndex]/*, this.spirits[abilityIndex]*/],
                         y: abilityIdleY(),
                         delay: 150,
                         duration: 250,
@@ -171,18 +202,57 @@ export class ActiveBattle extends Phaser.Scene {
                         },
                     });
                 }),
-                onEnergyTrigger: (color: number) => new Promise((resolve) => {
-                    const energyFlash = this.add.image(playerX(), playerY(), `energy_flash_${color}`).setAlpha(0);
-                    this.tweens.add({
-                        targets: energyFlash,
-                        alpha: 1,
-                        delay: 500,
-                        duration: 250,
-                        onComplete: () => {
-                            energyFlash.destroy();
-                            resolve();
-                        },
-                    });
+                onEnergyTrigger: (source: number, color: number) => new Promise((resolve) => {
+                    const aura = this.spirits[source].aura!;
+                    const targets = [0, 1, 2]
+                        .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
+                    console.log(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
+                    if (targets.length > 0) {
+                        console.log(`[ENERGY-UI] charge!`);
+                        aura.anims.play(chargeAnimKey);
+                        this.tweens.add({
+                            targets: this,// ignored since it changes no properties, just to not crash
+                            delay: 250,
+                            duration: CHARGE_ANIM_TIME,
+                            completeDelay: 350,
+                            onComplete: () => {
+                                console.log(`[ENERGY-UI] ...charged...`);
+                                aura.anims.play(spiritAuraIdleKey);
+                                targets.forEach((a) => {
+                                    console.log(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
+                                    const target = this.spirits[a];
+                                    const bullet = scale(this.add.sprite(spiritX(source), spiritY(), 'orb-aura'))
+                                        .setTint(colorToNumber(energyTypeToColor(color)));
+                                    bullet.anims.play(orbAuraIdleKey);
+                                    this.tweens.add({
+                                        targets: bullet,
+                                        delay: 100,
+                                        duration: 500, // TODO: vary based on distance?
+                                        // TODO; target orb instead and compute position it'll be in in 1100ms?
+                                        x: target.x,
+                                        onUpdate: (tween) => {
+                                            // sin-arcs over or below the other spirits (alternates so avoid overlap)
+                                            bullet.y = spiritY() + 32 * Math.sin((tween.progress + (source - a)) * Math.PI);
+                                        },
+                                        onComplete: () => {
+                                            console.log(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
+                                            bullet.destroy();
+                                            resolve();
+                                            // grow orb to show it has been triggered
+                                            const orb = target.orbs[color]!;
+                                            this.tweens.add({
+                                                targets: orb,
+                                                scale: 1.5, // do we want 1.5 or 2x? 1.5 x base(2) is 3 so still whole-integer scalingi
+                                                duration: 500,
+                                            });
+                                        },
+                                    });
+                                });
+                            },
+                        });
+                    } else {
+                        resolve();
+                    }
                 }),
             }).then(result => {
                 if (!apiDone) {
@@ -204,6 +274,8 @@ export class ActiveBattle extends Phaser.Scene {
             }
             this.abilityIcons.forEach((a) => a.destroy());
             this.abilityIcons = [];
+            this.spirits.forEach((s) => s.destroy());
+            this.spirits = [];
             //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
             //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
@@ -250,15 +322,6 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
 }
-
-
-const enemyX = (config: BattleConfig, enemyIndex: number): number => {
-    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
-}
-const enemyY = () => GAME_HEIGHT * 0.1;
-
-const playerX = () => GAME_WIDTH / 2;
-const playerY = () => GAME_HEIGHT * 0.6;
 
 class Actor extends Phaser.GameObjects.Container {
     hp: number;
