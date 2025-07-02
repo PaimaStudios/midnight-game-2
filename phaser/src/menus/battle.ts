@@ -10,11 +10,25 @@ import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
-import addScaledImage, { BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
+import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
 import { colorToNumber } from "../constants/colors";
 
-const abilityInUseY = () => GAME_HEIGHT * 0.8;
-const abilityIdleY = () => GAME_HEIGHT * 0.9;
+const abilityInUseY = () => GAME_HEIGHT * 0.65;
+const abilityIdleY = () => GAME_HEIGHT * 0.75;
+
+const enemyX = (config: BattleConfig, enemyIndex: number): number => {
+    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
+}
+const enemyY = () => GAME_HEIGHT * 0.1;
+
+// TODO: keep this? is it an invisible player? or show it somewhere?
+const playerX = () => GAME_WIDTH / 2;
+const playerY = () => GAME_HEIGHT * 0.875;
+
+const spiritX = (spiritIndex: number): number => {
+    return GAME_WIDTH * (spiritIndex + 0.5) / 3;
+}
+const spiritY = () => GAME_HEIGHT * 0.5;
 
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
@@ -40,7 +54,7 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
-        //this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
+        this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
             this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy'));
@@ -115,7 +129,7 @@ export class ActiveBattle extends Phaser.Scene {
                         for (let i = 0; i < targets.length; ++i) {
                             const target = targets[i];
                             const amount = amounts[i];
-                            const bullet = this.add.image(spiritX(source), spiritY(), damageType);
+                            const bullet = addScaledImage(this, spiritX(source), spiritY(), damageType);
                             this.tweens.add({
                                 targets: bullet,
                                 x: enemyX(this.battle, target),
@@ -136,7 +150,7 @@ export class ActiveBattle extends Phaser.Scene {
                 }),
                 onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
                     this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
-                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, playerY(), ability).setAlpha(0));
+                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, spiritY(), ability).setAlpha(0));
                     this.tweens.add({
                         targets: [...this.abilityIcons, ...this.spirits],
                         alpha: 1,
@@ -308,22 +322,6 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
 }
-
-
-const enemyX = (config: BattleConfig, enemyIndex: number): number => {
-    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
-}
-const enemyY = () => GAME_HEIGHT * 0.1;
-
-// TODO: keep this? is it an invisible player? or show it somewhere?
-const playerX = () => GAME_WIDTH / 2;
-const playerY = () => GAME_HEIGHT * 0.9;
-
-const spiritX = (spiritIndex: number): number => {
-    return GAME_WIDTH * (spiritIndex + 0.5) / 3;
-}
-
-const spiritY = () => GAME_HEIGHT * 0.6;
 
 class Actor extends Phaser.GameObjects.Container {
     hp: number;
