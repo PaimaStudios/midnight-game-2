@@ -4,7 +4,7 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { Button } from "./button";
 import { fontStyle } from "../main";
-import { addScaledImage, scale } from "../utils/addScaledImage";
+import { addScaledImage, scale } from "../utils/scaleImage";
 import { Colors, colorToNumber } from "../constants/colors";
 
 /// Adjusts contract-level damage numbers to a base/average amount

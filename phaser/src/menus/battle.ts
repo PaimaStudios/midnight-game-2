@@ -10,7 +10,7 @@ import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
-import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
+import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { colorToNumber } from "../constants/colors";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.65;
