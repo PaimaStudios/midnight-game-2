@@ -11,7 +11,7 @@ import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
-import { Colors } from "../constants/colors";
+import { Color } from "../constants/colors";
 import { createScrollablePanel } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
@@ -47,7 +47,7 @@ export class StartBattleMenu extends Phaser.Scene {
         const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT/1.6, GAME_WIDTH*0.95, 500);
         const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
         const abilityButtonWidth = 96;
         const abilities = sortedAbilities(this.state);
