@@ -6,13 +6,13 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
-import { Subscription } from "rxjs";
+import { max, Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, scale } from "../utils/scaleImage";
 import { colorToNumber } from "../constants/colors";
-import { HealthBar } from "../widgets/progressBar"
+import { HealthBar } from "../widgets/progressBar";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.65;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
@@ -55,15 +55,6 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
-
-        const healthBar = new HealthBar({
-            scene: this,
-            x: 32,
-            y: GAME_HEIGHT - 50,
-            width: 300,
-            height: 40,
-        });
-        healthBar.setValue(30);
 
         this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
         for (let i = 0; i < this.battle.enemy_count; ++i) {
@@ -337,7 +328,7 @@ export class ActiveBattle extends Phaser.Scene {
 class Actor extends Phaser.GameObjects.Container {
     hp: number;
     maxHp: number;
-    hpText: Phaser.GameObjects.Text;
+    hpBar: HealthBar;
     block: number;
     blockText: Phaser.GameObjects.Text;
 
@@ -347,11 +338,19 @@ class Actor extends Phaser.GameObjects.Container {
 
         this.hp = hp;
         this.maxHp = maxHp;
-        this.hpText = scene.add.text(0, 64, '', fontStyle(12)).setOrigin(0.5, 0.5);
+        this.hpBar = new HealthBar({
+            scene,
+            x: -48,
+            y: 64,
+            width: 140,
+            height: 32,
+            max: maxHp,
+            displayTotalCompleted: true,
+        });
         this.block = 0;
         this.blockText = scene.add.text(0, -96, '', fontStyle(12)).setOrigin(0.5, 0.5);
 
-        this.add(this.hpText);
+        this.add(this.hpBar);
         this.add(this.blockText);
 
         this.setHp(hp);
@@ -378,7 +377,10 @@ class Actor extends Phaser.GameObjects.Container {
 
     private setHp(hp: number) {
         this.hp = Math.max(0, hp);
-        this.hpText.setText(this.hp <= 0 ? 'DEAD' : `${this.hp} / ${this.maxHp} HP`);
+        this.hpBar.setValue(this.hp);
+        if (this.hp <= 0) {
+            this.hpBar.setLabel('DEAD');
+        }
     }
 
     public setBlock(block: number) {
