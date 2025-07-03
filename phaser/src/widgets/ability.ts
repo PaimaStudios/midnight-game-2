@@ -4,8 +4,13 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { Button } from "./button";
 import { fontStyle } from "../main";
+<<<<<<< Updated upstream
 import { addScaledImage, scale } from "../utils/addScaledImage";
 import { Colors, colorToNumber } from "../constants/colors";
+=======
+import { addScaledImage, scale } from "../utils/scaleImage";
+import { Color, colorToNumber } from "../constants/colors";
+>>>>>>> Stashed changes
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -174,14 +179,14 @@ export enum ENERGY_TYPE {
     magenta = 2,
 }
 
-export function energyTypeToColor(energyType: ENERGY_TYPE): Colors {
+export function energyTypeToColor(energyType: ENERGY_TYPE): Color {
     switch (energyType) {
         case ENERGY_TYPE.cyan:
-            return Colors.DarkGreen;
+            return Color.DarkGreen;
         case ENERGY_TYPE.yellow:
-            return Colors.Olive;
+            return Color.Olive;
         case ENERGY_TYPE.magenta:
-            return Colors.Violet;
+            return Color.Violet;
     }
 }
 

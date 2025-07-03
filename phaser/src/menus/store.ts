@@ -5,7 +5,7 @@ import { AbilityWidget, createSpiritAnimations, SpiritWidget } from "../widgets/
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
-import { Colors } from "../constants/colors";
+import { Color } from "../constants/colors";
 import { isStartingAbility, sortedAbilities } from "./pre-battle";
 import { TestMenu } from "./main";
 
@@ -30,7 +30,7 @@ export class Store extends Phaser.Scene {
 
     create() {
         this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
         createSpiritAnimations(this);
 

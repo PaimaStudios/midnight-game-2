@@ -10,8 +10,13 @@ import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
+<<<<<<< Updated upstream
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
+=======
+import { addScaledImage, scale } from "../utils/scaleImage";
+>>>>>>> Stashed changes
 import { colorToNumber } from "../constants/colors";
+import { HealthBar } from "../widgets/progressBar"
 
 const abilityInUseY = () => GAME_HEIGHT * 0.65;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
@@ -54,6 +59,16 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
+
+        const healthBar = new HealthBar({
+            scene: this,
+            x: 32,
+            y: GAME_HEIGHT - 50,
+            width: 300,
+            height: 40,
+        });
+        healthBar.setValue(30);
+
         this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
