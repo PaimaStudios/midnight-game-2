@@ -69,4 +69,5 @@ export type Game2DerivedState = {
   // for debugging - TODO remove
   ui?: boolean;
   circuit?: boolean;
+  testMap: Map<bigint, bigint>;
 }

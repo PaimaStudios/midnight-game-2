@@ -146,6 +146,14 @@ export class TestMenu extends Phaser.Scene {
             this.goldText?.setText(`Gold: ${state.player.gold}`);
         } else {
             // We haven't registered a player yet, so show the register button
+            for (let i = 0; i < 3; ++i) {
+                const button = new Button(this, 100, 64 * (i + 1), 256, 48, `test_map(${i}) = ${state.testMap.get(BigInt(i)) ?? '?!'}`, 8, () => {
+                    console.log(`calling test_map_concurrency(${i})`);
+                    this.api!.test_map_concurrency(BigInt(i)).then(() => {
+                        console.log(`finished test_map_concurrency(${i})`);
+                    });
+                });
+            }
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
                 console.log('Registering new player...');
                 // Launch the loader scene to display during the API call

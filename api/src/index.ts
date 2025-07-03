@@ -123,6 +123,8 @@ export interface DeployedGame2API {
      * @param ability The ability to sell. You must own at least 1
      */
     sell_ability: (ability: Ability) => Promise<void>;
+
+    test_map_concurrency: (key: bigint) => Promise<bigint>;
 }
 
 /**
@@ -170,6 +172,7 @@ export class Game2API implements DeployedGame2API {
                   player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
                   playerAbilities: new Map(ledgerState.playerAbilities.member(playerId) ? ledgerState.playerAbilities.lookup(playerId) : []),
                   allAbilities: new Map(ledgerState.allAbilities),
+                  testMap: new Map(ledgerState.testMap),
                 };
             },
         );
@@ -263,6 +266,12 @@ export class Game2API implements DeployedGame2API {
                 blockHeight: txData.public.blockHeight,
             },
         });
+    }
+
+    async test_map_concurrency(key: bigint): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.test_map_concurrency(key);
+        return txData.private.result;
+
     }
 
     /**

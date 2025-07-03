@@ -40,7 +40,8 @@ export class MockGame2API implements DeployedGame2API {
             player: undefined,
             playerAbilities: new Map(),
             ui: undefined,
-            circuit: undefined
+            circuit: undefined,
+            testMap: new Map(),
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -171,6 +172,15 @@ export class MockGame2API implements DeployedGame2API {
             }
             this.mockState.player!.gold += pureCircuits.ability_value(ability);
         });
+    }
+
+    public async test_map_concurrency(key: bigint): Promise<bigint> {
+        return this.response(() => {
+            const val = (this.mockState.testMap.get(key) ?? BigInt(0)) + BigInt(1);
+            this.mockState.testMap.set(key, val);
+            return val;
+        });
+        //return Promise.reject(new Error('on-chain testing only'));
     }
 
 

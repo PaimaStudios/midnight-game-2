@@ -2,6 +2,13 @@ pragma language_version >= 0.12.1;
 
 import CompactStandardLibrary;
 
+export ledger test_map: Map<Uint<32>, Uint<32>>;
+export circuit test_map_concurrency(key: Uint<32>): Uint<32> {
+    const val = (test_map.lookup(key) + 1) as Uint<32>;
+    test_map.insert(key, val);
+    return val;
+}
+
 // fire/ice can go past block
 // physical doesn't
 // you can either be neutral (fire/ice do normal damage) or you can have higher/lower resistances to them
@@ -138,6 +145,9 @@ constructor() {
     ability_base_fire_aoe_id = register_ability(ability_base_fire_aoe());
     ability_base_ice_id = register_ability(ability_base_ice());
     players.reset_to_default();
+    test_map.insert(0, 0);
+    test_map.insert(1, 0);
+    test_map.insert(2, 0);
 }
 
 // used to compute player ID. secret witness only known to the player.
