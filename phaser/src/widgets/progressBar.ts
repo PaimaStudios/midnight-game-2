@@ -77,19 +77,26 @@ export class ProgressBar extends Phaser.GameObjects.Container {
     }
 
     setValue(value: number) {
-        this._value = Phaser.Math.Clamp(value, this.min, this.max);
-        const percent = (this._value - this.min) / (this.max - this.min);
-        this.bar.width = this.widthPx * percent;
+        const newValue = Phaser.Math.Clamp(value, this.min, this.max);
+        const newPercent = (newValue - this.min) / (this.max - this.min);
+        this._value = newValue;
+
+        // Animate the bar width
+        this.scene.tweens.add({
+            targets: this.bar,
+            width: this.widthPx * newPercent,
+            duration: 250,
+            ease: 'Cubic.Out',
+        });
 
         if (this.shouldDisplayLabel()) {
             this.label.setVisible(true);
-            if (this.labelText ) {
+            if (this.labelText) {
                 this.setLabel(this.labelText);
             } else if (this.displayTotalCompleted) {
                 this.setLabel(`${this._value} / ${this.max}`);
             }
-        }
-        else {
+        } else {
             this.label.setVisible(false);
         }
     }
