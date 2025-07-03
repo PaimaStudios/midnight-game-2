@@ -4,13 +4,8 @@
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { Button } from "./button";
 import { fontStyle } from "../main";
-<<<<<<< Updated upstream
-import { addScaledImage, scale } from "../utils/addScaledImage";
-import { Colors, colorToNumber } from "../constants/colors";
-=======
 import { addScaledImage, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
->>>>>>> Stashed changes
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {

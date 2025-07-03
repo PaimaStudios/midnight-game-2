@@ -10,11 +10,7 @@ import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
-<<<<<<< Updated upstream
-import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/addScaledImage";
-=======
 import { addScaledImage, scale } from "../utils/scaleImage";
->>>>>>> Stashed changes
 import { colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar"
 
