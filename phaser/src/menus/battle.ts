@@ -6,7 +6,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
-import { max, Subscription } from "rxjs";
+import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
