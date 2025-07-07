@@ -338,7 +338,7 @@ class Actor extends Phaser.GameObjects.Container {
 
         let healtBarYOffset = 0;
         if (texture !== undefined) {
-            const actorImage = addScaledImage(scene, 0, 0, texture).setScale(2.0)
+            const actorImage = addScaledImage(scene, 0, 0, texture)
             healtBarYOffset += actorImage.height + 22;
             this.add(actorImage);
         }
