@@ -5,7 +5,7 @@ import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { Button } from "./button";
 import { fontStyle } from "../main";
 import { addScaledImage, scale } from "../utils/scaleImage";
-import { Colors, colorToNumber } from "../constants/colors";
+import { Color, colorToNumber } from "../constants/colors";
 
 const EFFECT_ICON_SCALE = 2.0
 
@@ -176,14 +176,14 @@ export enum ENERGY_TYPE {
     magenta = 2,
 }
 
-export function energyTypeToColor(energyType: ENERGY_TYPE): Colors {
+export function energyTypeToColor(energyType: ENERGY_TYPE): Color {
     switch (energyType) {
         case ENERGY_TYPE.cyan:
-            return Colors.DarkGreen;
+            return Color.DarkGreen;
         case ENERGY_TYPE.yellow:
-            return Colors.Olive;
+            return Color.Olive;
         case ENERGY_TYPE.magenta:
-            return Colors.Violet;
+            return Color.Violet;
     }
 }
 

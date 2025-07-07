@@ -1,4 +1,4 @@
-import {Colors, colorToNumber} from '../constants/colors';
+import {Color, colorToNumber} from '../constants/colors';
 import 'phaser';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
 
@@ -34,8 +34,8 @@ export const createScrollablePanel = function (
                 child: panel,
             },
             slider: {
-                track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Colors.DeepPlum)),
-                thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Colors.Tan)),
+                track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Color.DeepPlum)),
+                thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Color.Tan)),
             },
             mouseWheelScroller: {
                 focus: false,

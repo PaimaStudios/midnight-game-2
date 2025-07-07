@@ -15,7 +15,7 @@ import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
-import { Colors } from "../constants/colors";
+import { Color } from "../constants/colors";
 import { Store } from "./store";
 import { createSpiritAnimations } from "../widgets/ability";
 
@@ -93,7 +93,7 @@ export class TestMenu extends Phaser.Scene {
             this.initApi(new MockGame2API());
         }));
         this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Colors.Red }));
+        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
     }
 
     private initApi(api: DeployedGame2API) {
