@@ -33,11 +33,23 @@ export class ProgressBar extends Phaser.GameObjects.Container {
     protected displayTotalCompleted: boolean = false;
 
     constructor(config: ProgressBarConfig) {
+        // Center the container at (config.x, config.y)
         super(config.scene, config.x, config.y);
+
+        this.min = config.min ?? 0;
+        this.max = config.max ?? 100;
+        this._value = config.value ?? this.max;
+        this.widthPx = config.width;
+        this.heightPx = config.height;
+        this.displayTotalCompleted = config.displayTotalCompleted ?? false;
+
+        // All elements are positioned relative to the center
+        const halfWidth = this.widthPx / 2;
+        const halfHeight = this.heightPx / 2;
 
         // Add border rectangle
         const border = config.scene.add.rectangle(
-            0, 0, 
+            -halfWidth, -halfHeight, 
             config.width, config.height
         );
         const borderWidth = config.borderWidth ?? 8; // Default border width
@@ -46,17 +58,11 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         border.setOrigin(0, 0);
 
         this.add(border);
-        this.min = config.min ?? 0;
-        this.max = config.max ?? 100;
-        this._value = config.value ?? this.max;
-        this.widthPx = config.width;
-        this.heightPx = config.height;
-        this.displayTotalCompleted = config.displayTotalCompleted ?? false;
 
-        this.bg = config.scene.add.rectangle(0, 0, this.widthPx, this.heightPx, config.bgColor ?? colorToNumber(Color.DeepPlum));
+        this.bg = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.bgColor ?? colorToNumber(Color.DeepPlum));
         this.bg.setOrigin(0, 0);
 
-        this.bar = config.scene.add.rectangle(0, 0, this.widthPx, this.heightPx, config.barColor ?? colorToNumber(Color.Turquoise));
+        this.bar = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.barColor ?? colorToNumber(Color.Turquoise));
         this.bar.setOrigin(0, 0);
 
         this.add(this.bg);
@@ -64,8 +70,8 @@ export class ProgressBar extends Phaser.GameObjects.Container {
 
         // Display total completed text if enabled
         this.label = config.scene.add.text(
-            this.widthPx / 2,
-            this.heightPx / 2 - 4,
+            0,
+            -4,  // Subtract a few pixels to center vertically for our chosen font
             `${this._value} / ${this.max}`,
             config.fontStyle ?? fontStyle(10),
         ).setOrigin(0.5, 0.5);

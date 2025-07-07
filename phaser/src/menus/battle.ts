@@ -24,7 +24,7 @@ const enemyY = () => GAME_HEIGHT * 0.1;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
-const playerY = () => GAME_HEIGHT * 0.875;
+const playerY = () => GAME_HEIGHT * 0.92;
 
 const spiritX = (spiritIndex: number): number => {
     return GAME_WIDTH * (spiritIndex + 0.5) / 3;
@@ -56,7 +56,7 @@ export class ActiveBattle extends Phaser.Scene {
     create() {
         const loader = this.scene.get('Loader') as Loader;
 
-        this.player = new Actor(this, playerX(), playerY(), 100, 100, 'player');
+        this.player = new Actor(this, playerX(), playerY(), 100, 100);
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
             this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy'));
@@ -333,16 +333,23 @@ class Actor extends Phaser.GameObjects.Container {
     blockText: Phaser.GameObjects.Text;
 
     // TODO: ActorConfig or Stats or whatever
-    constructor(scene: Phaser.Scene, x: number, y: number, hp: number, maxHp: number, texture: string) {
+    constructor(scene: Phaser.Scene, x: number, y: number, hp: number, maxHp: number, texture?: string) {
         super(scene, x, y);
+
+        let healtBarYOffset = 0;
+        if (texture !== undefined) {
+            const actorImage = addScaledImage(scene, 0, 0, texture).setScale(2.0)
+            healtBarYOffset += actorImage.height + 22;
+            this.add(actorImage);
+        }
 
         this.hp = hp;
         this.maxHp = maxHp;
         this.hpBar = new HealthBar({
             scene,
-            x: -48,
-            y: 64,
-            width: 140,
+            x: 0,
+            y: healtBarYOffset,
+            width: 180,
             height: 32,
             max: maxHp,
             displayTotalCompleted: true,
@@ -354,9 +361,6 @@ class Actor extends Phaser.GameObjects.Container {
         this.add(this.blockText);
 
         this.setHp(hp);
-
-        this.add(addScaledImage(scene, 0, 0, texture).setScale(2.0));
-
         this.setSize(64, 64);
 
         scene.add.existing(this);
