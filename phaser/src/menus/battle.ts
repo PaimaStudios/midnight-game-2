@@ -330,7 +330,6 @@ class Actor extends Phaser.GameObjects.Container {
     maxHp: number;
     hpBar: HealthBar;
     block: number;
-    blockText: Phaser.GameObjects.Text;
 
     // TODO: ActorConfig or Stats or whatever
     constructor(scene: Phaser.Scene, x: number, y: number, hp: number, maxHp: number, texture?: string) {
@@ -355,10 +354,8 @@ class Actor extends Phaser.GameObjects.Container {
             displayTotalCompleted: true,
         });
         this.block = 0;
-        this.blockText = scene.add.text(0, -96, '', fontStyle(12)).setOrigin(0.5, 0.5);
 
         this.add(this.hpBar);
-        this.add(this.blockText);
 
         this.setHp(hp);
         this.setSize(64, 64);
@@ -389,7 +386,7 @@ class Actor extends Phaser.GameObjects.Container {
 
     public setBlock(block: number) {
         this.block = block;
-        this.blockText.setText(block == 0 ? '' : `${block} Block`);
+        this.hpBar.setBlock(block);
     }
 }
 

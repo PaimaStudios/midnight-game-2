@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {Color, colorToNumber} from '../constants/colors';
 import {fontStyle} from '../main';
+import { BASE_SPRITE_SCALE } from '../utils/scaleImage';
 
 export interface ProgressBarConfig {
     x: number;
@@ -122,11 +123,34 @@ export class ProgressBar extends Phaser.GameObjects.Container {
 }
 
 export class HealthBar extends ProgressBar {
+    shield: Phaser.GameObjects.Image;
+    blockText: Phaser.GameObjects.Text;
+    
     constructor(config: ProgressBarConfig) {
         super({
             ...config,
             barColor: config.barColor ?? colorToNumber(Color.Red),
             bgColor: config.bgColor ?? colorToNumber(Color.Licorice),
         });
+
+        const halfWidth = config.width / 2;
+        this.shield = this.scene.add.image(-halfWidth, 0, 'hp-bar-shield')
+            .setScale(2.0) // TODO: replace with BASE_SPRITE_SCALE in the scale PR
+            .setVisible(false);
+        this.blockText = this.scene.add.text(-halfWidth, -4, '', fontStyle(10))
+            .setOrigin(0.5, 0.5)
+            .setVisible(false);
+        this.add(this.shield);
+        this.add(this.blockText);
+    }
+
+    public setBlock(block: number) {
+        if (block > 0) {
+            this.shield.setVisible(true);
+            this.blockText.setVisible(true).setText(block.toString());
+        } else {
+            this.shield.setVisible(false);
+            this.blockText.setVisible(false);
+        }
     }
 }
