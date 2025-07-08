@@ -129,22 +129,4 @@ export class HealthBar extends ProgressBar {
             bgColor: config.bgColor ?? colorToNumber(Color.Licorice),
         });
     }
-    
-
-    setValue(value: number) {
-        super.setValue(value);
-        if (value <= 0) {
-            this.setBlock(0);
-        }
-    }
-
-    public setBlock(block: number) {
-        if (block > 0) {
-            this.shield.setVisible(true);
-            this.blockText.setVisible(true).setText(block.toString());
-        } else {
-            this.shield.setVisible(false);
-            this.blockText.setVisible(false);
-        }
-    }
 }
