@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 
-export const BASE_SPRITE_SCALE = 4.0;
+export const BASE_SPRITE_SCALE = 2.0;
 
-export const addScaledImage = (scene: Phaser.Scene, x: number, y: number, key: string, scale: number = BASE_SPRITE_SCALE): Phaser.GameObjects.Image => {
+export const addScaledImage = (scene: Phaser.Scene, x: number, y: number, key: string): Phaser.GameObjects.Image => {
     const image = scene.add.image(x, y, key);
-    image.setScale(scale);
+    image.setScale(BASE_SPRITE_SCALE);
     return image;
 }
 
