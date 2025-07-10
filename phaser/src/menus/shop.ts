@@ -29,7 +29,8 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     create() {
-        this.goldText = this.add.text(32, 8, '', fontStyle(12));
+        this.add.text(32, 8, 'Gold: ', fontStyle(12));
+        this.goldText = this.add.text(100, 8, '', fontStyle(12, { color: Color.Yellow }));
         this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
 
         createSpiritAnimations(this);
@@ -82,7 +83,7 @@ export class ShopMenu extends Phaser.Scene {
         // Update scrollable panel layout after adding all children
         scrollablePanel.layout()
 
-        this.goldText?.setText(`Gold: ${state.player!.gold}`);
+        this.goldText?.setText(`${state.player!.gold}`);
         this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {
             this.scene.remove('TestMenu');
             this.scene.add('TestMenu', new TestMenu(this.api, state));
