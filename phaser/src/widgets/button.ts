@@ -4,6 +4,7 @@
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 import { Color } from '../constants/colors';
+import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
 
 export class Button extends Phaser.GameObjects.Container {
     bg: Phaser.GameObjects.NineSlice;
@@ -14,9 +15,9 @@ export class Button extends Phaser.GameObjects.Container {
 
     constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, text: string, fontSize: number, onClick: () => void, helpText?: string) {
         super(scene, x, y);
-        this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, w, h, 8, 8, 8, 8);
+        this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, w / BASE_SPRITE_SCALE, h / BASE_SPRITE_SCALE, 8, 8, 8, 8).setScale(BASE_SPRITE_SCALE);
         this.add(this.bg);
-        this.bgOver = scene.add.nineslice(0, 0, 'stone_button_over', undefined, w + 4, h + 4, 8, 8, 8, 8);
+        this.bgOver = scene.add.nineslice(0, 0, 'stone_button_over', undefined, (w + 4) / BASE_SPRITE_SCALE, (h + 4) / BASE_SPRITE_SCALE, 8, 8, 8, 8).setScale(BASE_SPRITE_SCALE);
         this.bgOver.visible = false;
         this.add(this.bgOver);
         // this.text = scene.add.text(0, 0, text, fontStyle(fontSize, { wordWrap: { width: w - 8 } })).setOrigin(0.5, 0.65)

@@ -50,7 +50,7 @@ export class ShopMenu extends Phaser.Scene {
         this.ui.forEach((o) => o.destroy());
         this.ui = [];
 
-        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT/1.6, GAME_WIDTH*0.95, 500);
+        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT/2.0 - 25, GAME_WIDTH*0.95, 500);
         const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         this.ui.push(scrollablePanel);
 
@@ -60,9 +60,9 @@ export class ShopMenu extends Phaser.Scene {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
 
-            const abilityContainer = this.add.container(0, 0).setSize(96, 150);
-            abilityContainer.add(new AbilityWidget(this, 0, 60, ability));
-            abilityContainer.add(new Button(this, 0, -60, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
+            const abilityContainer = this.add.container(0, 0).setSize(84, 128);
+            abilityContainer.add(new AbilityWidget(this, 0, 70, ability));
+            abilityContainer.add(new Button(this, 0, -35, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");
@@ -74,7 +74,7 @@ export class ShopMenu extends Phaser.Scene {
                     this.scene.resume().stop('Loader');
                 });
             }));
-            abilityContainer.add(new SpiritWidget(this, 0, -180, ability));
+            abilityContainer.add(new SpiritWidget(this, 0, -120, ability));
             this.ui.push(abilityContainer);
 
             // Add new child to scrollable panel

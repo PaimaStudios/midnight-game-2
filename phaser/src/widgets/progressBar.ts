@@ -135,7 +135,7 @@ export class HealthBar extends ProgressBar {
 
         const halfWidth = config.width / 2;
         this.shield = this.scene.add.image(-halfWidth, 0, 'hp-bar-shield')
-            .setScale(2.0) // TODO: replace with BASE_SPRITE_SCALE in the scale PR
+            .setScale(BASE_SPRITE_SCALE)
             .setVisible(false);
         this.blockText = this.scene.add.text(-halfWidth, -4, '', fontStyle(10))
             .setOrigin(0.5, 0.5)
