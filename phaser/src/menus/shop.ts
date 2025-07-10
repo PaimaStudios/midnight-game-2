@@ -29,8 +29,8 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     create() {
-        this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
+        this.goldText = this.add.text(32, 8, '', fontStyle(12));
+        this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
 
         createSpiritAnimations(this);
 
@@ -60,9 +60,8 @@ export class ShopMenu extends Phaser.Scene {
             const value = Number(pureCircuits.ability_value(ability));
 
             const abilityContainer = this.add.container(0, 0).setSize(96, 150);
-            abilityContainer.add(new SpiritWidget(this, 0, 0, ability));
-            abilityContainer.add(new AbilityWidget(this, 0, 160, ability));
-            abilityContainer.add(new Button(this, 0, 32, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
+            abilityContainer.add(new AbilityWidget(this, 0, 60, ability));
+            abilityContainer.add(new Button(this, 0, -60, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");
@@ -73,26 +72,9 @@ export class ShopMenu extends Phaser.Scene {
                     console.error(`Error selling ability: ${e}`);
                     this.scene.resume().stop('Loader');
                 });
-                // Update scrollable panel layout after removing a child
-                scrollablePanel.layout()
             }));
-            abilityContainer.x = 32 + i * abilityButtonWidth;
-            abilityContainer.y = 0;
+            abilityContainer.add(new SpiritWidget(this, 0, -180, ability));
             this.ui.push(abilityContainer);
-            // this.ui.push(new SpiritWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.4, ability));
-            // this.ui.push(new AbilityWidget(this,  32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability));
-            // this.ui.push(new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 128, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
-            //     this.scene.pause().launch('Loader');
-            //     this.loader = this.scene.get('Loader') as Loader;
-            //     this.loader.setText("Submitting Proof");
-            //     this.api.sell_ability(ability).then(() => {
-            //         this.loader?.setText("Waiting on chain update");
-            //     }).catch((e) => {
-            //         this.errorText?.setText('Error Talking to the network. Try again...');
-            //         console.error(`Error selling ability: ${e}`);
-            //         this.scene.resume().stop('Loader');
-            //     });
-            // }));
 
             // Add new child to scrollable panel
             scrollablePanelElement.add(abilityContainer);
