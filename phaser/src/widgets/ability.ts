@@ -81,33 +81,6 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
     }
 }
 
-// Ability Widget with optional button
-export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
-    abilityWidget: AbilityWidget;
-    button: Button | undefined;
-
-    constructor(
-        scene: Phaser.Scene,
-        x: number,
-        y: number,
-        abilityWidget: AbilityWidget,
-        button: Button | undefined = undefined,
-    ) {
-        super(scene, x, y)
-        this.setSize(96, 150);
-        this.abilityWidget = abilityWidget;
-        abilityWidget.setPosition(0, 0);
-        this.add(abilityWidget);
-        if (button != undefined) {
-            this.button = button;
-            // Position the button below the abilityWidget, adjusting y as needed
-            button.setPosition(0, abilityWidget.height / 2 + ( button.height / 2 + 8));
-            this.add(button);
-        }
-        scene.add.existing(this);
-    }
-}
-
 const iToRad = 2 * Math.PI / 3;
 
 export class SpiritWidget extends Phaser.GameObjects.Container {
