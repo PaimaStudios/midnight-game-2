@@ -39,8 +39,8 @@ import { TestMenu } from './menus/main';
 import { Loader } from './menus/loader';
 import { Color } from './constants/colors';
 
-export const GAME_WIDTH = 960;
-export const GAME_HEIGHT = 720;
+export const GAME_WIDTH = 720;
+export const GAME_HEIGHT = 480;
 
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {

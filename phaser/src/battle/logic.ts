@@ -85,7 +85,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             console.log(`end state[${uiHooks == undefined}]: ${safeJSONString(gameState)}`);
         }
 
-
+        await uiHooks?.onDrawAbilities(abilities);
 
         // enemy block
         let enemy_hp = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
@@ -127,8 +127,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 }
             }
         };
-
-        await uiHooks?.onDrawAbilities(abilities);
 
         // TODO: don't target dead enemies
         const targets = abilities.map((_, i) => randIntBetween(rng, i, 0, Number(battleConfig.enemy_count) - 1));

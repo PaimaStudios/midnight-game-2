@@ -10,17 +10,17 @@ import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
-import { addScaledImage, scale } from "../utils/scaleImage";
+import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
 
-const abilityInUseY = () => GAME_HEIGHT * 0.65;
+const abilityInUseY = () => GAME_HEIGHT * 0.7;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
 
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.1;
+const enemyY = () => GAME_HEIGHT * 0.185;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
@@ -55,6 +55,7 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
 
         this.player = new Actor(this, playerX(), playerY(), 100, 100);
         for (let i = 0; i < this.battle.enemy_count; ++i) {
@@ -338,7 +339,7 @@ class Actor extends Phaser.GameObjects.Container {
         let healtBarYOffset = 0;
         if (texture !== undefined) {
             const actorImage = addScaledImage(scene, 0, 0, texture)
-            healtBarYOffset += actorImage.height*2 + 22;
+            healtBarYOffset -= actorImage.height*1.5 + 22;
             this.add(actorImage);
         }
 
@@ -348,7 +349,7 @@ class Actor extends Phaser.GameObjects.Container {
             scene,
             x: 0,
             y: healtBarYOffset,
-            width: 180,
+            width: texture != null ? 180 : GAME_WIDTH * 0.75,
             height: 32,
             max: maxHp,
             displayTotalCompleted: true,
@@ -408,7 +409,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         super(scene, x, y);
 
         this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(4.0));
+        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
 
         this.setSize(48, 48);
         //console.log(`BattleEffect START ${effectType} | ${amount}`);

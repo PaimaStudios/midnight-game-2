@@ -44,12 +44,12 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT/1.6, GAME_WIDTH*0.95, 500);
+        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 500);
         const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
-        const abilityButtonWidth = 96;
+        const abilityButtonWidth = 84;
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
