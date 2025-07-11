@@ -8,6 +8,7 @@ import { Loader } from "./loader";
 import { Color } from "../constants/colors";
 import { isStartingAbility, sortedAbilities } from "./pre-battle";
 import { TestMenu } from "./main";
+import { addScaledImage } from "../utils/scaleImage";
 import { createScrollablePanel } from "../widgets/scrollable";
 
 export class ShopMenu extends Phaser.Scene {
@@ -32,7 +33,8 @@ export class ShopMenu extends Phaser.Scene {
         this.add.text(32, 8, 'Gold: ', fontStyle(12));
         this.goldText = this.add.text(100, 8, '', fontStyle(12, { color: Color.Yellow }));
         this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
-
+        // this is just here to show some contrast since we won't have a black background. TOOD: replace with a specific background
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
         createSpiritAnimations(this);
 
         this.onStateChange(this.state);
@@ -54,15 +56,16 @@ export class ShopMenu extends Phaser.Scene {
         const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
         this.ui.push(scrollablePanel);
 
-        const abilityButtonWidth = 96;
+        const abilityButtonWidth = 100;
         const abilities = sortedAbilities(state).filter((a) => !isStartingAbility(a));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
 
-            const abilityContainer = this.add.container(0, 0).setSize(84, 128);
-            abilityContainer.add(new AbilityWidget(this, 0, 70, ability));
-            abilityContainer.add(new Button(this, 0, -35, abilityButtonWidth, 64, `Sell\n$${value}`, 8, () => {
+            const abilityWidget = new AbilityWidget(this, 0, 70, ability);
+            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
+            abilityContainer.add(abilityWidget);
+            abilityContainer.add(new Button(this, 0, -35, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");
@@ -85,6 +88,8 @@ export class ShopMenu extends Phaser.Scene {
 
         this.goldText?.setText(`${state.player!.gold}`);
         this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {
+            // TODO: this does NOT address https://github.com/PaimaStudios/midnight-game-2/issues/45
+            //this.tweens.killAll();
             this.scene.remove('TestMenu');
             this.scene.add('TestMenu', new TestMenu(this.api, state));
             this.scene.start('TestMenu');

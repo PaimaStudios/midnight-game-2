@@ -5,6 +5,7 @@ import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "../main";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
+import { ParchmentScroll } from "./parchment-scroll";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -15,24 +16,24 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     console.log(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
     if (effect.is_aoe) {
-        uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset - 6, 'aoe'));
+        uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset - 6, 'aoe').setTint(colorToNumber(Color.Brown)));
     }
     switch (effect.effect_type) {
         case EFFECT_TYPE.attack_fire:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'fire'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.attack_ice:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'ice'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.attack_phys:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'physical'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.block:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'block'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
     }
     uiComponents.forEach((comp) => container.add(comp));
@@ -40,7 +41,7 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
 }
 
 export class AbilityWidget extends Phaser.GameObjects.Container {
-    bg: Phaser.GameObjects.NineSlice;
+    bg: ParchmentScroll;
     ability: Ability;
     baseEffectUI: Phaser.GameObjects.GameObject[];
     energyEffectUI: Phaser.GameObjects.GameObject[][];
@@ -52,10 +53,10 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         ability: Ability,
      ) {
         super(scene, x, y);
-        const w = 84;
+        const w = 90;
         const h = 128;
         this.setSize(w, h);
-        this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, w / BASE_SPRITE_SCALE, h / BASE_SPRITE_SCALE, 8, 8, 8, 8).setScale(BASE_SPRITE_SCALE);
+        this.bg = new ParchmentScroll(scene, 0, 0, w, h, false);
         if (ability.generate_color.is_some) {
             this.bg.setTint(colorToNumber(energyTypeToColor(Number(ability.generate_color.value))));
         }
@@ -64,19 +65,25 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         this.energyEffectUI = [[], [], []];
 
         this.add(this.bg);
-        if (ability.effect.is_some) {
-            this.baseEffectUI = addEffectIcons(this, ability.effect.value, -6, -40);
-        }
-        for (let i = 0; i < ability.on_energy.length; ++i) {
-            if (ability.on_energy[i].is_some) {
-                const energyY = 32 * i - 16;
-                this.add(addScaledImage(scene, -28, energyY, `energy-icon`).setTint(colorToNumber(energyTypeToColor(i))));
-                this.add(addScaledImage(scene, -15, energyY, 'arrow'));
-                this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
-            }
-        }
 
         scene.add.existing(this);
+
+        this.bg.unfurl({
+            duration: 1000,
+            onComplete: () => {
+                if (ability.effect.is_some) {
+                    this.baseEffectUI = addEffectIcons(this, ability.effect.value, -6, -40);
+                }
+                for (let i = 0; i < ability.on_energy.length; ++i) {
+                    if (ability.on_energy[i].is_some) {
+                        const energyY = 32 * i - 16;
+                        this.add(addScaledImage(scene, -28, energyY, `energy-icon`).setTint(colorToNumber(energyTypeToColor(i))));
+                        this.add(addScaledImage(scene, -15, energyY, 'arrow').setTint(colorToNumber(Color.Brown)));
+                        this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
+                    }
+                }
+            },
+        });
     }
 }
 

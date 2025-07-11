@@ -46,8 +46,7 @@ export class TestMenu extends Phaser.Scene {
     preload() {
         this.load.setBaseURL('/');
 
-        this.load.image('stone_button', 'stone_button.png');
-        this.load.image('stone_button_over', 'stone_button_over.png');
+        this.load.image('ui-scroll-bg', 'ui-scroll-bg.png');
 
         this.load.image('fire', 'fire.png');
         this.load.image('ice', 'ice.png');
