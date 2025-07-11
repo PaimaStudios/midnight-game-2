@@ -20,8 +20,8 @@ declare module 'phaser' {
 export const createScrollablePanel = function (
     scene: Phaser.Scene,
     x: number, y: number, width: number, height: number
-
 ): RexUIPlugin.ScrollablePanel {
+
     const panel = scene.rexUI.add.sizer({
         orientation: 'x',
         space: { item: 10, top: 200, bottom: 10 }
@@ -44,4 +44,109 @@ export const createScrollablePanel = function (
         }).layout()
 
     return scrollablePanel;
+}
+
+export const getScrollablePanelElement = function (scrollablePanel: RexUIPlugin.ScrollablePanel): Phaser.GameObjects.Container {
+    return scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
+}
+
+export function setDraggable(scrollablePanel: RexUIPlugin.ScrollablePanel): void {
+    const scene = scrollablePanel.scene;
+    const dragBehavior = scene.plugins.get('rexdragplugin') as any;
+    scrollablePanel
+        .setChildrenInteractive({
+            targets: [
+                getScrollablePanelElement(scrollablePanel),
+            ],
+            dropZone: true,
+        })
+        .on('child.down', (child: any) => {
+            if (!child.drag) {
+                child.drag = dragBehavior.add(child);
+                console.log(child);
+                child
+                    .on('dragstart', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+                        const currentSizer = child.getParentSizer();
+                        // Save start sizer and index
+                        child.setData({
+                            sizer: currentSizer,
+                            index: currentSizer.getChildIndex(child)
+                        });
+                        currentSizer.remove(child);
+                        // Don't layout currentSizer in this moment,
+                        // just clear mask manually
+                        child.clearMask();
+
+                        onChildDragStart(child);
+                    })
+                    .on('dragend', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number, dropped: boolean) => {
+                        if (dropped) { // Process 'drop' event
+                            return;
+                        }
+
+                        const previousSizer = child.getData('sizer');
+
+                        onChildDragEnd(child);
+
+                        // Insert back to previous sizer if not dropping on another panel
+                        previousSizer.insert(child.getData('index'), child, { expand: true });
+                        arrangeItems(previousSizer);
+                    })
+                    .on('drop', (pointer: Phaser.Input.Pointer, dropZone: any) => {
+                        // Drop at another sizer
+                        onChildDragEnd(child);
+
+                        const currentSizer = dropZone.getTopmostSizer().getElement('panel');
+                        const previousSizer = child.getData('sizer');
+
+                        // Layout previous sizer
+                        if (previousSizer !== currentSizer) {
+                            arrangeItems(previousSizer);
+                        }
+
+                        // Item is placed to new position in current sizer
+                        currentSizer.insertAtPosition(
+                            pointer.x, pointer.y,
+                            child,
+                            { expand: true }
+                        );
+                        arrangeItems(currentSizer);
+                    });
+            }
+
+            // Enable interactive before try-dragging
+            child.setInteractive();
+            child.drag.drag();
+        });
+}
+
+function onChildDragStart(child: any): void {
+    child.setDepth(1);
+    // child.getElement('background').setStrokeStyle(3, 0xff0000);
+}
+
+function onChildDragEnd(child: any): void {
+    child.setDepth(0);
+    // child.getElement('background').setStrokeStyle();
+
+    // Disable interactive, so that scrollablePanel could be scrolling
+    child.disableInteractive();
+}
+
+function arrangeItems(sizer: any): void {
+    const children = sizer.getElement('items');
+    // Save current position
+    children.forEach((child: any) => {
+        child.setData({ startX: child.x, startY: child.y });
+    });
+    // Item is placed to new position in sizer
+    sizer.getTopmostSizer().layout();
+    // Move child from start position to new position
+    children.forEach((child: any) => {
+        const fromX = child.getData('startX');
+        const fromY = child.getData('startY');
+        if ((child.x !== fromX) || (child.y !== fromY)) {
+            child.moveFrom({ x: fromX, y: fromY, speed: 300 });
+        }
+    });
 }

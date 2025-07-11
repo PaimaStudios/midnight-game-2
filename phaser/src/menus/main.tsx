@@ -76,6 +76,8 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('enemy', 'goblin.png');
 
         this.load.image('grass', 'grass.png');
+
+        this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
     }
 
     create() {

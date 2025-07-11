@@ -12,7 +12,7 @@ import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
-import { createScrollablePanel } from "../widgets/scrollable";
+import { createScrollablePanel, setDraggable } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -44,37 +44,32 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 500);
-        const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
-        
+        const activeAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.1, GAME_WIDTH*0.95, 500);
+        setDraggable(activeAbilityPanel);
+        const activeAbilityPanelElement = activeAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
+        const inactiveAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 500);
+        setDraggable(inactiveAbilityPanel);
+        const inactiveAbilityPanelElement = inactiveAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
+
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
-        const abilityButtonWidth = 84;
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
 
             const abilityContainer = this.add.container(0, 0).setSize(84, 128);
-            const abilityWidget = new AbilityWidget(this, 0, 10, ability);
-
-            const button = new Button(this, 0, abilityWidget.height / 2 + 40, abilityButtonWidth, 48, '^', 10, () => {
-                if (this.chosen[i]) {
-                    abilityWidget.y += 48 + 160;
-                    button.text.text = '^';
-                } else {
-                    abilityWidget.y -= 48 + 160;
-                    button.text.text = 'v';
-                }
-                this.chosen[i] = !this.chosen[i];
-            });
+            const abilityWidget = new AbilityWidget(this, 0, 70, ability);
 
             // Add new child to scrollable panel
             abilityContainer.add(abilityWidget);
-            abilityContainer.add(button);
-            scrollablePanelElement.add(abilityContainer);
+            inactiveAbilityPanelElement.add(
+                this.rexUI.add.fixWidthSizer({
+                    space: { item: 0, line: 0 }
+                }).add(abilityContainer)
+            );
 
             // Refresh the layout after adding children
-            scrollablePanel.layout()
+            inactiveAbilityPanel.layout()
 
             this.available.push(abilityWidget);
             this.chosen.push(false);
