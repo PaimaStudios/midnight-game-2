@@ -24,7 +24,7 @@ const enemyY = () => GAME_HEIGHT * 0.185;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
-const playerY = () => GAME_HEIGHT * 0.92;
+const playerY = () => GAME_HEIGHT * 0.95;
 
 const spiritX = (spiritIndex: number): number => {
     return GAME_WIDTH * (spiritIndex + 0.5) / 3;

@@ -48,7 +48,7 @@ export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Tex
         ...extra,  // Overwrite with any extra styles passed in
         fontSize: fontSize*4,  // The font renders poorly on some systems if not scaled up
         fontFamily: 'yana',
-        color: Color.White,
+        color: Color.Brown,
     };
 }
 

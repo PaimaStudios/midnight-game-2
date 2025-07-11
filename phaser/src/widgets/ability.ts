@@ -6,6 +6,7 @@ import { Button } from "./button";
 import { fontStyle } from "../main";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
+import { ParchmentScroll } from "./parchment-scroll";
 
 /// Adjusts contract-level damage numbers to a base/average amount
 export function contractDamageToBaseUI(amount: number | bigint): number {
@@ -41,7 +42,7 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
 }
 
 export class AbilityWidget extends Phaser.GameObjects.Container {
-    bg: Phaser.GameObjects.NineSlice;
+    bg: ParchmentScroll;
     ability: Ability;
     baseEffectUI: Phaser.GameObjects.GameObject[];
     energyEffectUI: Phaser.GameObjects.GameObject[][];
@@ -56,7 +57,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         const w = 84;
         const h = 128;
         this.setSize(w, h);
-        this.bg = scene.add.nineslice(0, 0, 'stone_button', undefined, w / BASE_SPRITE_SCALE, h / BASE_SPRITE_SCALE, 8, 8, 8, 8).setScale(BASE_SPRITE_SCALE);
+        this.bg = new ParchmentScroll(scene, 0, 0, w, h, false);
         if (ability.generate_color.is_some) {
             this.bg.setTint(colorToNumber(energyTypeToColor(Number(ability.generate_color.value))));
         }
@@ -65,19 +66,25 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         this.energyEffectUI = [[], [], []];
 
         this.add(this.bg);
-        if (ability.effect.is_some) {
-            this.baseEffectUI = addEffectIcons(this, ability.effect.value, -6, -40);
-        }
-        for (let i = 0; i < ability.on_energy.length; ++i) {
-            if (ability.on_energy[i].is_some) {
-                const energyY = 32 * i - 16;
-                this.add(addScaledImage(scene, -28, energyY, `energy-icon`).setTint(colorToNumber(energyTypeToColor(i))));
-                this.add(addScaledImage(scene, -15, energyY, 'arrow'));
-                this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
-            }
-        }
 
         scene.add.existing(this);
+
+        this.bg.unfurl({
+            duration: 500,
+            onComplete: () => {
+                if (ability.effect.is_some) {
+                    this.baseEffectUI = addEffectIcons(this, ability.effect.value, -6, -40);
+                }
+                for (let i = 0; i < ability.on_energy.length; ++i) {
+                    if (ability.on_energy[i].is_some) {
+                        const energyY = 32 * i - 16;
+                        this.add(addScaledImage(scene, -28, energyY, `energy-icon`).setTint(colorToNumber(energyTypeToColor(i))));
+                        this.add(addScaledImage(scene, -15, energyY, 'arrow'));
+                        this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
+                    }
+                }
+            },
+        });
     }
 }
 
