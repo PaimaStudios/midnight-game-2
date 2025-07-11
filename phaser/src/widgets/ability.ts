@@ -17,24 +17,24 @@ function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect,
     console.log(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
     if (effect.is_aoe) {
-        uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset - 6, 'aoe'));
+        uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset - 6, 'aoe').setTint(colorToNumber(Color.Brown)));
     }
     switch (effect.effect_type) {
         case EFFECT_TYPE.attack_fire:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'fire'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.attack_ice:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'ice'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.attack_phys:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'physical'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, contractDamageToBaseUI(effect.amount).toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
         case EFFECT_TYPE.block:
             uiComponents.push(addScaledImage(container.scene, xOffset + 22, yOffset, 'block'));
-            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5));
+            uiComponents.push(container.scene.add.text(xOffset - 2, yOffset - 6, effect.amount.toString(), fontStyle(8)).setOrigin(0.5, 0.5).setTint(colorToNumber(Color.Brown)));
             break;
     }
     uiComponents.forEach((comp) => container.add(comp));
@@ -54,7 +54,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         ability: Ability,
      ) {
         super(scene, x, y);
-        const w = 84;
+        const w = 90;
         const h = 128;
         this.setSize(w, h);
         this.bg = new ParchmentScroll(scene, 0, 0, w, h, false);
@@ -70,7 +70,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
         scene.add.existing(this);
 
         this.bg.unfurl({
-            duration: 500,
+            duration: 1000,
             onComplete: () => {
                 if (ability.effect.is_some) {
                     this.baseEffectUI = addEffectIcons(this, ability.effect.value, -6, -40);
@@ -79,7 +79,7 @@ export class AbilityWidget extends Phaser.GameObjects.Container {
                     if (ability.on_energy[i].is_some) {
                         const energyY = 32 * i - 16;
                         this.add(addScaledImage(scene, -28, energyY, `energy-icon`).setTint(colorToNumber(energyTypeToColor(i))));
-                        this.add(addScaledImage(scene, -15, energyY, 'arrow'));
+                        this.add(addScaledImage(scene, -15, energyY, 'arrow').setTint(colorToNumber(Color.Brown)));
                         this.energyEffectUI[i] = addEffectIcons(this, ability.on_energy[i].value, 7, energyY);
                     }
                 }
@@ -101,7 +101,7 @@ export class AbilityWidgetContainer extends Phaser.GameObjects.Container {
         button: Button | undefined = undefined,
     ) {
         super(scene, x, y)
-        this.setSize(84, 128);
+        this.setSize(90, 128);
         this.abilityWidget = abilityWidget;
         abilityWidget.setPosition(0, 0);
         this.add(abilityWidget);

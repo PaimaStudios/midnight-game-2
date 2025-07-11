@@ -32,6 +32,8 @@ export class Store extends Phaser.Scene {
     create() {
         this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
+        // this is just here to show some contrast since we won't have a black background. TOOD: replace with a specific background
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
         createSpiritAnimations(this);
 
         this.onStateChange(this.state);
@@ -48,7 +50,7 @@ export class Store extends Phaser.Scene {
 
         this.ui.forEach((o) => o.destroy());
         this.ui = [];
-        const abilityButtonWidth = 96;
+        const abilityButtonWidth = 100;
         const abilities = sortedAbilities(state).filter((a) => !isStartingAbility(a));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
@@ -56,7 +58,7 @@ export class Store extends Phaser.Scene {
 
             this.ui.push(new SpiritWidget(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.3, ability));
             this.ui.push(new AbilityWidget(this,  32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75, ability));
-            this.ui.push(new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 128, abilityButtonWidth - 4, 64, `Sell\n$${value}`, 8, () => {
+            this.ui.push(new Button(this, 32 + i * abilityButtonWidth, GAME_HEIGHT * 0.75 - 128, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");

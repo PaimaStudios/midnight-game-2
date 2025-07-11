@@ -26,7 +26,7 @@ export class Button extends Phaser.GameObjects.Container {
 
         // this.text = scene.add.text(0, 0, text, fontStyle(fontSize, { wordWrap: { width: w - 8 } })).setOrigin(0.5, 0.65)
         // @ts-expect-error
-        this.text = scene.add.rexBBCodeText(0, 0, text, fontStyle(fontSize, { wordWrap: { width: w - 8 } }))
+        this.text = scene.add.rexBBCodeText(0, 0, text, fontStyle(fontSize, { color: Color.Brown, wordWrap: { width: w - 8 } }))
             .setOrigin(0.5, 0.65);
 
         this.add(this.text);
@@ -84,7 +84,7 @@ export class Button extends Phaser.GameObjects.Container {
                 this.text.alpha = tween.progress;
                 this.text.scaleX = tween.progress;
             },
-            duration: 250,
+            duration: 500,
         });
     }
 
