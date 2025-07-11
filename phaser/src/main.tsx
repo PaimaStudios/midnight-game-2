@@ -45,10 +45,10 @@ export const GAME_HEIGHT = 480;
 
 export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Text.TextStyle): Phaser.Types.GameObjects.Text.TextStyle {
     return {
-        ...extra,  // Overwrite with any extra styles passed in
         fontSize: fontSize*4,  // The font renders poorly on some systems if not scaled up
         fontFamily: 'yana',
         color: Color.White,
+        ...extra,  // Overwrite with any extra styles passed in
     };
 }
 

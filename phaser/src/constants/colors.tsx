@@ -23,6 +23,7 @@ export enum Color {
     Yellow = '#fff400',
     Black = '#000000',
     White = '#f0f0f0',
+    PureWhite = '#ffffff',
 }
 
 export const colorToNumber = (color: Color): number => {
