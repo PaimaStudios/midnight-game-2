@@ -19,20 +19,18 @@ declare module 'phaser' {
 //
 export const createScrollablePanel = function (
     scene: Phaser.Scene,
-    x: number, y: number, width: number, height: number
+    x: number, y: number, width: number, height: number,
+    scrollbar: boolean=true,
 ): RexUIPlugin.ScrollablePanel {
 
     const panel = scene.rexUI.add.sizer({
         orientation: 'x',
-        space: { item: 10, top: 200, bottom: 10 }
+        space: { item: 10, top: 10, bottom: 10 },
     })
 
-    const scrollablePanel = scene.rexUI.add.scrollablePanel({
-            x, y, width, height,
-            scrollMode: 1,
-            panel: {
-                child: panel,
-            },
+    let scrollbarConfig = {}
+    if (scrollbar) {
+        scrollbarConfig = {
             slider: {
                 track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Color.DeepPlum)),
                 thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Color.Tan)),
@@ -41,6 +39,20 @@ export const createScrollablePanel = function (
                 focus: false,
                 speed: 0.5,
             },
+        }
+
+    }
+
+    const scrollablePanel = scene.rexUI.add.scrollablePanel({
+            x, y, width, height,
+            scrollMode: 1,
+            panel: {
+                child: panel,
+            },
+            align: {
+                panel: 'bottom',
+            },
+            ...scrollbarConfig,
         }).layout()
 
     return scrollablePanel;
@@ -145,6 +157,8 @@ function arrangeItems(sizer: any): void {
     children.forEach((child: any) => {
         const fromX = child.getData('startX');
         const fromY = child.getData('startY');
+        console.log('Child position:', child.x, child.y);
+        console.log('Saved position:', fromX, fromY);
         if ((child.x !== fromX) || (child.y !== fromY)) {
             child.moveFrom({ x: fromX, y: fromY, speed: 300 });
         }

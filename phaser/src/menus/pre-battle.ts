@@ -44,10 +44,10 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const activeAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.1, GAME_WIDTH*0.95, 500);
+        const activeAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.5, GAME_WIDTH*0.95, 150, false);
         setDraggable(activeAbilityPanel);
         const activeAbilityPanelElement = activeAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
-        const inactiveAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 500);
+        const inactiveAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 150);
         setDraggable(inactiveAbilityPanel);
         const inactiveAbilityPanelElement = inactiveAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
 
@@ -57,15 +57,12 @@ export class StartBattleMenu extends Phaser.Scene {
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
 
-            const abilityContainer = this.add.container(0, 0).setSize(84, 128);
-            const abilityWidget = new AbilityWidget(this, 0, 70, ability);
+            const abilityWidget = new AbilityWidget(this, 0, 0, ability);
 
             // Add new child to scrollable panel
-            abilityContainer.add(abilityWidget);
             inactiveAbilityPanelElement.add(
                 this.rexUI.add.fixWidthSizer({
-                    space: { item: 0, line: 0 }
-                }).add(abilityContainer)
+                }).add(abilityWidget)
             );
 
             // Refresh the layout after adding children
