@@ -19,8 +19,8 @@ declare module 'phaser' {
 //   scrollablePanel.enableDraggable(5); // Max 5 elements allowed to be dragged into the panel
 //
 export class ScrollablePanel {
-    public panel: RexUIPlugin.ScrollablePanel;
     public scene: Phaser.Scene;
+    public panel: RexUIPlugin.ScrollablePanel;
     public maxElements?: number;
 
     constructor(
