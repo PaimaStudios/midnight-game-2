@@ -65,7 +65,7 @@ export class ShopMenu extends Phaser.Scene {
             const abilityWidget = new AbilityWidget(this, 0, 70, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
             abilityContainer.add(abilityWidget);
-            abilityContainer.add(new Button(this, 0, -35, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
+            abilityContainer.add(new Button(this, 0, -39, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
                 this.scene.pause().launch('Loader');
                 this.loader = this.scene.get('Loader') as Loader;
                 this.loader.setText("Submitting Proof");

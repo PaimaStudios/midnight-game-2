@@ -6,11 +6,12 @@ import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 import { Color, colorToNumber } from '../constants/colors';
 import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { ParchmentScroll } from "./parchment-scroll";
+import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
 
 
 
 export class Button extends Phaser.GameObjects.Container {
-    scroll: ParchmentScroll;
+    bg: WidgetBackground & Phaser.GameObjects.GameObject;
     text: BBCodeText;
     helpText: Phaser.GameObjects.Text | null;
     helpTween: Phaser.Tweens.Tween | null;
@@ -21,12 +22,12 @@ export class Button extends Phaser.GameObjects.Container {
         this.helpText = null;
         this.helpTween = null;
 
-        this.scroll = new ParchmentScroll(scene, 0, 0, w, h, false);
-        this.add(this.scroll);
+        this.bg = makeWidgetBackground(scene, 0, 0, w, h, BG_TYPE.Stone);
+        this.add(this.bg);
 
         // this.text = scene.add.text(0, 0, text, fontStyle(fontSize, { wordWrap: { width: w - 8 } })).setOrigin(0.5, 0.65)
         // @ts-expect-error
-        this.text = scene.add.rexBBCodeText(0, 0, text, fontStyle(fontSize, { color: Color.Brown, wordWrap: { width: w - 8 } }))
+        this.text = scene.add.rexBBCodeText(0, 0, text, fontStyle(fontSize, { color: this.bg.textColor, wordWrap: { width: w - 8 } }))
             .setOrigin(0.5, 0.65);
 
         this.add(this.text);
@@ -50,9 +51,8 @@ export class Button extends Phaser.GameObjects.Container {
             onClick();
         });
         this.on('pointerover', (pointer: Phaser.Input.Pointer, localX: number, localY: number) => {
-            this.scroll.unfurl();
-            this.scroll.setTint(colorToNumber(Color.Tan));
-            this.text.setColor(Color.Black);
+            this.bg.onMouseOver();
+            this.text.setColor(this.bg.textColorOver);
             if (this.helpText != null) {
                 if (this.helpText.visible == false) {
                     this.helpText.visible = true;
@@ -66,9 +66,8 @@ export class Button extends Phaser.GameObjects.Container {
             }
         });
         this.on('pointerout', () => {
-            this.scroll.rollUp();
-            this.scroll.setTint();
-            this.text.setColor(Color.Brown);
+            this.bg.onMouseOff();
+            this.text.setColor(this.bg.textColor);
             if (this.helpText != null) {
                 this.helpText.visible = false;
                 this.helpText.alpha = 0;
@@ -79,7 +78,7 @@ export class Button extends Phaser.GameObjects.Container {
 
         scene.add.existing(this);
 
-        this.scroll.unfurl({
+        this.bg.tweenIn({
             onUpdate: (tween: Phaser.Tweens.Tween) => {
                 this.text.alpha = tween.progress;
                 this.text.scaleX = tween.progress;

@@ -20,10 +20,26 @@ export enum Color {
     Licorice = '#1f0e1c',
 
     // Additional non-NA16 colors
+
+    // highlights
     Yellow = '#fff400',
     Black = '#000000',
     White = '#f0f0f0',
     PureWhite = '#ffffff',
+
+    // UI
+    StoneHightlight = 'd8d9ca',
+    Stone = 'bdbbaa',
+    StoneShadowLight = '827d70',
+    StoneShadowDark = '524440',
+
+    // background colors
+    BgGreenLight = '798b56',
+    BgGreenDark = '576b3f',
+
+    // color transformations
+    // not used anywhere directly --- only used for darkening transformations
+    TransformDarker = 'adadad',
 }
 
 export const colorToNumber = (color: Color): number => {
