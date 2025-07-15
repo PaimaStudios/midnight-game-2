@@ -9,7 +9,7 @@ import { Color } from "../constants/colors";
 import { isStartingAbility, sortedAbilities } from "./pre-battle";
 import { TestMenu } from "./main";
 import { addScaledImage } from "../utils/scaleImage";
-import { createScrollablePanel } from "../widgets/scrollable";
+import { ScrollablePanel } from "../widgets/scrollable";
 
 export class ShopMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -52,9 +52,9 @@ export class ShopMenu extends Phaser.Scene {
         this.ui.forEach((o) => o.destroy());
         this.ui = [];
 
-        const scrollablePanel = createScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT/2.0 - 25, GAME_WIDTH*0.95, 500);
-        const scrollablePanelElement = scrollablePanel.getElement('panel') as Phaser.GameObjects.Container;
-        this.ui.push(scrollablePanel);
+        const scrollablePanel = new ScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT * 0.6, GAME_WIDTH*0.95, 350);
+        const scrollablePanelElement = scrollablePanel.getElement();
+        this.ui.push(scrollablePanel.panel);
 
         const abilityButtonWidth = 100;
         const abilities = sortedAbilities(state).filter((a) => !isStartingAbility(a));
@@ -84,7 +84,7 @@ export class ShopMenu extends Phaser.Scene {
             scrollablePanelElement.add(abilityContainer);
         }
         // Update scrollable panel layout after adding all children
-        scrollablePanel.layout()
+        scrollablePanel.panel.layout()
 
         this.goldText?.setText(`${state.player!.gold}`);
         this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {

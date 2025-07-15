@@ -12,7 +12,7 @@ import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
-import { createScrollablePanel, setDraggable } from "../widgets/scrollable";
+import { ScrollablePanel } from "../widgets/scrollable";
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -44,12 +44,12 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const activeAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.5, GAME_WIDTH*0.95, 150, false);
-        setDraggable(activeAbilityPanel);
-        const activeAbilityPanelElement = activeAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
-        const inactiveAbilityPanel = createScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 150);
-        setDraggable(inactiveAbilityPanel);
-        const inactiveAbilityPanelElement = inactiveAbilityPanel.getElement('panel') as Phaser.GameObjects.Container;
+        const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 150, false);
+        activeAbilityPanel.setDraggable(2);
+        const activeAbilityPanelElement = activeAbilityPanel.getElement();
+        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 150);
+        inactiveAbilityPanel.setDraggable();
+        const inactiveAbilityPanelElement = inactiveAbilityPanel.getElement();
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
@@ -66,7 +66,7 @@ export class StartBattleMenu extends Phaser.Scene {
             );
 
             // Refresh the layout after adding children
-            inactiveAbilityPanel.layout()
+            inactiveAbilityPanel.panel.layout()
 
             this.available.push(abilityWidget);
             this.chosen.push(false);
