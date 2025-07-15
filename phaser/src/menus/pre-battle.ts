@@ -14,13 +14,14 @@ import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 
+const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
+
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
     state: Game2DerivedState;
     loadout: PlayerLoadout;
     subscription: Subscription;
     available: AbilityWidget[];
-    chosen: boolean[];
     isQuest: boolean;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
@@ -32,7 +33,6 @@ export class StartBattleMenu extends Phaser.Scene {
             abilities: [],
         };
         this.available = [];
-        this.chosen = [];
         this.isQuest = isQuest;
         this.state = state;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -45,11 +45,9 @@ export class StartBattleMenu extends Phaser.Scene {
 
     create() {
         const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 150, false);
-        activeAbilityPanel.setDraggable(2);
-        const activeAbilityPanelElement = activeAbilityPanel.getElement();
         const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 150);
-        inactiveAbilityPanel.setDraggable();
-        const inactiveAbilityPanelElement = inactiveAbilityPanel.getElement();
+        activeAbilityPanel.enableDraggable(MAX_ABILITIES);
+        inactiveAbilityPanel.enableDraggable();
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
@@ -60,26 +58,19 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityWidget = new AbilityWidget(this, 0, 0, ability);
 
             // Add new child to scrollable panel
-            inactiveAbilityPanelElement.add(
-                this.rexUI.add.fixWidthSizer({
-                }).add(abilityWidget)
-            );
-
-            // Refresh the layout after adding children
-            inactiveAbilityPanel.panel.layout()
+            inactiveAbilityPanel.addChild(abilityWidget);
 
             this.available.push(abilityWidget);
-            this.chosen.push(false);
-
         }
+
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
             this.loadout.abilities = [];
-            for (let i = 0; i < this.chosen.length; ++i) {
-                if (this.chosen[i]) {
-                    this.loadout.abilities.push(pureCircuits.derive_ability_id(this.available[i].ability));
-                }
-            }
-            if (this.loadout.abilities.length == 7) {
+
+            // Determine which abilities are selected
+            const chosen = activeAbilityPanel.getChildren();
+            this.loadout.abilities = chosen.map((c: any) => (pureCircuits.derive_ability_id((c as AbilityWidget).ability)));
+
+            if (this.loadout.abilities.length == MAX_ABILITIES) {
                 if (this.isQuest) {
                     // TODO: control difficulty
                     this.api.start_new_quest(this.loadout, BigInt(1)).then((questId) => {

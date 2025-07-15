@@ -14,10 +14,9 @@ declare module 'phaser' {
 // A class-based wrapper for creating scrollable panels with drag-and-drop functionality.
 // Usage:
 //   const scrollablePanel = new ScrollablePanel(this, 400, 300, 600, 400);
-//   const element = scrollablePanel.getElement();
-//   element.add(yourGameObject1);
-//   element.add(yourGameObject2);
-//   scrollablePanel.setDraggable(5); // Max 5 elements
+//   scrollablePanel.addChild(yourGameObject1);
+//   scrollablePanel.addChild(yourGameObject2);
+//   scrollablePanel.enableDraggable(5); // Max 5 elements allowed to be dragged into the panel
 //
 export class ScrollablePanel {
     public panel: RexUIPlugin.ScrollablePanel;
@@ -43,8 +42,8 @@ export class ScrollablePanel {
         if (scrollbar) {
             scrollbarConfig = {
                 slider: {
-                    track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Color.DeepPlum)),
-                    thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Color.Tan)),
+                    track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Color.StoneShadowLight)).setStrokeStyle(2, colorToNumber(Color.StoneShadowDark)),
+                    thumb: scene.rexUI.add.roundRectangle(0, 0, 0, 0, 13, colorToNumber(Color.Cream)),
                 },
                 mouseWheelScroller: {
                     focus: false,
@@ -66,14 +65,22 @@ export class ScrollablePanel {
         }).layout();
     }
 
+    // Adds a child element to the scrollable panel
+    // All child elements are wrapped in a fixWidthSizer for layout purposes
+    public addChild(child: Phaser.GameObjects.GameObject): void {
+        const wrappedChild = this.wrapElement(child);
+        this.getPanelElement().add(wrappedChild);
+        this.panel.layout();
+    }
+
     // Gets the panel element container for adding child objects
-    public getElement(): Phaser.GameObjects.Container {
+    public getPanelElement(): Phaser.GameObjects.Container {
         return this.panel.getElement('panel') as Phaser.GameObjects.Container;
     }
 
     // Gets all child objects in the panel
     public getChildren(): Phaser.GameObjects.GameObject[] {
-        return this.getElement().getAll();
+        return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
     }
 
     // Gets the number of child objects in the panel
@@ -81,14 +88,28 @@ export class ScrollablePanel {
         return this.getChildren().length;
     }
 
+    // Wraps a Phaser GameObject in a fixWidthSizer for layout purposes
+    private wrapElement(element: Phaser.GameObjects.GameObject): Phaser.GameObjects.GameObject {
+        return this.scene.rexUI.add.fixWidthSizer({}).add(element)
+    }
+
+    // Unwraps a Phaser GameObject from a fixWidthSizer, returning the inner container
+    private unwrapElement(element: Phaser.GameObjects.Container): Phaser.GameObjects.Container {
+        const children = element.getAll();
+        if (children.length > 0) {
+            return children[0] as Phaser.GameObjects.Container;
+        }
+        return element as Phaser.GameObjects.Container;
+    }
+
     //
-    // setDraggable
+    // enableDraggable
     //
     // Adds draggable functionality to the scrollable panel.
     // maxElements: The maximum number of elements allowed on the panel. 
     //              Additional elements dragged to the panel will not succeed, and will return to their previous panel.
     //
-    public setDraggable(maxElements?: number): void {
+    public enableDraggable(maxElements?: number): void {
         this.maxElements = maxElements;
         const dragBehavior = this.scene.plugins.get('rexdragplugin') as any;
         
@@ -99,7 +120,7 @@ export class ScrollablePanel {
 
         this.panel
             .setChildrenInteractive({
-                targets: [this.getElement()],
+                targets: [this.getPanelElement()],
                 dropZone: true,
             })
             .on('child.down', (child: any) => {
@@ -172,12 +193,10 @@ export class ScrollablePanel {
 
     private onChildDragStart(child: any): void {
         child.setDepth(1);
-        // child.getElement('background').setStrokeStyle(3, 0xff0000);
     }
 
     private onChildDragEnd(child: any): void {
         child.setDepth(0);
-        // child.getElement('background').setStrokeStyle();
 
         // Disable interactive, so that scrollablePanel could be scrolling
         child.disableInteractive();

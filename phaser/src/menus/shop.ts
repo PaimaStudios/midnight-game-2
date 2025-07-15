@@ -53,7 +53,6 @@ export class ShopMenu extends Phaser.Scene {
         this.ui = [];
 
         const scrollablePanel = new ScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT * 0.6, GAME_WIDTH*0.95, 350);
-        const scrollablePanelElement = scrollablePanel.getElement();
         this.ui.push(scrollablePanel.panel);
 
         const abilityButtonWidth = 100;
@@ -81,10 +80,8 @@ export class ShopMenu extends Phaser.Scene {
             this.ui.push(abilityContainer);
 
             // Add new child to scrollable panel
-            scrollablePanelElement.add(abilityContainer);
+            scrollablePanel.addChild(abilityContainer);
         }
-        // Update scrollable panel layout after adding all children
-        scrollablePanel.panel.layout()
 
         this.goldText?.setText(`${state.player!.gold}`);
         this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {

@@ -28,18 +28,18 @@ export enum Color {
     PureWhite = '#ffffff',
 
     // UI
-    StoneHightlight = 'd8d9ca',
-    Stone = 'bdbbaa',
-    StoneShadowLight = '827d70',
-    StoneShadowDark = '524440',
+    StoneHighlight = '#d8d9ca',
+    Stone = '#bdbbaa',
+    StoneShadowLight = '#827d70',
+    StoneShadowDark = '#524440',
 
     // background colors
-    BgGreenLight = '798b56',
-    BgGreenDark = '576b3f',
+    BgGreenLight = '#798b56',
+    BgGreenDark = '#576b3f',
 
     // color transformations
     // not used anywhere directly --- only used for darkening transformations
-    TransformDarker = 'adadad',
+    TransformDarker = '#adadad',
 }
 
 export const colorToNumber = (color: Color): number => {
