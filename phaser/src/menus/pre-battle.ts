@@ -63,6 +63,7 @@ export class StartBattleMenu extends Phaser.Scene {
             this.available.push(abilityWidget);
         }
 
+        // Add placeholder slots for active abilities
         for (let i = 0; i < MAX_ABILITIES; ++i) {
             this.add.rexRoundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.44, 71, 125, 20, colorToNumber(Color.Purple))
         }
