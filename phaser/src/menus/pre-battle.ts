@@ -64,7 +64,7 @@ export class StartBattleMenu extends Phaser.Scene {
         }
 
         for (let i = 0; i < MAX_ABILITIES; ++i) {
-            this.add.rexRoundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.45, 71, 125, 20, colorToNumber(Color.DarkGreen))
+            this.add.rexRoundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.45, 71, 125, 20, colorToNumber(Color.Purple))
         }
 
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
