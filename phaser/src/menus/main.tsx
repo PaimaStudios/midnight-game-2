@@ -80,6 +80,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('grass', 'grass.png');
 
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
+        this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);
     }
 
     create() {

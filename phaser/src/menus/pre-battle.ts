@@ -11,7 +11,7 @@ import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
 import { fontStyle } from "../main";
-import { Color } from "../constants/colors";
+import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
@@ -61,6 +61,10 @@ export class StartBattleMenu extends Phaser.Scene {
             inactiveAbilityPanel.addChild(abilityWidget);
 
             this.available.push(abilityWidget);
+        }
+
+        for (let i = 0; i < MAX_ABILITIES; ++i) {
+            this.add.rexRoundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.45, 71, 125, 20, colorToNumber(Color.DarkGreen))
         }
 
         new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
