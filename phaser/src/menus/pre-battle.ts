@@ -68,7 +68,9 @@ export class StartBattleMenu extends Phaser.Scene {
 
             // Determine which abilities are selected
             const chosen = activeAbilityPanel.getChildren();
-            this.loadout.abilities = chosen.map((c: any) => (pureCircuits.derive_ability_id((c as AbilityWidget).ability)));
+            this.loadout.abilities = chosen.map((c) => 
+                pureCircuits.derive_ability_id((c as AbilityWidget).ability)
+            );
 
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 if (this.isQuest) {
