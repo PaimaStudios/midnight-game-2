@@ -3,15 +3,16 @@
  */
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
-import { Color } from '../constants/colors';
+import { Color, colorToNumber } from '../constants/colors';
 import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
+import { WidgetBackground } from "./widget-background";
 
 enum ScrollAnimState {
     Unfurling = 0,
     RollingUp = 1,
 };
 
-export class ParchmentScroll extends Phaser.GameObjects.Container {
+export class ParchmentScroll extends Phaser.GameObjects.Container implements WidgetBackground {
     bg: Phaser.GameObjects.NineSlice;
     tween: Phaser.Tweens.Tween | null;
     tweenStatus: ScrollAnimState | null;
@@ -36,9 +37,8 @@ export class ParchmentScroll extends Phaser.GameObjects.Container {
         return this.width > this.height;
     }
 
-    public setTint(color?: number): ParchmentScroll {
+    public setTint(color?: number) {
         this.bg.setTint(color);
-        return this;
     }
 
     public unfurl(extraProps?: any) {
@@ -72,7 +72,7 @@ export class ParchmentScroll extends Phaser.GameObjects.Container {
         }
     }
 
-    public rollUp() {
+    public rollUp(extraProps?: any) {
         const tweenProps = this.rotated() ? {
             x: 0,
             height: this.width / BASE_SPRITE_SCALE,
@@ -87,13 +87,39 @@ export class ParchmentScroll extends Phaser.GameObjects.Container {
             this.tween = this.scene.add.tween({
                 targets: this.bg,
                 duration: 100,
+                ...tweenProps,
+                ...extraProps,
                 onComplete: () => {
                     this.tween = null;
                     this.tweenStatus = null;
+                    if (extraProps != undefined && Object.hasOwn(extraProps, 'onComplete')) {
+                        extraProps.onComplete();
+                    }
                 },
-                ...tweenProps,
             });
             this.tweenStatus = ScrollAnimState.RollingUp;
         }
     }
+
+    public tweenIn(extraProps?: any) {
+        this.unfurl(extraProps);
+    }
+    public tweenOut(extraProps?: any) {
+        this.rollUp(extraProps);
+    }
+    public onMouseOver() {
+        this.bg.setTint(colorToNumber(Color.Tan));
+        this.unfurl();
+    }
+    public onMouseOff() {
+        this.bg.setTint();
+        this.rollUp();
+    }
+    public resize(w: number, h: number) {
+        this.bg.setSize(w, h);
+    }
+
+    public textColor = Color.Brown;
+
+    public textColorOver = Color.Black;
 }
