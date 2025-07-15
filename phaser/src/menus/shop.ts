@@ -61,7 +61,7 @@ export class ShopMenu extends Phaser.Scene {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
 
-            const abilityWidget = new AbilityWidget(this, 0, 70, ability);
+            const abilityWidget = new AbilityWidget(this, 0, 80, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
             abilityContainer.add(abilityWidget);
             abilityContainer.add(new Button(this, 0, -39, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
