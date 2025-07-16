@@ -75,7 +75,8 @@ export class TestMenu extends Phaser.Scene {
 
 
         this.load.image('player', 'player.png');
-        this.load.image('enemy', 'goblin.png');
+        this.load.image('enemy-goblin', 'enemy-goblin.png');
+        this.load.image('enemy-snowman', 'enemy-snowman.png');
 
         this.load.image('grass', 'grass.png');
     }
