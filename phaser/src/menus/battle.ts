@@ -60,7 +60,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.player = new Actor(this, playerX(), playerY(), 100, 100);
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
-            this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy-goblin'));
+            this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy-fire-sprite'));
         }
 
         // attack button
