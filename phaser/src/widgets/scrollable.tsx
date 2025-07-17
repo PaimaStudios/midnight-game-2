@@ -29,7 +29,7 @@ export class ScrollablePanel {
         y: number, 
         width: number, 
         height: number,
-        scrollbar: boolean = true
+        scrollbarEnabled: boolean = true,
     ) {
         this.scene = scene;
         
@@ -39,7 +39,7 @@ export class ScrollablePanel {
         });
 
         let scrollbarConfig = {};
-        if (scrollbar) {
+        if (scrollbarEnabled) {
             scrollbarConfig = {
                 slider: {
                     track: scene.rexUI.add.roundRectangle(0, 0, 20, 10, 10, colorToNumber(Color.StoneShadowLight)).setStrokeStyle(2, colorToNumber(Color.StoneShadowDark)),
@@ -62,7 +62,9 @@ export class ScrollablePanel {
                 panel: 'bottom',
             },
             ...scrollbarConfig,
-        }).layout();
+        }).layout()
+
+        this.panel.setScrollerEnable(scrollbarEnabled);
     }
 
     // Adds a child element to the scrollable panel
@@ -109,7 +111,13 @@ export class ScrollablePanel {
     // maxElements: The maximum number of elements allowed on the panel. 
     //              Additional elements dragged to the panel will not succeed, and will return to their previous panel.
     //
-    public enableDraggable(maxElements?: number): void {
+    public enableDraggable(options?: {
+        onMovedChild?: (child: Phaser.GameObjects.GameObject) => void,
+        maxElements?: number
+    }): void {
+        const maxElements = options?.maxElements;
+        const onMovedChild = options?.onMovedChild;
+        
         this.maxElements = maxElements;
         const dragBehavior = this.scene.plugins.get('rexdragplugin') as any;
         
@@ -123,10 +131,15 @@ export class ScrollablePanel {
                 targets: [this.getPanelElement()],
                 dropZone: true,
             })
+            .on('child.over', (child: any) => {
+                (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'grab';
+            })
+            .on('child.out', (child: any) => {
+                (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+            })
             .on('child.down', (child: any) => {
                 if (!child.drag) {
                     child.drag = dragBehavior.add(child);
-                    console.log(child);
                     child
                         .on('dragstart', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
                             const currentSizer = child.getParentSizer();
@@ -181,6 +194,12 @@ export class ScrollablePanel {
                                 child,
                                 { expand: true }
                             );
+
+                            // Call onMovedChild callback if child was moved to a different panel
+                            if (previousSizer !== currentSizer && onMovedChild) {
+                                onMovedChild(child);
+                            }
+                            
                             this.arrangeItems(currentSizer);
                         });
                 }
@@ -201,6 +220,7 @@ export class ScrollablePanel {
         // Disable interactive, so that scrollablePanel could be scrolling
         child.disableInteractive();
     }
+
 
     private arrangeItems(sizer: any): void {
         const children = sizer.getElement('items');

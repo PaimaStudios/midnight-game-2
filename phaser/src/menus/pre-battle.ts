@@ -22,6 +22,7 @@ export class StartBattleMenu extends Phaser.Scene {
     loadout: PlayerLoadout;
     subscription: Subscription;
     available: AbilityWidget[];
+    startButton: Button | undefined;
     isQuest: boolean;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
@@ -44,10 +45,23 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.45, GAME_WIDTH*0.95, 150, false);
+        const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.48, GAME_WIDTH*0.95, 150, false);
         const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 150);
-        activeAbilityPanel.enableDraggable(MAX_ABILITIES);
-        inactiveAbilityPanel.enableDraggable();
+        const onMovedChild = () => {
+            // Determine which abilities are selected
+            const activeAbilities = activeAbilityPanel.getChildren();
+            this.loadout.abilities = activeAbilities.map((c) => 
+                pureCircuits.derive_ability_id((c as AbilityWidget).ability)
+            );
+
+            // Enable the start button if we have enough abilities selected
+            this.startButton?.setEnabled(this.loadout.abilities.length == MAX_ABILITIES);
+        }
+        activeAbilityPanel.enableDraggable({
+            onMovedChild,
+            maxElements: MAX_ABILITIES
+        });
+        inactiveAbilityPanel.enableDraggable({onMovedChild});
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
@@ -65,18 +79,10 @@ export class StartBattleMenu extends Phaser.Scene {
 
         // Add placeholder slots for active abilities
         for (let i = 0; i < MAX_ABILITIES; ++i) {
-            this.add.existing(this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.44, 71, 125, 20, colorToNumber(Color.Purple)))
+            this.add.existing(this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple)))
         }
 
-        new Button(this, GAME_WIDTH / 2, 64, 100, 60, 'Start', 10, () => {
-            this.loadout.abilities = [];
-
-            // Determine which abilities are selected
-            const chosen = activeAbilityPanel.getChildren();
-            this.loadout.abilities = chosen.map((c) => 
-                pureCircuits.derive_ability_id((c as AbilityWidget).ability)
-            );
-
+        this.startButton = new Button(this, GAME_WIDTH / 2, 24, 100, 40, 'Start', 10, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 if (this.isQuest) {
                     // TODO: control difficulty
@@ -111,7 +117,7 @@ export class StartBattleMenu extends Phaser.Scene {
             } else {
                 console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
-        });
+        }).setEnabled(false);
     }
 }
 
