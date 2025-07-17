@@ -3,15 +3,12 @@
  */
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
-import { Color, colorToNumber } from '../constants/colors';
-import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
-import { ParchmentScroll } from "./parchment-scroll";
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
-
 
 
 export class Button extends Phaser.GameObjects.Container {
     bg: WidgetBackground & Phaser.GameObjects.GameObject;
+    enabled: boolean = true;
     text: BBCodeText;
     helpText: Phaser.GameObjects.Text | null;
     helpTween: Phaser.Tweens.Tween | null;
@@ -33,11 +30,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.add(this.text);
 
         this.setSize(w, h);
-        this.setInteractive({
-            useHandCursor: true,
-            // hitArea: new Phaser.Geom.Rectangle(x, y, w, h),
-            // hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-        });
+        this.setInteractive();
         if (helpText != null) {
             this.helpText = scene.add.text(0, 0, helpText, fontStyle(10))
                 .setAlpha(0)
@@ -48,31 +41,40 @@ export class Button extends Phaser.GameObjects.Container {
         this.on('pointerup', () => {
             // TODO: this does NOT address https://github.com/PaimaStudios/midnight-game-2/issues/45
             //this.scroll.tween?.destroy();
-            onClick();
+            if (this.enabled) {
+                (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+                onClick();
+            }
         });
         this.on('pointerover', (pointer: Phaser.Input.Pointer, localX: number, localY: number) => {
-            this.bg.onMouseOver();
-            this.text.setColor(this.bg.textColorOver);
-            if (this.helpText != null) {
-                if (this.helpText.visible == false) {
-                    this.helpText.visible = true;
-                    this.helpTween = this.scene.tweens.add({
-                        targets: this.helpText,
-                        alpha: 1,
-                        delay: 800,
-                        duration: 800,
-                    });
+            if (this.enabled) {
+                this.bg.onMouseOver();
+                (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'pointer';
+                this.text.setColor(this.bg.textColorOver);
+                if (this.helpText != null) {
+                    if (this.helpText.visible == false) {
+                        this.helpText.visible = true;
+                        this.helpTween = this.scene.tweens.add({
+                            targets: this.helpText,
+                            alpha: 1,
+                            delay: 800,
+                            duration: 800,
+                        });
+                    }
                 }
             }
         });
         this.on('pointerout', () => {
-            this.bg.onMouseOff();
-            this.text.setColor(this.bg.textColor);
-            if (this.helpText != null) {
-                this.helpText.visible = false;
-                this.helpText.alpha = 0;
-                this.helpTween?.destroy();
-                this.helpTween = null;
+            if (this.enabled) {
+                this.bg.onMouseOff();
+                (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+                this.text.setColor(this.bg.textColor);
+                if (this.helpText != null) {
+                    this.helpText.visible = false;
+                    this.helpText.alpha = 0;
+                    this.helpTween?.destroy();
+                    this.helpTween = null;
+                }
             }
         });
 
@@ -85,6 +87,12 @@ export class Button extends Phaser.GameObjects.Container {
             },
             duration: 500,
         });
+    }
+
+    setEnabled(enabled: boolean) {
+        this.enabled = enabled;
+        this.bg.setEnabled(enabled);
+        return this;
     }
 
     preUpdate() {

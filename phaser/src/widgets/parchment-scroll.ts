@@ -1,8 +1,6 @@
 /**
  * Parchment scroll that can be rolled up and unfurled with tweening. Used as a background for many UI components.
  */
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
-import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 import { Color, colorToNumber } from '../constants/colors';
 import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { WidgetBackground } from "./widget-background";
@@ -114,6 +112,14 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
     public onMouseOff() {
         this.bg.setTint();
         this.rollUp();
+    }
+    public setEnabled(enabled: boolean) {
+        if (enabled) {
+            this.onMouseOff();
+        }
+        else {
+            this.setTint(colorToNumber(Color.DeepPlum));
+        }
     }
     public resize(w: number, h: number) {
         this.bg.setSize(w, h);

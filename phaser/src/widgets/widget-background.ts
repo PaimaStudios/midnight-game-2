@@ -9,6 +9,7 @@ export interface WidgetBackground {
     onMouseOff(): void;
     resize(w: number, h: number): void;
     setTint(color: number): void;
+    setEnabled(enabled: boolean): void;
     textColor: Color;
     textColorOver: Color;
 }
