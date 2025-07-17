@@ -112,7 +112,7 @@ export class ScrollablePanel {
     //              Additional elements dragged to the panel will not succeed, and will return to their previous panel.
     //
     public enableDraggable(options?: {
-        onMovedChild?: (child: Phaser.GameObjects.GameObject) => void,
+        onMovedChild?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
         maxElements?: number
     }): void {
         const maxElements = options?.maxElements;
@@ -197,7 +197,7 @@ export class ScrollablePanel {
 
                             // Call onMovedChild callback if child was moved to a different panel
                             if (previousSizer !== currentSizer && onMovedChild) {
-                                onMovedChild(child);
+                                onMovedChild(this, this.unwrapElement(child));
                             }
                             
                             this.arrangeItems(currentSizer);
