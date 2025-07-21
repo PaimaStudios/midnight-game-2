@@ -1,5 +1,5 @@
 import { Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleRewards, Effect, EFFECT_TYPE, pureCircuits } from "game2-contract";
+import { Ability, BattleRewards, Effect, EFFECT_TYPE, ENEMY_TYPE, pureCircuits } from "game2-contract";
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks
@@ -77,7 +77,20 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             else if (battleState.enemy_hp_0 <= 0 && battleState.enemy_hp_1 <= 0 && battleState.enemy_hp_2 <= 0) {
                 console.log(`YOU WON`);
                 // TODO how to determine rewards?
-                resolve({ alive: true, gold: BigInt(randIntBetween(rng, 1000, 50, 200)), ability: { is_some: false, value: BigInt(0) } });
+                let abilityReward = { is_some: false, value: BigInt(0) };
+                for (let i = 0; i < battleConfig.enemy_count; ++i) {
+                    if (battleConfig.stats[i].enemy_type != ENEMY_TYPE.normal) {
+                        const ability = generateRandomAbility(BigInt(2));
+                        const abilityId = pureCircuits.derive_ability_id(ability);
+                        // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
+                        // if we don't return it, we need to match the logic here with the contract
+                        gameState.allAbilities.set(abilityId, ability);
+                        abilityReward.is_some = true;
+                        abilityReward.value = abilityId;
+                        break;
+                    }
+                }
+                resolve({ alive: true, gold: BigInt(randIntBetween(rng, 1000, 50, 200)), ability: abilityReward });
             } else {
                 console.log(`CONTINUE BATTLE`);
                 resolve(undefined);
@@ -181,4 +194,54 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         handleEndOfRound();
     });
+}
+
+export function generateRandomAbility(difficulty: bigint): Ability {
+    const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
+    const randomEffect = (factor: number) => {
+        const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
+        const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
+        let amount = -1;
+        switch (effectType) {
+            case EFFECT_TYPE.attack_fire:
+            case EFFECT_TYPE.attack_ice:
+            case EFFECT_TYPE.attack_phys:
+                amount = Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
+                break;
+            case EFFECT_TYPE.block:
+                amount = 5 * Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
+                break;
+        }
+        return {
+            is_some: true,
+            value: {
+                effect_type: effectType,
+                amount: BigInt(amount),
+                is_aoe: aoe
+            }
+        };
+    };
+    const triggers = [nullEffect, nullEffect, nullEffect];
+    const generateColor = Math.random() > 0.7 ? Phaser.Math.Between(0, 2) : null;
+    const triggerColor = Phaser.Math.Between(0, 5);
+    const baseEffect = randomEffect(triggerColor < triggers.length ? 1 : 2);
+    if (triggerColor < triggers.length) {
+        if (Math.random() > 0.7 || (generateColor === triggerColor)) {
+            for (let i = 0; i < 3; ++i) {
+                if (i != triggerColor) {
+                    triggers[i] = randomEffect(1);
+                }
+            }
+        } else {
+            triggers[triggerColor] = randomEffect(2);
+        }
+    }
+    return {
+        effect: baseEffect,
+        on_energy: triggers,
+        generate_color: {
+            is_some: generateColor != null,
+            value: BigInt(generateColor ?? 0),
+        },
+    };
 }

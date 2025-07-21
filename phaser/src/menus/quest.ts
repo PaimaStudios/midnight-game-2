@@ -13,12 +13,13 @@ import { TestMenu } from "./main";
 import { Button } from "../widgets/button";
 import { AbilityWidget } from "../widgets/ability";
 import { Loader } from "./loader";
+import { ActiveBattle } from "./battle";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
     questId: bigint;
     subscription: Subscription;
-    rewards: BattleRewards | undefined;
+    bossBattleId: (bigint | null) | undefined;
 
     constructor(api: DeployedGame2API, questId: bigint) {
         super('QuestMenu');
@@ -35,13 +36,14 @@ export class QuestMenu extends Phaser.Scene {
         console.log(`Finalizing quest ${this.questId}`);
 
         const attemptFinalizeQuest = () => {
-            this.api.finalize_quest(this.questId).then((rewards) => {
-                this.rewards = rewards;
+            this.api.finalize_quest(this.questId).then((bossBattleId) => {
+                this.bossBattleId = bossBattleId ?? null;
 
                 loader.setText("Waiting on chain update");
-                this.events.on('stateChange', () => {
-                    this.scene.resume().stop('Loader');
-                });
+                // do we still need this?
+                // this.events.on('stateChange', () => {
+                //     this.scene.resume().stop('Loader');
+                // });
             }).catch((err) => {
                 loader.setText("Error connecting to network.. Retrying");
                 console.error(`Error Finalizing Quest: ${err}`);
@@ -53,26 +55,22 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        this.events.emit('stateChange', state);
-
-        const rewards = this.rewards!;
-        if (rewards != undefined) {
-            const str = rewards.alive ? `Quest Complete!\nYou won ${rewards.gold} gold!\nClick to return.` : `You died :(\nClick to return.`;
-            new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.4, str, 16, () => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, state));
-                this.scene.start('TestMenu');
-            });
-            if (rewards.alive && rewards.ability.is_some) {
-                new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.7, state?.allAbilities.get(rewards.ability.value)!);
-                this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.9, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+        //this.events.emit('stateChange', state);
+        if (this.bossBattleId !== undefined) {
+            this.scene.stop('Loader');
+            // is this possible to trigger without it being available yet?
+            if (this.bossBattleId !== null) {
+                this.scene.remove('ActiveBattle');
+                this.scene.add('ActiveBattle', new ActiveBattle(this.api, state.activeBattleConfigs.get(this.bossBattleId)!, state));
+                this.scene.start('ActiveBattle');
+            } else {
+                this.scene.resume();
+                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.3, `Quest not finished yet.\nClick to return.`, 16, () => {
+                    this.scene.remove('TestMenu');
+                    this.scene.add('TestMenu', new TestMenu(this.api, state));
+                    this.scene.start('TestMenu');
+                });
             }
-        } else {
-            new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.3, `Quest not finished yet.\n\nClick to return.`, 16, () => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, state));
-                this.scene.start('TestMenu');
-            });
         }
     }
 }
