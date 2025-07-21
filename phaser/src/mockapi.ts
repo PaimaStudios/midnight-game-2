@@ -6,9 +6,9 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
-import { combat_round_logic } from "./battle/logic";
+import { combat_round_logic, generateRandomAbility } from "./battle/logic";
 
 
 const MOCK_DELAY = 500;  // How many milliseconds to wait before responding to API requests and between state refreshes.
@@ -70,9 +70,9 @@ export class MockGame2API implements DeployedGame2API {
             console.log(`from ${this.mockState.activeBattleConfigs.size}`);
             const battle = {
                 stats: [
-                    { hp: BigInt(60), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
-                    { hp: BigInt(45), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
-                    { hp: BigInt(35), attack: BigInt(4), block: BigInt(4), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) }
+                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(60), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(7), fire_def: BigInt(5), ice_def: BigInt(3) },
+                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(45), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(3), ice_def: BigInt(7) },
+                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(35), attack: BigInt(4), block: BigInt(4), physical_def: BigInt(3), fire_def: BigInt(7), ice_def: BigInt(5) }
                 ],
                 enemy_count: BigInt(3),
                 player_pub_key: MOCK_PLAYER_ID,
@@ -130,9 +130,18 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_quest(loadout: PlayerLoadout, difficulty: bigint): Promise<bigint> {
         return this.response(() => {
-            const quest = {
+            const battle_config = {
+                stats: [
+                    { enemy_type: ENEMY_TYPE.boss, hp: BigInt(20), attack: BigInt(10), block: BigInt(10), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
+                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) },
+                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) }
+                ],
+                enemy_count: BigInt(1),
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
+            };
+            const quest = {
+                battle_config,
                 difficulty,
             };
             const questId = pureCircuits.derive_quest_id(quest);
@@ -141,20 +150,24 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public finalize_quest(quest_id: bigint): Promise<BattleRewards | undefined> {
+    public finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
         return this.response(() => {
             if (Math.random() > 0.5) {
                 const quest = this.mockState.quests.get(quest_id)!;
                 this.mockState.quests.delete(quest_id);
 
-                
-                const reward: BattleRewards = {
-                    alive: true,
-                    gold: BigInt(500) + quest.difficulty * BigInt(100),
-                    ability: { is_some: true, value: this.givePlayerRandomAbility(quest.difficulty) },
-                };
-                this.addRewards(reward);
-                return reward;
+                const battleId = pureCircuits.derive_battle_id(quest.battle_config);
+
+                this.mockState.activeBattleStates.set(battleId, {
+                    deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
+                    player_hp: BigInt(100),
+                    enemy_hp_0: quest.battle_config.stats[0].hp,
+                    enemy_hp_1: quest.battle_config.stats[1].hp,
+                    enemy_hp_2: quest.battle_config.stats[2].hp,
+                });
+                this.mockState.activeBattleConfigs.set(battleId, quest.battle_config);
+
+                return battleId;
             }
             return undefined;
         });
@@ -176,56 +189,14 @@ export class MockGame2API implements DeployedGame2API {
 
     private addRewards(rewards: BattleRewards) {
         this.mockState.player!.gold += rewards.gold;
+        if (rewards.ability.is_some) {
+            const abilityId = rewards.ability.value;
+            this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
+        }
     }
 
     private givePlayerRandomAbility(difficulty: bigint): bigint {
-        const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
-        const randomEffect = (factor: number) => {
-            const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
-            const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
-            let amount = -1;
-            switch (effectType) {
-                case EFFECT_TYPE.attack_fire:
-                case EFFECT_TYPE.attack_ice:
-                case EFFECT_TYPE.attack_phys:
-                    amount = Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
-                    break;
-                case EFFECT_TYPE.block:
-                    amount = 5 * Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
-                    break;
-            }
-            return {
-                is_some: true,
-                value: {
-                    effect_type: effectType,
-                    amount: BigInt(amount),
-                    is_aoe: aoe
-                }
-            };
-        };
-        const triggers = [nullEffect, nullEffect, nullEffect];
-        const generateColor = Math.random() > 0.7 ? Phaser.Math.Between(0, 2) : null;
-        const triggerColor = Phaser.Math.Between(0, 5);
-        const baseEffect = randomEffect(triggerColor < triggers.length ? 1 : 2);
-        if (triggerColor < triggers.length) {
-            if (Math.random() > 0.7 || (generateColor === triggerColor)) {
-                for (let i = 0; i < 3; ++i) {
-                    if (i != triggerColor) {
-                        triggers[i] = randomEffect(1);
-                    }
-                }
-            } else {
-                triggers[triggerColor] = randomEffect(2);
-            }
-        }
-        const ability = {
-            effect: baseEffect,
-            on_energy: triggers,
-            generate_color: {
-                is_some: generateColor != null,
-                value: BigInt(generateColor ?? 0),
-            },
-        };
+        const ability = generateRandomAbility(difficulty);
         const abilityId = pureCircuits.derive_ability_id(ability);
         this.mockState.allAbilities.set(abilityId, ability);
         this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));

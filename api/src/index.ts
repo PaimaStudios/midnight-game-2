@@ -110,12 +110,12 @@ export interface DeployedGame2API {
     start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
 
     /**
-     * Attempt to finish a quest
+     * Attempt to finalize a quest (enter into the boss battle)
      * 
      * @param quest_id Quest to try to end
-     * @returns Rewards if quest is complete (win or lose), or undefined if not
+     * @returns The battle ID of the resulting boss battle, or none if quest not ready yet
      */
-    finalize_quest: (quest_id: bigint) => Promise<BattleRewards | undefined>;
+    finalize_quest: (quest_id: bigint) => Promise<bigint | undefined>;
 
     /**
      * Sell an ability
@@ -239,7 +239,7 @@ export class Game2API implements DeployedGame2API {
         return txData.private.result;
     }
 
-    async finalize_quest(quest_id: bigint): Promise<BattleRewards | undefined> {
+    async finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
         const txData = await this.deployedContract.callTx.finalize_quest(quest_id);
 
         this.logger?.trace({

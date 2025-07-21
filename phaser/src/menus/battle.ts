@@ -4,14 +4,14 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { Button } from "../widgets/button";
-import { Ability, BattleConfig, EFFECT_TYPE, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbAuraIdleKey, spiritAuraIdleKey, SpiritWidget } from "../widgets/ability";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
-import { colorToNumber } from "../constants/colors";
+import { Color, colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.7;
@@ -57,10 +57,28 @@ export class ActiveBattle extends Phaser.Scene {
         const loader = this.scene.get('Loader') as Loader;
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
 
-        this.player = new Actor(this, playerX(), playerY(), 100, 100);
+        this.player = new Actor(this, playerX(), playerY(), null);
+        console.assert(this.battle.enemy_count <= BigInt(3));
+        const enemyYOffsets = [
+            [0],
+            [0, 32],
+            [32, 0, 32]
+        ];
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
-            this.enemies.push(new Actor(this, enemyX(this.battle, i), enemyY(), Number(stats.hp), Number(stats.hp), 'enemy-fire-sprite'));
+            const actor = new Actor(this, enemyX(this.battle, i), enemyY() + enemyYOffsets[Number(this.battle.enemy_count) - 1][i], stats);
+            // TODO: replce this with new art
+            if (stats.fire_def > stats.physical_def && stats.fire_def > stats.ice_def) {
+                actor.image?.setTint(colorToNumber(Color.Red));
+            } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
+                actor.image?.setTint(colorToNumber(Color.Blue));
+            }
+            if (stats.enemy_type == ENEMY_TYPE.miniboss) {
+                actor.image?.setScale(BASE_SPRITE_SCALE * 2);
+            } else if (stats.enemy_type == ENEMY_TYPE.boss) {
+                actor.image?.setScale(BASE_SPRITE_SCALE * 4);
+            }
+            this.enemies.push(actor);
         }
 
         // attack button
@@ -93,8 +111,8 @@ export class ActiveBattle extends Phaser.Scene {
             
             const uiPromise = combat_round_logic(id, clonedState, {
                 onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
+                    console.log(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
                     this.enemies[enemy].addBlock(amount);
-                    //console.log(`enemy [${amount}] blocked for ${}`);
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
                 onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
@@ -293,14 +311,19 @@ export class ActiveBattle extends Phaser.Scene {
             console.log(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
             console.log(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
             button.visible = true;
-            if (ui != undefined) {
+            if (circuit != undefined) {
                 button.destroy();
-                const battleOverText = ui.alive ? `you won ${ui.gold} gold!` : `you died :(`;
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.6, 256, 96, battleOverText, 24, () => {
+
+                const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to return.` : `You died :(\nClick to return.`;
+                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.4, battleOverText, 16, () => {
                     this.scene.remove('TestMenu');
                     this.scene.add('TestMenu', new TestMenu(this.api, this.state));
                     this.scene.start('TestMenu');
                 });
+                if (circuit.alive && circuit.ability.is_some) {
+                    new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.7, this.state?.allAbilities.get(circuit.ability.value)!);
+                    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.9, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+                }
             } else {
                 button.text.setText(this.getAttackButtonString(this.battle));
             }
@@ -331,34 +354,48 @@ class Actor extends Phaser.GameObjects.Container {
     maxHp: number;
     hpBar: HealthBar;
     block: number;
+    image: Phaser.GameObjects.Image | undefined;
 
     // TODO: ActorConfig or Stats or whatever
-    constructor(scene: Phaser.Scene, x: number, y: number, hp: number, maxHp: number, texture?: string) {
+    constructor(scene: Phaser.Scene, x: number, y: number, stats: EnemyStats | null) {
         super(scene, x, y);
 
         let healtBarYOffset = 0;
-        if (texture !== undefined) {
-            const actorImage = addScaledImage(scene, 0, 0, texture)
-            healtBarYOffset -= actorImage.height*1.5 + 22;
-            this.add(actorImage);
+        let healthbarWidth = 180;
+        if (stats != null) {
+            this.image = addScaledImage(scene, 0, 0, 'enemy');
+            healtBarYOffset -= this.image.height*1.5 + 22;
+            this.add(this.image);
+            switch (stats.enemy_type) {
+                case ENEMY_TYPE.miniboss:
+                    healthbarWidth = GAME_WIDTH * 0.5;
+                    break;
+                case ENEMY_TYPE.boss:
+                    healthbarWidth = GAME_WIDTH * 0.75;
+                    break;
+            }
+            this.maxHp = Number(stats.hp);
+        } else {
+            // TOOD: do we need the ActorConfig/ActorStats struct or is this fine?
+            this.maxHp = 100;
+            healthbarWidth = GAME_WIDTH * 0.5;
         }
 
-        this.hp = hp;
-        this.maxHp = maxHp;
+        this.hp = this.maxHp;
         this.hpBar = new HealthBar({
             scene,
             x: 0,
             y: healtBarYOffset,
-            width: texture != null ? 180 : GAME_WIDTH * 0.75,
+            width: healthbarWidth,
             height: 32,
-            max: maxHp,
+            max: this.maxHp,
             displayTotalCompleted: true,
         });
         this.block = 0;
 
         this.add(this.hpBar);
 
-        this.setHp(hp);
+        this.setHp(this.hp);
         this.setSize(64, 64);
 
         scene.add.existing(this);
