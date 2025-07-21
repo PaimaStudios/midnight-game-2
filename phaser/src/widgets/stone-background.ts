@@ -30,6 +30,14 @@ export class StoneBackground  extends Phaser.GameObjects.Container implements Wi
     public onMouseOff() {
         this.bg.setTint();
     }
+    public setEnabled(enabled: boolean) {
+        if (enabled) {
+            this.onMouseOff();
+        }
+        else {
+            this.setTint(colorToNumber(Color.DeepPlum));
+        }
+    }
     public resize(w: number, h: number) {
         this.bg.setSize(w, h);
     }
