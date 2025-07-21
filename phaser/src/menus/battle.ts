@@ -73,11 +73,6 @@ export class ActiveBattle extends Phaser.Scene {
             } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
                 actor.image?.setTint(colorToNumber(Color.Blue));
             }
-            // if (stats.enemy_type == ENEMY_TYPE.miniboss) {
-            //     actor.image?.setScale(BASE_SPRITE_SCALE * 2);
-            // } else if (stats.enemy_type == ENEMY_TYPE.boss) {
-            //     actor.image?.setScale(BASE_SPRITE_SCALE * 4);
-            // }
             this.enemies.push(actor);
         }
 
@@ -363,7 +358,7 @@ class Actor extends Phaser.GameObjects.Container {
         let healtBarYOffset = 0;
         let healthbarWidth = 180;
         if (stats != null) {
-            this.image = addScaledImage(scene, 0, 0, 'enemy-boss-dragon-1');
+            this.image = addScaledImage(scene, 0, 0, 'enemy');
             healtBarYOffset -= this.image.height*1.5 + 22;
             this.add(this.image);
             switch (stats.enemy_type) {
