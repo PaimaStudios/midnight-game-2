@@ -20,7 +20,7 @@ const abilityIdleY = () => GAME_HEIGHT * 0.75;
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.185;
+const enemyY = () => GAME_HEIGHT * 0.2;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
@@ -61,8 +61,8 @@ export class ActiveBattle extends Phaser.Scene {
         console.assert(this.battle.enemy_count <= BigInt(3));
         const enemyYOffsets = [
             [0],
-            [0, 32],
-            [32, 0, 32]
+            [0, 16],
+            [25, 0, 25]
         ];
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
@@ -73,16 +73,11 @@ export class ActiveBattle extends Phaser.Scene {
             } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
                 actor.image?.setTint(colorToNumber(Color.Blue));
             }
-            if (stats.enemy_type == ENEMY_TYPE.miniboss) {
-                actor.image?.setScale(BASE_SPRITE_SCALE * 2);
-            } else if (stats.enemy_type == ENEMY_TYPE.boss) {
-                actor.image?.setScale(BASE_SPRITE_SCALE * 4);
-            }
             this.enemies.push(actor);
         }
 
         // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.90, 320, 96, this.getAttackButtonString(this.battle), 10, async () => {
+        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.80, 250, 48, this.getAttackButtonString(this.battle), 10, async () => {
             const id = pureCircuits.derive_battle_id(this.battle);
             const clonedState = structuredClone(this.state!);
             let apiDone = false;
@@ -314,7 +309,7 @@ export class ActiveBattle extends Phaser.Scene {
             if (circuit != undefined) {
                 button.destroy();
 
-                const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to return.` : `You died :(\nClick to return.`;
+                const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
                 new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.4, battleOverText, 16, () => {
                     this.scene.remove('TestMenu');
                     this.scene.add('TestMenu', new TestMenu(this.api, this.state));
@@ -331,20 +326,21 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     private getAttackButtonString(battle: BattleConfig): string {
+        const buttonDefaultText = `Click to Attack`;
         if (this.state != undefined) {
             console.log(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
         } else {
             console.log(`We dont have the state yet`);
-            return 'Click to attack';
+            return buttonDefaultText;
         }
         const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        return state != undefined ? `Click to attack.\nPlayer HP: ${state.player_hp} | Enemy HP:  ${state.enemy_hp_0}/ ${state.enemy_hp_1}/${state.enemy_hp_2}` : '404';
+        return state != undefined ? buttonDefaultText : '404';
     }
 
     private onStateChange(state: Game2DerivedState) {
         console.log(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
-        this.state = structuredClone(state);//Object.assign({}, state);
+        this.state = structuredClone(state);
     }
 
 }

@@ -77,6 +77,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('enemy-goblin', 'enemy-goblin.png');
         this.load.image('enemy-snowman', 'enemy-snowman.png');
         this.load.image('enemy-fire-sprite', 'enemy-fire-sprite.png');
+        this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
 
         this.load.image('grass', 'grass.png');
 
@@ -125,17 +126,17 @@ export class TestMenu extends Phaser.Scene {
 
         if (state.player !== undefined) {
             // We've registered a player, so show the quest and battle buttons
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 90, 'New Quest', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 220, 90, 'New Quest', 14, () => {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
                 this.scene.start('StartBattleMenu');
             }));
-            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 256 + 16, GAME_HEIGHT * 0.1, 256, 90, 'New Battle', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 220 + 16, GAME_HEIGHT * 0.15, 220, 90, 'New Battle', 14, () => {
                 this.scene.remove('StartBattleMenu');
                 this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
                 this.scene.start('StartBattleMenu');
             }));
-            this.buttons.push(new Button(this, GAME_WIDTH / 2 - 256 - 16, GAME_HEIGHT * 0.1, 256, 90, 'Shop', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2 - 220 - 16, GAME_HEIGHT * 0.15, 220, 90, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
