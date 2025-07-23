@@ -35,6 +35,7 @@ export class StartBattleMenu extends Phaser.Scene {
             abilities: [],
         };
         this.available = [];
+        this.abilitySlots = [];
         this.isQuest = isQuest;
         this.state = state;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -49,10 +50,6 @@ export class StartBattleMenu extends Phaser.Scene {
         const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 150, false);
         const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 150);
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
-            console.log('onMovedChild called - resetting slots');
-            // Reset slots whenever a child is moved between panels
-            this.resetAllSlots();
-            
             // Determine which abilities are selected
             const activeAbilities = activeAbilityPanel.getChildren();
             this.loadout.abilities = activeAbilities.map((c) => 
@@ -64,9 +61,13 @@ export class StartBattleMenu extends Phaser.Scene {
         }
         activeAbilityPanel.enableDraggable({
             onMovedChild,
+            onDragEnd: () => this.resetAllSlots(),
             maxElements: MAX_ABILITIES
         });
-        inactiveAbilityPanel.enableDraggable({onMovedChild});
+        inactiveAbilityPanel.enableDraggable({
+            onMovedChild,
+            onDragEnd: () => this.resetAllSlots()
+        });
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
@@ -93,8 +94,16 @@ export class StartBattleMenu extends Phaser.Scene {
             this.abilitySlots.push(slot);
         }
 
-        // Set up drag-over animations for ability slots
-        this.setupSlotDragAnimations([activeAbilityPanel, inactiveAbilityPanel]);
+        // Set up drag-over animations for ability slots using the new API
+        activeAbilityPanel.addDragTargets(this.abilitySlots, {
+            onDragOver: (slot) => this.animateSlotEnlarge(slot),
+            onDragOut: (slot) => this.animateSlotShrink(slot)
+        });
+        
+        inactiveAbilityPanel.addDragTargets(this.abilitySlots, {
+            onDragOver: (slot) => this.animateSlotEnlarge(slot),
+            onDragOut: (slot) => this.animateSlotShrink(slot)
+        });
 
         this.startButton = new Button(this, GAME_WIDTH / 2, 24, 100, 40, 'Start', 10, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
@@ -134,70 +143,6 @@ export class StartBattleMenu extends Phaser.Scene {
         }).setEnabled(false);
     }
 
-    private setupSlotDragAnimations(panels: ScrollablePanel[]) {
-        // Hook into the existing child event system that ScrollablePanel uses
-        panels.forEach(panel => {
-            const panelUI = (panel as any).panel; // Get the Rex UI panel
-            
-            // Hook into the existing child.down event to add our drag listeners
-            panelUI.on('child.down', (child: any) => {
-                console.log('Child down detected, setting up drag listeners');
-                // Add a small delay to ensure the drag behavior has been added
-                this.time.delayedCall(10, () => {
-                    if (child.drag) {
-                        console.log('Adding drag listeners to child');
-                        // Remove any existing listeners to avoid duplicates
-                        child.off('drag', this.onChildDrag);
-                        child.off('dragend', this.onChildDragEnd);
-                        
-                        // Add our listeners
-                        child.on('drag', this.onChildDrag, this);
-                        child.on('dragend', this.onChildDragEnd, this);
-                    } else {
-                        console.log('Child does not have drag behavior yet');
-                    }
-                });
-            });
-        });
-    }
-
-    private onChildDrag = (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
-        console.log('Drag detected at:', dragX, dragY);
-        this.checkSlotDragOver(dragX, dragY);
-    }
-
-    private onChildDragEnd = () => {
-        console.log('Drag ended - calling resetAllSlots');
-        // Check current slot states before reset
-        this.abilitySlots.forEach((slot, index) => {
-            const isHovered = (slot as any).getData('isHovered');
-            const currentScale = (slot as any).scaleX;
-            console.log(`Slot ${index}: isHovered=${isHovered}, scale=${currentScale}`);
-        });
-        
-        // Add a small delay to let the drop processing complete first
-        this.time.delayedCall(50, () => {
-            console.log('Executing delayed resetAllSlots');
-            this.resetAllSlots();
-        });
-    }
-
-    private checkSlotDragOver(dragX: number, dragY: number) {
-        this.abilitySlots.forEach((slot, index) => {
-            const bounds = (slot as any).getBounds();
-            const isOver = Phaser.Geom.Rectangle.Contains(bounds, dragX, dragY);
-            
-            if (isOver && !(slot as any).getData('isHovered')) {
-                console.log(`Slot ${index} - hovering started`);
-                this.animateSlotEnlarge(slot);
-                (slot as any).setData('isHovered', true);
-            } else if (!isOver && (slot as any).getData('isHovered')) {
-                console.log(`Slot ${index} - hovering ended`);
-                this.animateSlotShrink(slot);
-                (slot as any).setData('isHovered', false);
-            }
-        });
-    }
 
     private animateSlotEnlarge(slot: Phaser.GameObjects.GameObject) {
         this.tweens.add({
@@ -222,10 +167,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     private resetAllSlots() {
-        console.log('resetAllSlots called');
-        this.abilitySlots.forEach((slot, index) => {
-            const currentScale = (slot as any).scaleX;
-            console.log(`Resetting slot ${index} - current scale: ${currentScale}`);
+        this.abilitySlots.forEach(slot => {
             // Always shrink and reset hover state, regardless of current hover state
             this.animateSlotShrink(slot);
             (slot as any).setData('isHovered', false);
