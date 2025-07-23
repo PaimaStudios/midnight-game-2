@@ -22,6 +22,11 @@ export class ScrollablePanel {
     public scene: Phaser.Scene;
     public panel: RexUIPlugin.ScrollablePanel;
     public maxElements?: number;
+    private dragTargets: Array<{
+        target: Phaser.GameObjects.GameObject,
+        onDragOver?: (target: Phaser.GameObjects.GameObject) => void,
+        onDragOut?: (target: Phaser.GameObjects.GameObject) => void
+    }> = [];
 
     constructor(
         scene: Phaser.Scene,
@@ -113,10 +118,16 @@ export class ScrollablePanel {
     //
     public enableDraggable(options?: {
         onMovedChild?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
+        onDragStart?: (child: Phaser.GameObjects.GameObject) => void,
+        onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
+        onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
         maxElements?: number
     }): void {
         const maxElements = options?.maxElements;
         const onMovedChild = options?.onMovedChild;
+        const onDragStart = options?.onDragStart;
+        const onDragEnd = options?.onDragEnd;
+        const onDrag = options?.onDrag;
         
         this.maxElements = maxElements;
         const dragBehavior = this.scene.plugins.get('rexdragplugin') as any;
@@ -154,6 +165,17 @@ export class ScrollablePanel {
                             child.clearMask();
 
                             this.onChildDragStart(child);
+                            if (onDragStart) {
+                                onDragStart(this.unwrapElement(child));
+                            }
+                        })
+                        .on('drag', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+                            // Check drag targets for hover effects
+                            this.checkDragTargets(dragX, dragY);
+                            
+                            if (onDrag) {
+                                onDrag(this.unwrapElement(child), dragX, dragY);
+                            }
                         })
                         .on('dragend', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number, dropped: boolean) => {
                             if (dropped) { // Process 'drop' event
@@ -162,6 +184,10 @@ export class ScrollablePanel {
 
                             const previousSizer = child.getData('sizer');
                             this.onChildDragEnd(child);
+                            this.resetDragTargets();
+                            if (onDragEnd) {
+                                onDragEnd(this.unwrapElement(child));
+                            }
 
                             // Insert back to previous sizer if not dropping on another panel
                             previousSizer.insert(child.getData('index'), child, { expand: true });
@@ -170,6 +196,10 @@ export class ScrollablePanel {
                         .on('drop', (pointer: Phaser.Input.Pointer, dropZone: any) => {
                             // Drop at another sizer
                             this.onChildDragEnd(child);
+                            this.resetDragTargets();
+                            if (onDragEnd) {
+                                onDragEnd(this.unwrapElement(child));
+                            }
 
                             const currentSizer = dropZone.getTopmostSizer().getElement('panel');
                             const previousSizer = child.getData('sizer');
@@ -208,6 +238,52 @@ export class ScrollablePanel {
                 child.setInteractive();
                 child.drag.drag();
             });
+    }
+
+    // Adds external drag targets that will respond to drag-over events
+    public addDragTargets(targets: Phaser.GameObjects.GameObject[], callbacks: {
+        onDragOver?: (target: Phaser.GameObjects.GameObject) => void,
+        onDragOut?: (target: Phaser.GameObjects.GameObject) => void
+    }): void {
+        targets.forEach(target => {
+            this.dragTargets.push({
+                target,
+                onDragOver: callbacks.onDragOver,
+                onDragOut: callbacks.onDragOut
+            });
+        });
+    }
+
+    // Check if drag position is over any registered drag targets
+    private checkDragTargets(dragX: number, dragY: number): void {
+        this.dragTargets.forEach(({ target, onDragOver, onDragOut }) => {
+            const bounds = (target as any).getBounds();
+            const isOver = Phaser.Geom.Rectangle.Contains(bounds, dragX, dragY);
+            
+            if (isOver && !(target as any).getData('isHovered')) {
+                if (onDragOver) {
+                    onDragOver(target);
+                }
+                (target as any).setData('isHovered', true);
+            } else if (!isOver && (target as any).getData('isHovered')) {
+                if (onDragOut) {
+                    onDragOut(target);
+                }
+                (target as any).setData('isHovered', false);
+            }
+        });
+    }
+
+    // Reset all drag targets to non-hovered state
+    private resetDragTargets(): void {
+        this.dragTargets.forEach(({ target, onDragOut }) => {
+            if ((target as any).getData('isHovered')) {
+                if (onDragOut) {
+                    onDragOut(target);
+                }
+                (target as any).setData('isHovered', false);
+            }
+        });
     }
 
     private onChildDragStart(child: any): void {

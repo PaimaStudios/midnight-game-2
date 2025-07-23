@@ -23,6 +23,7 @@ export class StartBattleMenu extends Phaser.Scene {
     subscription: Subscription;
     available: AbilityWidget[];
     startButton: Button | undefined;
+    abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
@@ -34,6 +35,7 @@ export class StartBattleMenu extends Phaser.Scene {
             abilities: [],
         };
         this.available = [];
+        this.abilitySlots = [];
         this.isQuest = isQuest;
         this.state = state;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -59,9 +61,13 @@ export class StartBattleMenu extends Phaser.Scene {
         }
         activeAbilityPanel.enableDraggable({
             onMovedChild,
+            onDragEnd: () => this.resetAllSlots(),
             maxElements: MAX_ABILITIES
         });
-        inactiveAbilityPanel.enableDraggable({onMovedChild});
+        inactiveAbilityPanel.enableDraggable({
+            onMovedChild,
+            onDragEnd: () => this.resetAllSlots()
+        });
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
@@ -81,9 +87,23 @@ export class StartBattleMenu extends Phaser.Scene {
         }
 
         // Add placeholder slots for active abilities
+        this.abilitySlots = [];
         for (let i = 0; i < MAX_ABILITIES; ++i) {
-            this.add.existing(this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple)))
+            const slot = this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple));
+            this.add.existing(slot);
+            this.abilitySlots.push(slot);
         }
+
+        // Set up drag-over animations for ability slots
+        activeAbilityPanel.addDragTargets(this.abilitySlots, {
+            onDragOver: (slot) => this.animateSlotEnlarge(slot),
+            onDragOut: (slot) => this.animateSlotShrink(slot)
+        });
+        
+        inactiveAbilityPanel.addDragTargets(this.abilitySlots, {
+            onDragOver: (slot) => this.animateSlotEnlarge(slot),
+            onDragOut: (slot) => this.animateSlotShrink(slot)
+        });
 
         this.startButton = new Button(this, GAME_WIDTH / 2, 24, 100, 40, 'Start', 10, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
@@ -121,6 +141,37 @@ export class StartBattleMenu extends Phaser.Scene {
                 console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
         }).setEnabled(false);
+    }
+
+
+    private animateSlotEnlarge(slot: Phaser.GameObjects.GameObject) {
+        this.tweens.add({
+            targets: slot,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            alpha: 0.8,
+            duration: 200,
+            ease: 'Power2'
+        });
+    }
+
+    private animateSlotShrink(slot: Phaser.GameObjects.GameObject) {
+        this.tweens.add({
+            targets: slot,
+            scaleX: 1,
+            scaleY: 1,
+            alpha: 1,
+            duration: 200,
+            ease: 'Power2'
+        });
+    }
+
+    private resetAllSlots() {
+        this.abilitySlots.forEach(slot => {
+            // Always shrink and reset hover state, regardless of current hover state
+            this.animateSlotShrink(slot);
+            (slot as any).setData('isHovered', false);
+        });
     }
 }
 
