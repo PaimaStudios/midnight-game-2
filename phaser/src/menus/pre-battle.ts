@@ -49,6 +49,10 @@ export class StartBattleMenu extends Phaser.Scene {
         const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 150, false);
         const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 150);
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
+            console.log('onMovedChild called - resetting slots');
+            // Reset slots whenever a child is moved between panels
+            this.resetAllSlots();
+            
             // Determine which abilities are selected
             const activeAbilities = activeAbilityPanel.getChildren();
             this.loadout.abilities = activeAbilities.map((c) => 
@@ -157,14 +161,25 @@ export class StartBattleMenu extends Phaser.Scene {
         });
     }
 
-    private onChildDrag = (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+    private onChildDrag = (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
         console.log('Drag detected at:', dragX, dragY);
         this.checkSlotDragOver(dragX, dragY);
     }
 
     private onChildDragEnd = () => {
-        console.log('Drag ended');
-        this.resetAllSlots();
+        console.log('Drag ended - calling resetAllSlots');
+        // Check current slot states before reset
+        this.abilitySlots.forEach((slot, index) => {
+            const isHovered = (slot as any).getData('isHovered');
+            const currentScale = (slot as any).scaleX;
+            console.log(`Slot ${index}: isHovered=${isHovered}, scale=${currentScale}`);
+        });
+        
+        // Add a small delay to let the drop processing complete first
+        this.time.delayedCall(50, () => {
+            console.log('Executing delayed resetAllSlots');
+            this.resetAllSlots();
+        });
     }
 
     private checkSlotDragOver(dragX: number, dragY: number) {
@@ -207,11 +222,13 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     private resetAllSlots() {
-        this.abilitySlots.forEach(slot => {
-            if ((slot as any).getData('isHovered')) {
-                this.animateSlotShrink(slot);
-                (slot as any).setData('isHovered', false);
-            }
+        console.log('resetAllSlots called');
+        this.abilitySlots.forEach((slot, index) => {
+            const currentScale = (slot as any).scaleX;
+            console.log(`Resetting slot ${index} - current scale: ${currentScale}`);
+            // Always shrink and reset hover state, regardless of current hover state
+            this.animateSlotShrink(slot);
+            (slot as any).setData('isHovered', false);
         });
     }
 }
