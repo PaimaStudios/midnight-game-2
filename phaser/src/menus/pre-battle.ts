@@ -23,6 +23,7 @@ export class StartBattleMenu extends Phaser.Scene {
     subscription: Subscription;
     available: AbilityWidget[];
     startButton: Button | undefined;
+    abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
@@ -81,9 +82,15 @@ export class StartBattleMenu extends Phaser.Scene {
         }
 
         // Add placeholder slots for active abilities
+        this.abilitySlots = [];
         for (let i = 0; i < MAX_ABILITIES; ++i) {
-            this.add.existing(this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple)))
+            const slot = this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple));
+            this.add.existing(slot);
+            this.abilitySlots.push(slot);
         }
+
+        // Set up drag-over animations for ability slots
+        this.setupSlotDragAnimations([activeAbilityPanel, inactiveAbilityPanel]);
 
         this.startButton = new Button(this, GAME_WIDTH / 2, 24, 100, 40, 'Start', 10, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
@@ -121,6 +128,91 @@ export class StartBattleMenu extends Phaser.Scene {
                 console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
         }).setEnabled(false);
+    }
+
+    private setupSlotDragAnimations(panels: ScrollablePanel[]) {
+        // Hook into the existing child event system that ScrollablePanel uses
+        panels.forEach(panel => {
+            const panelUI = (panel as any).panel; // Get the Rex UI panel
+            
+            // Hook into the existing child.down event to add our drag listeners
+            panelUI.on('child.down', (child: any) => {
+                console.log('Child down detected, setting up drag listeners');
+                // Add a small delay to ensure the drag behavior has been added
+                this.time.delayedCall(10, () => {
+                    if (child.drag) {
+                        console.log('Adding drag listeners to child');
+                        // Remove any existing listeners to avoid duplicates
+                        child.off('drag', this.onChildDrag);
+                        child.off('dragend', this.onChildDragEnd);
+                        
+                        // Add our listeners
+                        child.on('drag', this.onChildDrag, this);
+                        child.on('dragend', this.onChildDragEnd, this);
+                    } else {
+                        console.log('Child does not have drag behavior yet');
+                    }
+                });
+            });
+        });
+    }
+
+    private onChildDrag = (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+        console.log('Drag detected at:', dragX, dragY);
+        this.checkSlotDragOver(dragX, dragY);
+    }
+
+    private onChildDragEnd = () => {
+        console.log('Drag ended');
+        this.resetAllSlots();
+    }
+
+    private checkSlotDragOver(dragX: number, dragY: number) {
+        this.abilitySlots.forEach((slot, index) => {
+            const bounds = (slot as any).getBounds();
+            const isOver = Phaser.Geom.Rectangle.Contains(bounds, dragX, dragY);
+            
+            if (isOver && !(slot as any).getData('isHovered')) {
+                console.log(`Slot ${index} - hovering started`);
+                this.animateSlotEnlarge(slot);
+                (slot as any).setData('isHovered', true);
+            } else if (!isOver && (slot as any).getData('isHovered')) {
+                console.log(`Slot ${index} - hovering ended`);
+                this.animateSlotShrink(slot);
+                (slot as any).setData('isHovered', false);
+            }
+        });
+    }
+
+    private animateSlotEnlarge(slot: Phaser.GameObjects.GameObject) {
+        this.tweens.add({
+            targets: slot,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            alpha: 0.8,
+            duration: 200,
+            ease: 'Power2'
+        });
+    }
+
+    private animateSlotShrink(slot: Phaser.GameObjects.GameObject) {
+        this.tweens.add({
+            targets: slot,
+            scaleX: 1,
+            scaleY: 1,
+            alpha: 1,
+            duration: 200,
+            ease: 'Power2'
+        });
+    }
+
+    private resetAllSlots() {
+        this.abilitySlots.forEach(slot => {
+            if ((slot as any).getData('isHovered')) {
+                this.animateSlotShrink(slot);
+                (slot as any).setData('isHovered', false);
+            }
+        });
     }
 }
 
