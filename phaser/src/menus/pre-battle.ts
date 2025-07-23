@@ -94,7 +94,7 @@ export class StartBattleMenu extends Phaser.Scene {
             this.abilitySlots.push(slot);
         }
 
-        // Set up drag-over animations for ability slots using the new API
+        // Set up drag-over animations for ability slots
         activeAbilityPanel.addDragTargets(this.abilitySlots, {
             onDragOver: (slot) => this.animateSlotEnlarge(slot),
             onDragOut: (slot) => this.animateSlotShrink(slot)
