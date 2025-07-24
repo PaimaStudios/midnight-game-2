@@ -373,6 +373,7 @@ class Actor extends Phaser.GameObjects.Container {
                     this.image?.setScale(BASE_SPRITE_SCALE * 2);
                     break;
                 case ENEMY_TYPE.boss:
+                    healthbarWidth = GAME_WIDTH * 0.75;
                     break;
             }
             this.maxHp = Number(stats.hp);
