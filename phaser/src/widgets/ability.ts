@@ -105,7 +105,7 @@ export class SpiritWidget extends Phaser.GameObjects.Container {
      ) {
         super(scene, x, y);
 
-        this.setSize(128, 128);
+        this.setSize(64, 64);
 
         this.ability = ability;
 

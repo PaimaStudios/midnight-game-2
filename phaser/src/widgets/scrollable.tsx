@@ -310,8 +310,8 @@ export class ScrollablePanel {
         children.forEach((child: any) => {
             const fromX = child.getData('startX');
             const fromY = child.getData('startY');
-            console.log('Child position:', child.x, child.y);
-            console.log('Saved position:', fromX, fromY);
+            // console.log('Child position:', child.x, child.y);
+            // console.log('Saved position:', fromX, fromY);
             if ((child.x !== fromX) || (child.y !== fromY)) {
                 child.moveFrom({ x: fromX, y: fromY, speed: 300 });
             }
