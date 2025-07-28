@@ -89,7 +89,13 @@ export class ScrollablePanel {
 
     // Gets all child objects in the panel
     public getChildren(): Phaser.GameObjects.GameObject[] {
-        return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
+        const sizer = this.getPanelElement();
+        const items = (sizer as any).getElement?.('items');
+        if (!items || !Array.isArray(items)) {
+            console.log("Error getting scrollable panel children in order: 'items' element does not exist.");
+            return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
+        }
+        return items.map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
     }
 
     // Gets the number of child objects in the panel

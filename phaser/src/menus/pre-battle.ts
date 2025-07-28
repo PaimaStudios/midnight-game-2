@@ -252,18 +252,12 @@ export class StartBattleMenu extends Phaser.Scene {
         }
     }
 
-    // TODO: is there a way to get the real order instead?
-    // the ordering of abilities seems to not be the order they are in the scrollable widget
-    // so we must unfortunately hack this to get a real indexbased on the positions
     private getOrderedActiveAbilities(): AbilityWidget[] {
         return this
             .activeAbilityPanel!
             .getChildren()
             .map((widget) => (widget as Phaser.GameObjects.Container))
-            .sort((a, b) => a.x - b.x)
-            //.filter((widget) => widget != undefined)
-            .map(((container) => container.list[0] as AbilityWidget))
-            //.filter((widget) => widget != undefined);
+            .map(((container) => container.list[0] as AbilityWidget));
     }
 }
 
