@@ -75,7 +75,7 @@ export class StartBattleMenu extends Phaser.Scene {
             // Enable the start button if we have enough abilities selected
             this.startButton?.setEnabled(this.loadout.abilities.length == MAX_ABILITIES);
         }
-        this.activeAbilityPanel!.enableDraggable({
+        this.activeAbilityPanel.enableDraggable({
             onMovedChild,
             onDragEnd: () => {
                 // this is never called for some reason
@@ -225,22 +225,22 @@ export class StartBattleMenu extends Phaser.Scene {
                         ...tweenDownAlpha(oldPreview),
                         onComplete: () => {
                             oldPreview.destroy();
-                            this.spiritPreviews[i] = null;
                         },
                     });
                 }
-                // create new
+                // create new - set reference immediately to prevent duplicate creation
                 if (newAbility != undefined) {
                     const tablet = this.summoningTablets[i];
                     const newPreview = new SpiritWidget(this, tablet.x, tablet.y - 24, newAbility)
                                 .setDepth(2)
                                 .setAlpha(0);
+                    this.spiritPreviews[i] = newPreview; // Set reference immediately
                     tweens.push({
                         ...tweenUpAlpha(newPreview),
-                        onComplete: () => {
-                            this.spiritPreviews[i] = newPreview;
-                        }
                     });
+                } else {
+                    // Clear reference if no new ability
+                    this.spiritPreviews[i] = null;
                 }
                 if (tweens.length > 0) {
                     this.tweens.chain({
