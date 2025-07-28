@@ -19,10 +19,6 @@ import { table } from "console";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
-// function getAbility(widget: Phaser.GameObjects.GameObject | undefined): Ability | undefined {
-//     return ((widget as Phaser.GameObjects.Container)?.list[0] as AbilityWidget)?.ability;
-// }
-
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
     state: Game2DerivedState;
@@ -78,8 +74,6 @@ export class StartBattleMenu extends Phaser.Scene {
         this.activeAbilityPanel.enableDraggable({
             onMovedChild,
             onDragEnd: () => {
-                // this is never called for some reason
-                console.log(`activeAbilityPanel.onDragEnd()`);
                 this.resetAllSlots();
                 this.refreshPreviews();
             },
@@ -88,10 +82,7 @@ export class StartBattleMenu extends Phaser.Scene {
         inactiveAbilityPanel.enableDraggable({
             onMovedChild,
             onDragEnd: () => {
-                console.log('inactiveAbilityPanel.onDragEnd()');
                 this.resetAllSlots()
-                // this should not be needed but for some reason this is getting called when the active panel is dragged too?!
-                this.refreshPreviews();
             },
         });
 
@@ -209,14 +200,6 @@ export class StartBattleMenu extends Phaser.Scene {
             const newAbility = activeAbilities.at(i)?.ability;
             console.log(`[${i}]comparing: ${this.spiritPreviews[i]?.ability == undefined ? 'null' : safeJSONString(this.spiritPreviews[i]!.ability)}\n[${this.spiritPreviews[i]?.ability != newAbility}] with: ${newAbility == undefined ? 'null' : safeJSONString(newAbility!)}`);
             if (this.spiritPreviews[i]?.ability != newAbility) {
-                // this.spiritPreviews[i]?.destroy();
-                // if (newAbility != null) {
-                //     const tablet = this.summoningTablets[i];
-                //     this.spiritPreviews[i] = new SpiritWidget(this, tablet.x, tablet.y - 24, newAbility)
-                //         .setDepth(2)
-                //         .setAlpha(1.0);
-                // }
-
                 let tweens = [];
                 // destroy old
                 const oldPreview = this.spiritPreviews[i];
