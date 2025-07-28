@@ -228,13 +228,13 @@ export class StartBattleMenu extends Phaser.Scene {
                         },
                     });
                 }
-                // create new - set reference immediately to prevent duplicate creation
+                // create new
                 if (newAbility != undefined) {
                     const tablet = this.summoningTablets[i];
                     const newPreview = new SpiritWidget(this, tablet.x, tablet.y - 24, newAbility)
                                 .setDepth(2)
                                 .setAlpha(0);
-                    this.spiritPreviews[i] = newPreview; // Set reference immediately
+                    this.spiritPreviews[i] = newPreview;
                     tweens.push({
                         ...tweenUpAlpha(newPreview),
                     });
