@@ -62,8 +62,6 @@ export class StartBattleMenu extends Phaser.Scene {
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
             // Determine which abilities are selected
             const activeAbilities = this.getOrderedActiveAbilities();
-            console.log(`activeAbilities:`);
-            activeAbilities.forEach((a, i) => console.log(`   [${i}] = ${safeJSONString(a.ability)}`));
             this.loadout.abilities = activeAbilities.map((a) => pureCircuits.derive_ability_id(a.ability));
 
             this.refreshPreviews();
@@ -194,11 +192,9 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     private refreshPreviews() {
-        console.log(`refreshPreviews()`);
         const activeAbilities = this.getOrderedActiveAbilities();
         for (let i = 0; i < MAX_ABILITIES; ++i) {
             const newAbility = activeAbilities.at(i)?.ability;
-            console.log(`[${i}]comparing: ${this.spiritPreviews[i]?.ability == undefined ? 'null' : safeJSONString(this.spiritPreviews[i]!.ability)}\n[${this.spiritPreviews[i]?.ability != newAbility}] with: ${newAbility == undefined ? 'null' : safeJSONString(newAbility!)}`);
             if (this.spiritPreviews[i]?.ability != newAbility) {
                 let tweens = [];
                 // destroy old
