@@ -22,6 +22,8 @@ export class ScrollablePanel {
     public scene: Phaser.Scene;
     public panel: RexUIPlugin.ScrollablePanel;
     public maxElements?: number;
+    public onDragEndCallback?: (child: Phaser.GameObjects.GameObject) => void;
+    public onMovedChildCallback?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void;
     private dragTargets: Array<{
         target: Phaser.GameObjects.GameObject,
         onDragOver?: (target: Phaser.GameObjects.GameObject) => void,
@@ -87,7 +89,13 @@ export class ScrollablePanel {
 
     // Gets all child objects in the panel
     public getChildren(): Phaser.GameObjects.GameObject[] {
-        return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
+        const sizer = this.getPanelElement();
+        const items = (sizer as any).getElement?.('items');
+        if (!items || !Array.isArray(items)) {
+            console.log("Error getting scrollable panel children in order: 'items' element does not exist.");
+            return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
+        }
+        return items.map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
     }
 
     // Gets the number of child objects in the panel
@@ -130,12 +138,15 @@ export class ScrollablePanel {
         const onDrag = options?.onDrag;
         
         this.maxElements = maxElements;
+        this.onDragEndCallback = onDragEnd;
+        this.onMovedChildCallback = onMovedChild;
         const dragBehavior = this.scene.plugins.get('rexdragplugin') as any;
         
-        // Store maxElements on the scrollable panel for later reference
+        // Store maxElements and this ScrollablePanel instance on the panel for later reference
         if (maxElements !== undefined) {
             this.panel.setData('maxElements', maxElements);
         }
+        this.panel.setData('scrollablePanel', this);
 
         this.panel
             .setChildrenInteractive({
@@ -185,8 +196,11 @@ export class ScrollablePanel {
                             const previousSizer = child.getData('sizer');
                             this.onChildDragEnd(child);
                             this.resetDragTargets();
-                            if (onDragEnd) {
-                                onDragEnd(this.unwrapElement(child));
+                            
+                            // Call onDragEnd from the panel that the element is returning to (the original panel)
+                            const originalPanel = previousSizer.getTopmostSizer().getData('scrollablePanel') as ScrollablePanel;
+                            if (originalPanel?.onDragEndCallback) {
+                                originalPanel.onDragEndCallback(this.unwrapElement(child));
                             }
 
                             // Insert back to previous sizer if not dropping on another panel
@@ -197,9 +211,6 @@ export class ScrollablePanel {
                             // Drop at another sizer
                             this.onChildDragEnd(child);
                             this.resetDragTargets();
-                            if (onDragEnd) {
-                                onDragEnd(this.unwrapElement(child));
-                            }
 
                             const currentSizer = dropZone.getTopmostSizer().getElement('panel');
                             const previousSizer = child.getData('sizer');
@@ -207,7 +218,12 @@ export class ScrollablePanel {
                             // Check if maxElements limit would be exceeded
                             const targetMaxElements = dropZone.getTopmostSizer().getData('maxElements');
                             if (targetMaxElements && currentSizer !== previousSizer && currentSizer.getElement('items').length >= targetMaxElements) {
-                                // Return to previous sizer if limit would be exceeded
+                                // Return to previous sizer if limit would be exceeded - call original panel's onDragEnd
+                                const originalPanel = previousSizer.getTopmostSizer().getData('scrollablePanel') as ScrollablePanel;
+                                if (originalPanel?.onDragEndCallback) {
+                                    originalPanel.onDragEndCallback(this.unwrapElement(child));
+                                }
+                                
                                 previousSizer.insert(child.getData('index'), child, { expand: true });
                                 this.arrangeItems(previousSizer);
                                 return;
@@ -225,9 +241,18 @@ export class ScrollablePanel {
                                 { expand: true }
                             );
 
-                            // Call onMovedChild callback if child was moved to a different panel
-                            if (previousSizer !== currentSizer && onMovedChild) {
-                                onMovedChild(this, this.unwrapElement(child));
+                            // Call onMovedChild callback from the target panel if child was moved to a different panel
+                            if (previousSizer !== currentSizer) {
+                                const targetPanel = dropZone.getTopmostSizer().getData('scrollablePanel') as ScrollablePanel;
+                                if (targetPanel?.onMovedChildCallback) {
+                                    targetPanel.onMovedChildCallback(targetPanel, this.unwrapElement(child));
+                                }
+                            }
+                            
+                            // Call onDragEnd from the target panel that the element was dropped into
+                            const targetPanel = dropZone.getTopmostSizer().getData('scrollablePanel') as ScrollablePanel;
+                            if (targetPanel?.onDragEndCallback) {
+                                targetPanel.onDragEndCallback(this.unwrapElement(child));
                             }
                             
                             this.arrangeItems(currentSizer);
@@ -310,8 +335,8 @@ export class ScrollablePanel {
         children.forEach((child: any) => {
             const fromX = child.getData('startX');
             const fromY = child.getData('startY');
-            console.log('Child position:', child.x, child.y);
-            console.log('Saved position:', fromX, fromY);
+            // console.log('Child position:', child.x, child.y);
+            // console.log('Saved position:', fromX, fromY);
             if ((child.x !== fromX) || (child.y !== fromY)) {
                 child.moveFrom({ x: fromX, y: fromY, speed: 300 });
             }

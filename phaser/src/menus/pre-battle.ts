@@ -1,7 +1,7 @@
 /**
  * Pre-Battle and Pre-Quest ability selection screen
  */
-import { DeployedGame2API, Game2DerivedState } from "game2-api";
+import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
@@ -13,6 +13,9 @@ import { Loader } from "./loader";
 import { fontStyle } from "../main";
 import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
+import { addScaledImage } from "../utils/scaleImage";
+import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
+import { table } from "console";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -27,6 +30,9 @@ export class StartBattleMenu extends Phaser.Scene {
     isQuest: boolean;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
+    spiritPreviews: (SpiritWidget | null)[];
+    summoningTablets: Phaser.GameObjects.Image[];
+    activeAbilityPanel: ScrollablePanel | undefined;
 
     constructor(api: DeployedGame2API, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
@@ -36,6 +42,8 @@ export class StartBattleMenu extends Phaser.Scene {
         };
         this.available = [];
         this.abilitySlots = [];
+        this.summoningTablets = [];
+        this.spiritPreviews = new Array(MAX_ABILITIES).map((_) => null);
         this.isQuest = isQuest;
         this.state = state;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -47,26 +55,33 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        const activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 150, false);
-        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 150);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
+
+        this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 128, false);
+        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 128);
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
             // Determine which abilities are selected
-            const activeAbilities = activeAbilityPanel.getChildren();
-            this.loadout.abilities = activeAbilities.map((c) => 
-                pureCircuits.derive_ability_id(((c as Phaser.GameObjects.Container).list[0] as AbilityWidget).ability)
-            );
+            const activeAbilities = this.getOrderedActiveAbilities();
+            this.loadout.abilities = activeAbilities.map((a) => pureCircuits.derive_ability_id(a.ability));
+
+            this.refreshPreviews();
 
             // Enable the start button if we have enough abilities selected
             this.startButton?.setEnabled(this.loadout.abilities.length == MAX_ABILITIES);
         }
-        activeAbilityPanel.enableDraggable({
+        this.activeAbilityPanel.enableDraggable({
             onMovedChild,
-            onDragEnd: () => this.resetAllSlots(),
+            onDragEnd: () => {
+                this.resetAllSlots();
+                this.refreshPreviews();
+            },
             maxElements: MAX_ABILITIES
         });
         inactiveAbilityPanel.enableDraggable({
             onMovedChild,
-            onDragEnd: () => this.resetAllSlots()
+            onDragEnd: () => {
+                this.resetAllSlots()
+            },
         });
 
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
@@ -78,7 +93,6 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityWidget = new AbilityWidget(this, 0, 60, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 248);
             abilityContainer.add(abilityWidget);
-            abilityContainer.add(new SpiritWidget(this, 0, -60, ability));
 
             // Add new child to scrollable panel
             inactiveAbilityPanel.addChild(abilityContainer);
@@ -89,13 +103,16 @@ export class StartBattleMenu extends Phaser.Scene {
         // Add placeholder slots for active abilities
         this.abilitySlots = [];
         for (let i = 0; i < MAX_ABILITIES; ++i) {
-            const slot = this.rexUI.add.roundRectangle(61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES), GAME_HEIGHT * 0.47, 71, 125, 20, colorToNumber(Color.Purple));
+            const x = 61 + (i * 0.98 * GAME_WIDTH/MAX_ABILITIES);
+            const y = GAME_HEIGHT * 0.47;
+            this.summoningTablets.push(addScaledImage(this, x, y - 116, 'tablet-round').setDepth(1));
+            const slot = this.rexUI.add.roundRectangle(x, y, 71, 125, 20, colorToNumber(Color.Purple));
             this.add.existing(slot);
             this.abilitySlots.push(slot);
         }
 
         // Set up drag-over animations for ability slots
-        activeAbilityPanel.addDragTargets(this.abilitySlots, {
+        this.activeAbilityPanel.addDragTargets(this.abilitySlots, {
             onDragOver: (slot) => this.animateSlotEnlarge(slot),
             onDragOut: (slot) => this.animateSlotShrink(slot)
         });
@@ -172,6 +189,54 @@ export class StartBattleMenu extends Phaser.Scene {
             this.animateSlotShrink(slot);
             (slot as any).setData('isHovered', false);
         });
+    }
+
+    private refreshPreviews() {
+        const activeAbilities = this.getOrderedActiveAbilities();
+        for (let i = 0; i < MAX_ABILITIES; ++i) {
+            const newAbility = activeAbilities.at(i)?.ability;
+            if (this.spiritPreviews[i]?.ability != newAbility) {
+                let tweens = [];
+                // destroy old
+                const oldPreview = this.spiritPreviews[i];
+                if (oldPreview != null) {
+                    tweens.push({
+                        ...tweenDownAlpha(oldPreview),
+                        onComplete: () => {
+                            oldPreview.destroy();
+                        },
+                    });
+                }
+                // create new
+                if (newAbility != undefined) {
+                    const tablet = this.summoningTablets[i];
+                    const newPreview = new SpiritWidget(this, tablet.x, tablet.y - 24, newAbility)
+                                .setDepth(2)
+                                .setAlpha(0);
+                    this.spiritPreviews[i] = newPreview;
+                    tweens.push({
+                        ...tweenUpAlpha(newPreview),
+                    });
+                } else {
+                    // Clear reference if no new ability
+                    this.spiritPreviews[i] = null;
+                }
+                if (tweens.length > 0) {
+                    this.tweens.chain({
+                        targets: this, // this doesn't seem to do anything (always overridden?) but if you pass null it errors
+                        tweens,
+                    });
+                }
+            }
+        }
+    }
+
+    private getOrderedActiveAbilities(): AbilityWidget[] {
+        return this
+            .activeAbilityPanel!
+            .getChildren()
+            .map((widget) => (widget as Phaser.GameObjects.Container))
+            .map(((container) => container.list[0] as AbilityWidget));
     }
 }
 

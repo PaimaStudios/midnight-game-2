@@ -67,12 +67,6 @@ export class ActiveBattle extends Phaser.Scene {
         for (let i = 0; i < this.battle.enemy_count; ++i) {
             const stats = this.battle.stats[i];
             const actor = new Actor(this, enemyX(this.battle, i), enemyY() + enemyYOffsets[Number(this.battle.enemy_count) - 1][i], stats);
-            // TODO: replce this with new art
-            if (stats.fire_def > stats.physical_def && stats.fire_def > stats.ice_def) {
-                actor.image?.setTint(colorToNumber(Color.Red));
-            } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
-                actor.image?.setTint(colorToNumber(Color.Blue));
-            }
             this.enemies.push(actor);
         }
 
@@ -359,12 +353,24 @@ class Actor extends Phaser.GameObjects.Container {
         let healtBarYOffset = 0;
         let healthbarWidth = 180;
         if (stats != null) {
-            this.image = addScaledImage(scene, 0, 0, 'enemy');
+            // TODO: replace this with other measures? how should we decide this? for now this works though
+            let texture = 'enemy-goblin';
+            if (stats.fire_def > stats.physical_def && stats.fire_def > stats.ice_def) {
+                texture = 'enemy-fire-sprite';
+            } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
+                texture = 'enemy-snowman';
+            }
+            if (stats.enemy_type == ENEMY_TYPE.boss) {
+                texture = 'enemy-boss-dragon-1';
+            }
+            this.image = addScaledImage(scene, 0, 0, texture);
             healtBarYOffset -= this.image.height*1.5 + 22;
             this.add(this.image);
             switch (stats.enemy_type) {
                 case ENEMY_TYPE.miniboss:
                     healthbarWidth = GAME_WIDTH * 0.5;
+                    // TODO: replace with actual boss/mini-boss images
+                    this.image?.setScale(BASE_SPRITE_SCALE * 2);
                     break;
                 case ENEMY_TYPE.boss:
                     healthbarWidth = GAME_WIDTH * 0.75;
