@@ -48,6 +48,9 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
             height: this.height / BASE_SPRITE_SCALE + 8,
         };
         if (this.tweenStatus != ScrollAnimState.Unfurling) {
+            if (this.scene === null || !this.active) {
+                return;
+            }
             if (this.tween != null) {
                 this.tween.destroy();
             }
@@ -58,6 +61,9 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
                 ...extraProps,
                 // this is after extraProps so we can override it and call it from within to avoid re-specifying the rest
                 onComplete: () => {
+                    if (this.scene === null || !this.active) {
+                        return;
+                    }
                     this.tween = null;
                     this.tweenStatus = null;
                     if (extraProps != undefined && Object.hasOwn(extraProps, 'onComplete')) {
@@ -79,6 +85,9 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
             height: this.height / BASE_SPRITE_SCALE,
         };
         if (this.tweenStatus != ScrollAnimState.RollingUp) {
+            if (this.scene === null || !this.active) {
+                return;
+            }
             if (this.tween != null) {
                 this.tween.destroy();
             }
@@ -88,6 +97,9 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
                 ...tweenProps,
                 ...extraProps,
                 onComplete: () => {
+                    if (this.scene === null || !this.active) {
+                        return;
+                    }
                     this.tween = null;
                     this.tweenStatus = null;
                     if (extraProps != undefined && Object.hasOwn(extraProps, 'onComplete')) {
@@ -122,10 +134,23 @@ export class ParchmentScroll extends Phaser.GameObjects.Container implements Wid
         }
     }
     public resize(w: number, h: number) {
+        if (this.scene === null || !this.active || !this.bg) {
+            return;
+        }
         this.bg.setSize(w, h);
     }
 
     public textColor = Color.Brown;
 
     public textColorOver = Color.Black;
+
+    preDestroy() {
+        if (this.tween) {
+            this.tween.destroy();
+            this.tween = null;
+        }
+        if (this.bg) {
+            this.bg.destroy();
+        }
+    }
 }

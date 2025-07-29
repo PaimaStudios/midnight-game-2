@@ -3,9 +3,8 @@
  */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
 import { fontStyle } from "../main";
-import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
+import { addScaledImage, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
-import { ParchmentScroll } from "./parchment-scroll";
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
 
 /// Adjusts contract-level damage numbers to a base/average amount
