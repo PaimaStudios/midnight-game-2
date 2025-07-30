@@ -13,6 +13,7 @@ import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
+import { BIOME_ID, biomeToBackground } from "../biome";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.7;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
@@ -55,7 +56,7 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
 
         this.player = new Actor(this, playerX(), playerY(), null);
         console.assert(this.battle.enemy_count <= BigInt(3));

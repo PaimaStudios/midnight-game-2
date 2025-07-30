@@ -16,6 +16,7 @@ import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { table } from "console";
+import { BIOME_ID, biomeToBackground } from "../biome";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -28,13 +29,14 @@ export class StartBattleMenu extends Phaser.Scene {
     startButton: Button | undefined;
     abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
+    biome: BIOME_ID;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
     spiritPreviews: (SpiritWidget | null)[];
     summoningTablets: Phaser.GameObjects.Image[];
     activeAbilityPanel: ScrollablePanel | undefined;
 
-    constructor(api: DeployedGame2API, isQuest: boolean, state: Game2DerivedState) {
+    constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
         this.api = api;
         this.loadout = {
@@ -45,6 +47,7 @@ export class StartBattleMenu extends Phaser.Scene {
         this.summoningTablets = [];
         this.spiritPreviews = new Array(MAX_ABILITIES).map((_) => null);
         this.isQuest = isQuest;
+        this.biome = biome;
         this.state = state;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
@@ -55,7 +58,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     create() {
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(this.biome)).setDepth(-10);
 
         this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 128, false);
         const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 128);
@@ -126,7 +129,7 @@ export class StartBattleMenu extends Phaser.Scene {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 if (this.isQuest) {
                     // TODO: control difficulty
-                    this.api.start_new_quest(this.loadout, BigInt(1)).then((questId) => {
+                    this.api.start_new_quest(this.loadout, BigInt(this.biome), BigInt(1)).then((questId) => {
                         this.scene.remove('TestMenu');
                         this.scene.add('TestMenu', new TestMenu(this.api));
                         this.scene.start('TestMenu');
@@ -138,7 +141,7 @@ export class StartBattleMenu extends Phaser.Scene {
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
                     this.loader.setText("Submitting Proof");
-                    this.api.start_new_battle(this.loadout).then((battle) => {
+                    this.api.start_new_battle(this.loadout, BigInt(this.biome)).then((battle) => {
                         if (this.loader) {
                             this.loader.setText("Waiting on chain update");
                         }

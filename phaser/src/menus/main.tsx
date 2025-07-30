@@ -18,6 +18,7 @@ import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../widgets/ability";
+import { BiomeSelectMenu } from "./biome-select";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -80,7 +81,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('enemy-fire-sprite', 'enemy-fire-sprite.png');
         this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
 
-        this.load.image('grass', 'grass.png');
+        this.load.image('bg_grass', 'grass.png');
+        this.load.image('bg_desert', 'bg_desert.png');
+        this.load.image('bg_tundra', 'bg_tundra.png');
+        this.load.image('bg_cave', 'bg_cave.png');
 
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);
@@ -128,14 +132,14 @@ export class TestMenu extends Phaser.Scene {
         if (state.player !== undefined) {
             // We've registered a player, so show the quest and battle buttons
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 220, 90, 'New Quest', 14, () => {
-                this.scene.remove('StartBattleMenu');
-                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, true, state));
-                this.scene.start('StartBattleMenu');
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, true, state));
+                this.scene.start('BiomeSelectMenu');
             }));
             this.buttons.push(new Button(this, GAME_WIDTH / 2 + 220 + 16, GAME_HEIGHT * 0.15, 220, 90, 'New Battle', 14, () => {
-                this.scene.remove('StartBattleMenu');
-                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, false, state));
-                this.scene.start('StartBattleMenu');
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
+                this.scene.start('BiomeSelectMenu');
             }));
             this.buttons.push(new Button(this, GAME_WIDTH / 2 - 220 - 16, GAME_HEIGHT * 0.15, 220, 90, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');

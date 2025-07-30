@@ -65,10 +65,11 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public start_new_battle(loadout: PlayerLoadout): Promise<BattleConfig> {
+    public start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
         return this.response(() => {
             console.log(`from ${this.mockState.activeBattleConfigs.size}`);
             const battle = {
+                biome,
                 stats: [
                     { enemy_type: ENEMY_TYPE.normal, hp: BigInt(60), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(7), fire_def: BigInt(5), ice_def: BigInt(3) },
                     { enemy_type: ENEMY_TYPE.normal, hp: BigInt(45), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(3), ice_def: BigInt(7) },
@@ -128,9 +129,10 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public start_new_quest(loadout: PlayerLoadout, difficulty: bigint): Promise<bigint> {
+    public start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
         return this.response(() => {
             const battle_config = {
+                biome,
                 stats: [
                     { enemy_type: ENEMY_TYPE.boss, hp: BigInt(20), attack: BigInt(10), block: BigInt(10), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
                     { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) },
