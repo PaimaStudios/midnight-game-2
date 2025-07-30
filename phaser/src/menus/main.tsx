@@ -82,10 +82,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
         this.load.image('enemy-boss-enigma-1', 'enemy-boss-enigma-1.png');
 
-        this.load.image('bg_grass', 'grass.png');
-        this.load.image('bg_desert', 'bg_desert.png');
-        this.load.image('bg_tundra', 'bg_tundra.png');
-        this.load.image('bg_cave', 'bg_cave.png');
+        this.load.image('bg-grass', 'bg-grass.png');
+        this.load.image('bg-desert', 'bg-desert.png');
+        this.load.image('bg-tundra', 'bg-tundra.png');
+        this.load.image('bg-cave', 'bg-cave.png');
 
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);

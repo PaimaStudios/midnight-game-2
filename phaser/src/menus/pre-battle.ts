@@ -16,7 +16,7 @@ import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { table } from "console";
-import { BIOME_ID, biomeToBackground } from "../biome";
+import { BIOME_ID, biomeToBackground } from "../battle/biome";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
