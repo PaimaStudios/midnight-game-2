@@ -60,8 +60,8 @@ export class StartBattleMenu extends Phaser.Scene {
     create() {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(this.biome)).setDepth(-10);
 
-        this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.35, GAME_WIDTH*0.95, 128, false);
-        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.685, GAME_WIDTH*0.95, 128);
+        this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.46, GAME_WIDTH*0.96, 128, false);
+        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.805, GAME_WIDTH*0.96, 128);
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
             // Determine which abilities are selected
             const activeAbilities = this.getOrderedActiveAbilities();
@@ -93,8 +93,8 @@ export class StartBattleMenu extends Phaser.Scene {
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
 
-            const abilityWidget = new AbilityWidget(this, 0, 60, ability);
-            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 248);
+            const abilityWidget = new AbilityWidget(this, 0, 2, ability);
+            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
             abilityContainer.add(abilityWidget);
 
             // Add new child to scrollable panel

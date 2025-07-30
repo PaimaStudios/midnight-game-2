@@ -39,6 +39,9 @@ export class StoneBackground  extends Phaser.GameObjects.Container implements Wi
         }
     }
     public resize(w: number, h: number) {
+        if (this.scene === null || !this.active || !this.bg) {
+            return;
+        }
         this.bg.setSize(w, h);
     }
 
@@ -48,5 +51,11 @@ export class StoneBackground  extends Phaser.GameObjects.Container implements Wi
 
     public setTint(color?: number) {
         this.bg.setTint(color);
+    }
+
+    preDestroy() {
+        if (this.bg) {
+            this.bg.destroy();
+        }
     }
 }
