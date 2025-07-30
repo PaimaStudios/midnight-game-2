@@ -13,7 +13,7 @@ import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
-import { BIOME_ID, biomeToBackground } from "../biome";
+import { BIOME_ID, biomeToBackground } from "../battle/biome";
 
 const abilityInUseY = () => GAME_HEIGHT * 0.7;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;

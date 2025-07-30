@@ -1,5 +1,5 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { BIOME_ID, biomeToName } from "../biome";
+import { BIOME_ID, biomeToName } from "../battle/biome";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";

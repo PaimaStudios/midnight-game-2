@@ -8,13 +8,13 @@ export enum BIOME_ID {
 export function biomeToBackground(id: BIOME_ID): string {
     switch (id) {
         case BIOME_ID.grasslands:
-            return 'bg_grass';
+            return 'bg-grass';
         case BIOME_ID.desert:
-            return 'bg_desert';
+            return 'bg-desert';
         case BIOME_ID.tundra:
-            return 'bg_tundra';
+            return 'bg-tundra';
         case BIOME_ID.cave:
-            return 'bg_cave';
+            return 'bg-cave';
     }
 }
 

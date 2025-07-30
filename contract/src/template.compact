@@ -201,6 +201,7 @@ export struct BattleRewards {
 }
 
 export struct BattleConfig {
+    // this is not an enum to allow for updating the game without the contract changing. TODO: look into signature verification
     biome: Uint<32>,
     stats: Vector<3, EnemyStats>,
     enemy_count: Uint<0..3>,
