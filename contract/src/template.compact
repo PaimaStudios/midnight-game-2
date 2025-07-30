@@ -201,6 +201,7 @@ export struct BattleRewards {
 }
 
 export struct BattleConfig {
+    biome: Uint<32>,
     stats: Vector<3, EnemyStats>,
     enemy_count: Uint<0..3>,
     player_pub_key: Field,
@@ -284,11 +285,12 @@ pure circuit filler_enemy_stats(): EnemyStats {
     return EnemyStats { ENEMY_TYPE.normal, 0, 0, 0, 0, 0, 0 };
 }
 
-export circuit start_new_quest(loadout: PlayerLoadout, difficulty: Field): Field {
+export circuit start_new_quest(loadout: PlayerLoadout, biome: Uint<32>, difficulty: Field): Field {
     verify_loadout(loadout);
     // TODO: randomize + take into account difficulty
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     const battle_config = BattleConfig {
+        biome,
         [
             EnemyStats { ENEMY_TYPE.boss, 150, 20, 15, 5, 5, 5 },
             filler_enemy_stats(),
@@ -335,11 +337,12 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     return some<Field>(battle_id);
 }
 
-export circuit start_new_battle(loadout: PlayerLoadout): BattleConfig {
+export circuit start_new_battle(loadout: PlayerLoadout, biome: Uint<32>): BattleConfig {
     verify_loadout(loadout);
     // TODO: randomize
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     const battle = BattleConfig {
+        biome,
         [
             EnemyStats { ENEMY_TYPE.normal, 30, 5, 0, 8, 5, 3 },
             EnemyStats { ENEMY_TYPE.normal, 25, 3, 2, 3, 8, 5 },

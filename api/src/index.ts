@@ -89,9 +89,10 @@ export interface DeployedGame2API {
     /**
      * Start a new active battle
      * @param loadout Abilities used in this battle. They will be (temporarily) removed until battle end.
+     * @param biome The area to start the battle in.
      * @returns The config corresponding to the created battle.
      */
-    start_new_battle: (loadout: PlayerLoadout) => Promise<BattleConfig>;
+    start_new_battle: (loadout: PlayerLoadout, biome: bigint) => Promise<BattleConfig>;
 
     /**
      * Run a combat round of an already existing active battle
@@ -105,9 +106,11 @@ export interface DeployedGame2API {
      * Start a new quest
      * 
      * @param loadout Abilities used in this quest. They will be (temporarily) removed until battle end.
+     * @param biome The area to start the battle in.
+     * @param difficulty The difficulty of the quest
      * @returns The quest ID of the new quest
      */
-    start_new_quest: (loadout: PlayerLoadout, difficulty: bigint) => Promise<bigint>;
+    start_new_quest: (loadout: PlayerLoadout, biome: bigint, difficulty: bigint) => Promise<bigint>;
 
     /**
      * Attempt to finalize a quest (enter into the boss battle)
@@ -198,8 +201,8 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async start_new_battle(loadout: PlayerLoadout): Promise<BattleConfig> {
-        const txData = await this.deployedContract.callTx.start_new_battle(loadout);
+    async start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
+        const txData = await this.deployedContract.callTx.start_new_battle(loadout, biome);
 
         this.logger?.trace({
             transactionAdded: {
@@ -225,8 +228,8 @@ export class Game2API implements DeployedGame2API {
         return txData.private.result.is_some ? txData.private.result.value : undefined;
     }
 
-    async start_new_quest(loadout: PlayerLoadout, difficulty: bigint): Promise<bigint> {
-        const txData = await this.deployedContract.callTx.start_new_quest(loadout, difficulty);
+    async start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.start_new_quest(loadout, biome, difficulty);
 
         this.logger?.trace({
             transactionAdded: {
