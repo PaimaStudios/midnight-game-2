@@ -47,12 +47,14 @@ export class TestMenu extends Phaser.Scene {
     preload() {
         this.load.setBaseURL('/');
 
+        // UI Sprites
         this.load.image('ui-scroll-bg', 'ui-scroll-bg.png');
         this.load.image('tablet0', 'tablet0.png');
         this.load.image('tablet1', 'tablet1.png');
         this.load.image('tablet2', 'tablet2.png');
         this.load.image('tablet-round', 'tablet-round.png');
 
+        // Icon sprites
         this.load.image('fire', 'fire.png');
         this.load.image('ice', 'ice.png');
         this.load.image('physical', 'physical.png');
@@ -62,11 +64,13 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('aoe', 'aoe.png');
         this.load.image('hp-bar-shield', 'hp-bar-shield.png');
 
+        // Revolving Orb Sprites
         this.load.image('orb-atk-fire', 'orb-atk-fire.png');
         this.load.image('orb-atk-ice', 'orb-atk-ice.png');
         this.load.image('orb-atk-phys', 'orb-atk-phys.png');
         this.load.image('orb-def', 'orb-def.png');
 
+        // Spirit Sprites
         this.load.spritesheet('spirit-atk-fire', 'spirit-atk-fire.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('spirit-atk-ice', 'spirit-atk-ice.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('spirit-atk-phys', 'spirit-atk-phys.png', { frameWidth: 32, frameHeight: 32 });
@@ -76,9 +80,11 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('spirit-aura', 'spirit-aura.png', { frameWidth: 32, frameHeight: 32 });
 
         // Enemy Sprites
-        this.load.image('enemy-goblin', 'enemy-goblin.png');
-        this.load.image('enemy-snowman', 'enemy-snowman.png');
-        this.load.image('enemy-fire-sprite', 'enemy-fire-sprite.png');
+        this.load.spritesheet('enemy-goblin', 'enemy-goblin.png', { frameWidth: 32, frameHeight: 28 });
+        this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
+        this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 36, frameHeight: 32 });
+        
+        // Boss enemies remain as single images
         this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
         this.load.image('enemy-boss-enigma-1', 'enemy-boss-enigma-1.png');
 

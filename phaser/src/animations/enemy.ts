@@ -4,25 +4,61 @@
 
 // Animation timing constants
 export const ENEMY_ANIMATION_DURATIONS = {
-    idle: 1000,
+    idle: 1200,
     attack: 600,
     hurt: 400,
     death: 1500
 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
-    // For now, create placeholder animations that work with single-frame sprites
-    // These can be expanded when sprite sheets are available
+    // Enemies with 2-frame sprite sheets
+    const spriteSheetEnemies = ['goblin', 'snowman', 'fire-sprite'];
     
-    const enemyTypes = [
-        'goblin',
-        'snowman', 
-        'fire-sprite',
-        'boss-dragon-1',
-        'boss-enigma-1'
-    ];
+    for (const enemyType of spriteSheetEnemies) {
+        const textureKey = `enemy-${enemyType}`;
+        
+        // Only create animations if the texture exists
+        if (!scene.textures.exists(textureKey)) {
+            continue;
+        }
+
+        // Create 2-frame idle animation similar to spirits
+        scene.anims.create({
+            key: `${enemyType}-idle`,
+            frames: [0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            repeat: -1,
+            duration: ENEMY_ANIMATION_DURATIONS.idle
+        });
+
+        // Create attack animation (uses both frames quickly)
+        scene.anims.create({
+            key: `${enemyType}-attack`, 
+            frames: [1, 0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            repeat: 0,
+            duration: ENEMY_ANIMATION_DURATIONS.attack
+        });
+
+        // Create hurt animation (quick flash between frames)
+        scene.anims.create({
+            key: `${enemyType}-hurt`,
+            frames: [1, 0].map((i) => { return { frame: i, key: textureKey }; }),
+            repeat: 0, 
+            duration: ENEMY_ANIMATION_DURATIONS.hurt
+        });
+
+        // Create death animation (fade to second frame)
+        scene.anims.create({
+            key: `${enemyType}-death`,
+            frames: [{ frame: 1, key: textureKey }],
+            repeat: 0,
+            duration: ENEMY_ANIMATION_DURATIONS.death
+        });
+    }
     
-    for (const enemyType of enemyTypes) {
+    // Single-frame boss enemies (fallback to static animations)
+    const singleFrameEnemies = ['boss-dragon-1', 'boss-enigma-1'];
+    
+    for (const enemyType of singleFrameEnemies) {
         const baseName = enemyType.replace(/-1$/, '');
         const textureKey = `enemy-${enemyType}`;
         
@@ -31,7 +67,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             continue;
         }
 
-        // Create idle animation (single frame for now, can be expanded to multi-frame)
+        // Create idle animation (single frame)
         scene.anims.create({
             key: `${baseName}-idle`,
             frames: [{ frame: 0, key: textureKey }],
@@ -39,7 +75,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             duration: ENEMY_ANIMATION_DURATIONS.idle
         });
 
-        // Create attack animation (single frame with different timing)
+        // Create attack animation (single frame)
         scene.anims.create({
             key: `${baseName}-attack`, 
             frames: [{ frame: 0, key: textureKey }],
@@ -66,7 +102,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
 }
 
 // Future expansion: when sprite sheets become available, this function can be extended
-export function createEnemySpriteSheetAnimations(scene: Phaser.Scene): void {
+export function createEnemySpriteSheetAnimations(): void {
     // Example for when multi-frame sprite sheets are available:
     /*
     scene.anims.create({
@@ -76,11 +112,5 @@ export function createEnemySpriteSheetAnimations(scene: Phaser.Scene): void {
         repeat: -1
     });
     
-    scene.anims.create({
-        key: 'goblin-attack',
-        frames: scene.anims.generateFrameNumbers('enemy-goblin-sheet', { start: 4, end: 7 }),
-        frameRate: 10,
-        repeat: 0
-    });
     */
 }

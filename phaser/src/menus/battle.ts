@@ -381,6 +381,7 @@ class Actor extends Phaser.GameObjects.Container {
             // Try to create animated sprite first, fallback to static image
             if (scene.anims.exists(this.getAnimationKey('idle'))) {
                 this.sprite = scene.add.sprite(0, 0, texture);
+                this.sprite.setScale(BASE_SPRITE_SCALE); // Apply base scaling like addScaledImage does
                 this.sprite.anims.play(this.getAnimationKey('idle'));
                 this.add(this.sprite);
                 healtBarYOffset -= this.sprite.height * 1.5 + 22;
