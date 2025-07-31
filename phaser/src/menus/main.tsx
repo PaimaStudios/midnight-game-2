@@ -17,6 +17,7 @@ import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../widgets/ability";
+import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 
 export class TestMenu extends Phaser.Scene {
@@ -93,6 +94,7 @@ export class TestMenu extends Phaser.Scene {
     create() {
         // should this be here or elsehwere? we did this for pvp-arena
         createSpiritAnimations(this);
+        createEnemyAnimations(this);
 
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing

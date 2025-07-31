@@ -106,17 +106,20 @@ export class ActiveBattle extends Phaser.Scene {
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
                 onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
-                    this.tweens.add({
-                        targets: fist,
-                        x: playerX(),
-                        y: playerY(),
-                        duration: 100,
-                        onComplete: () => {
-                            fist.destroy();
-                            this.player?.damage(amount);
-                            this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
-                        }
+                    // Play enemy attack animation
+                    this.enemies[enemy].performAttackAnimation().then(() => {
+                        const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
+                        this.tweens.add({
+                            targets: fist,
+                            x: playerX(),
+                            y: playerY(),
+                            duration: 100,
+                            onComplete: () => {
+                                fist.destroy();
+                                this.player?.damage(amount);
+                                this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                            }
+                        });
                     });
                 }),
                 onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
@@ -149,6 +152,8 @@ export class ActiveBattle extends Phaser.Scene {
                                 onComplete: () => {
                                     //console.log(`enemy ${target} took ${effect.amount} damage`);
                                     this.enemies[target].damage(amount);
+                                    // Play damage animation
+                                    this.enemies[target].takeDamageAnimation();
                                     this.add.existing(new BattleEffect(this, bullet.x, bullet.y - 32, effectType, amount, resolve));
                                     bullet.destroy();
                                 },
@@ -346,10 +351,15 @@ class Actor extends Phaser.GameObjects.Container {
     hpBar: HealthBar;
     block: number;
     image: Phaser.GameObjects.Image | undefined;
+    sprite: Phaser.GameObjects.Sprite | undefined;
+    animationTick: number;
+    textureKey: string = '';
 
     // TODO: ActorConfig or Stats or whatever
     constructor(scene: Phaser.Scene, x: number, y: number, stats: EnemyStats | null) {
         super(scene, x, y);
+
+        this.animationTick = Math.random() * 2 * Math.PI;
 
         let healtBarYOffset = 0;
         let healthbarWidth = 180;
@@ -364,17 +374,30 @@ class Actor extends Phaser.GameObjects.Container {
             if (stats.enemy_type == ENEMY_TYPE.boss) {
                 texture = 'enemy-boss-dragon-1';
             }
-            this.image = addScaledImage(scene, 0, 0, texture);
-            healtBarYOffset -= this.image.height*1.5 + 22;
-            this.add(this.image);
+            
+            this.textureKey = texture;
+            
+            // Try to create animated sprite first, fallback to static image
+            if (scene.anims.exists(this.getAnimationKey('idle'))) {
+                this.sprite = scene.add.sprite(0, 0, texture);
+                this.sprite.anims.play(this.getAnimationKey('idle'));
+                this.add(this.sprite);
+                healtBarYOffset -= this.sprite.height * 1.5 + 22;
+            } else {
+                this.image = addScaledImage(scene, 0, 0, texture);
+                healtBarYOffset -= this.image.height * 1.5 + 22;
+                this.add(this.image);
+            }
             switch (stats.enemy_type) {
                 case ENEMY_TYPE.miniboss:
                     healthbarWidth = GAME_WIDTH * 0.5;
                     // TODO: replace with actual boss/mini-boss images
                     this.image?.setScale(BASE_SPRITE_SCALE * 2);
+                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2);
                     break;
                 case ENEMY_TYPE.boss:
                     healthbarWidth = GAME_WIDTH * 0.75;
+                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2.5);
                     break;
             }
             this.maxHp = Number(stats.hp);
@@ -422,12 +445,106 @@ class Actor extends Phaser.GameObjects.Container {
         this.hpBar.setValue(this.hp);
         if (this.hp <= 0) {
             this.hpBar.setLabel('DEAD');
+            // Play death animation when enemy dies
+            this.dieAnimation();
         }
     }
 
     public setBlock(block: number) {
         this.block = block;
         this.hpBar.setBlock(block);
+    }
+
+    preUpdate() {
+        // Add subtle breathing animation for living enemies
+        if (this.hp > 0 && this.sprite) {
+            this.animationTick += 0.005;
+            const breathe = Math.sin(this.animationTick) * 2;
+            this.sprite.setY(breathe);
+        }
+    }
+
+    private getAnimationKey(animationType: 'idle' | 'attack' | 'hurt' | 'death'): string {
+        const baseName = this.textureKey.replace('enemy-', '').replace(/-1$/, '');
+        return `${baseName}-${animationType}`;
+    }
+
+    public playAnimation(animationType: 'idle' | 'attack' | 'hurt' | 'death'): void {
+        if (this.sprite) {
+            const animKey = this.getAnimationKey(animationType);
+            if (this.scene.anims.exists(animKey)) {
+                this.sprite.anims.play(animKey);
+            }
+        }
+    }
+
+    public takeDamageAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            const target = this.sprite || this.image;
+            if (!target) {
+                resolve();
+                return;
+            }
+
+            // Flash red and play hurt animation
+            target.setTint(0xff0000);
+            this.playAnimation('hurt');
+
+            // Scale effect for impact
+            this.scene.tweens.add({
+                targets: target,
+                scaleX: target.scaleX * 1.1,
+                scaleY: target.scaleY * 0.9,
+                duration: 100,
+                yoyo: true,
+                onComplete: () => {
+                    target.clearTint();
+                    if (this.hp > 0) {
+                        this.playAnimation('idle');
+                    }
+                    resolve();
+                }
+            });
+        });
+    }
+
+    public performAttackAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            this.playAnimation('attack');
+
+            // Lunge forward slightly
+            this.scene.tweens.add({
+                targets: this,
+                x: this.x + 20,
+                duration: 200,
+                yoyo: true,
+                onComplete: () => {
+                    this.playAnimation('idle');
+                    resolve();
+                }
+            });
+        });
+    }
+
+    public dieAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            this.playAnimation('death');
+            const target = this.sprite || this.image;
+            
+            if (target) {
+                // Fade out and fall
+                this.scene.tweens.add({
+                    targets: target,
+                    alpha: 0,
+                    angle: 90,
+                    y: target.y + 50,
+                    duration: 1000,
+                    onComplete: () => resolve()
+                });
+            } else {
+                resolve();
+            }
+        });
     }
 }
 
