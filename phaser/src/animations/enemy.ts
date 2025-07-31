@@ -100,17 +100,3 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
         });
     }
 }
-
-// Future expansion: when sprite sheets become available, this function can be extended
-export function createEnemySpriteSheetAnimations(): void {
-    // Example for when multi-frame sprite sheets are available:
-    /*
-    scene.anims.create({
-        key: 'goblin-idle',
-        frames: scene.anims.generateFrameNumbers('enemy-goblin-sheet', { start: 0, end: 3 }),
-        frameRate: 6,
-        repeat: -1
-    });
-    
-    */
-}
