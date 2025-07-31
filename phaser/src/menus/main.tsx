@@ -16,7 +16,7 @@ import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";
 import { ShopMenu } from "./shop";
-import { createSpiritAnimations } from "../widgets/ability";
+import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 
