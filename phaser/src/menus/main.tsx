@@ -12,7 +12,6 @@ import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { StartBattleMenu } from "./pre-battle";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";

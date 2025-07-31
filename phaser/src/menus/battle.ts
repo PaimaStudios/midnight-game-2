@@ -11,7 +11,7 @@ import { AbilityWidget, CHARGE_ANIM_TIME, chargeAnimKey, energyTypeToColor, orbA
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
-import { Color, colorToNumber } from "../constants/colors";
+import { colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 
@@ -452,14 +452,12 @@ export class BattleEffect extends Phaser.GameObjects.Container {
         this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
 
         this.setSize(48, 48);
-        //console.log(`BattleEffect START ${effectType} | ${amount}`);
         scene.tweens.add({
             targets: this,
             alpha: 0,
             delay: 250,
             duration: 1500,
             onComplete: () => {
-                //console.log(`BattleEffect COMPLETE ${effectType} | ${amount}`);
                 onComplete();
             },
         });
