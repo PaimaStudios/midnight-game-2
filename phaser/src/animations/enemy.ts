@@ -10,9 +10,15 @@ export const ENEMY_ANIMATION_DURATIONS = {
     death: 1500
 };
 
+export enum SPRITE_SHEET_ENEMIES {
+    GOBLIN = 'goblin',
+    SNOWMAN = 'snowman',
+    FIRE_SPRITE = 'fire-sprite'
+}
+
 export function createEnemyAnimations(scene: Phaser.Scene): void {
     // Enemies with 2-frame sprite sheets
-    const spriteSheetEnemies = ['goblin', 'snowman', 'fire-sprite'];
+    const spriteSheetEnemies = Object.values(SPRITE_SHEET_ENEMIES);
     
     for (const enemyType of spriteSheetEnemies) {
         const textureKey = `enemy-${enemyType}`;
