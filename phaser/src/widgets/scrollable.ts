@@ -103,6 +103,63 @@ export class ScrollablePanel {
         return this.getChildren().length;
     }
 
+    // Moves a child element from this panel to another scrollable panel
+    public moveChildTo(child: Phaser.GameObjects.GameObject, targetPanel: ScrollablePanel): boolean {
+        const children = this.getChildren();
+        const childIndex = children.indexOf(child);
+        
+        if (childIndex === -1) {
+            console.warn('Child not found in this scrollable panel');
+            return false;
+        }
+
+        // Check if target panel has maxElements limit
+        if (targetPanel.maxElements && targetPanel.getChildCount() >= targetPanel.maxElements) {
+            console.warn('Target panel has reached maximum element limit');
+            return false;
+        }
+
+        // Get the wrapped child from the panel
+        const sizer = this.getPanelElement();
+        const items = (sizer as any).getElement?.('items');
+        if (!items || !Array.isArray(items)) {
+            console.warn('Could not access panel items for child removal');
+            return false;
+        }
+
+        const wrappedChild = items[childIndex];
+        
+        // Remove from current panel
+        (sizer as any).remove(wrappedChild);
+        this.panel.layout();
+
+        // Add to target panel
+        targetPanel.addChild(child);
+
+        // Ensure proper depth - set depth on both the child and its container
+        // Try setting depth on the child itself
+        if ((child as any).setDepth) {
+            (child as any).setDepth(10); // Higher than placeholders
+        }
+        
+        // Also try setting depth on the wrapped container
+        const targetSizer = targetPanel.getPanelElement();
+        const targetItems = (targetSizer as any).getElement?.('items');
+        if (targetItems && Array.isArray(targetItems)) {
+            const wrappedChildInTarget = targetItems[targetItems.length - 1]; // Last added item
+            if (wrappedChildInTarget && (wrappedChildInTarget as any).setDepth) {
+                (wrappedChildInTarget as any).setDepth(10);
+            }
+        }
+
+        // Call onMovedChild callback if it exists
+        if (targetPanel.onMovedChildCallback) {
+            targetPanel.onMovedChildCallback(targetPanel, child);
+        }
+
+        return true;
+    }
+
     // Wraps a Phaser GameObject in a fixWidthSizer for layout purposes
     private wrapElement(element: Phaser.GameObjects.GameObject): Phaser.GameObjects.GameObject {
         return this.scene.rexUI.add.fixWidthSizer({}).add(element)
