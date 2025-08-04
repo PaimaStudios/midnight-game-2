@@ -393,13 +393,9 @@ class Actor extends Phaser.GameObjects.Container {
             switch (stats.enemy_type) {
                 case ENEMY_TYPE.miniboss:
                     healthbarWidth = GAME_WIDTH * 0.5;
-                    // TODO: replace with actual boss/mini-boss images
-                    this.image?.setScale(BASE_SPRITE_SCALE * 2);
-                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2);
                     break;
                 case ENEMY_TYPE.boss:
                     healthbarWidth = GAME_WIDTH * 0.75;
-                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2.5);
                     break;
             }
             this.maxHp = Number(stats.hp);

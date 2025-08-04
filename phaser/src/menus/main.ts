@@ -26,6 +26,7 @@ export class TestMenu extends Phaser.Scene {
     subscription: Subscription | undefined;
     state: Game2DerivedState | undefined;
     goldText: Phaser.GameObjects.Text | undefined;
+    goldLabel: Phaser.GameObjects.Text | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
@@ -115,7 +116,10 @@ export class TestMenu extends Phaser.Scene {
             console.log('==========MOCK API========');
             this.initApi(new MockGame2API());
         }));
-        this.goldText = this.add.text(32, GAME_HEIGHT - 64, '', fontStyle(12));
+        this.goldLabel = this.add.text(32, GAME_HEIGHT - 64, 'Gold: ', fontStyle(12));
+        this.goldText = this.add.text(100, GAME_HEIGHT - 64, '', fontStyle(12, { color: Color.Yellow }));
+        this.goldLabel.setVisible(false);
+        this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
     }
 
@@ -158,7 +162,7 @@ export class TestMenu extends Phaser.Scene {
             let offset = 0;
             for (const [id, quest] of state.quests) {
                 console.log(`got quest: ${id}`);
-                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.145 + 72 * offset, 320, 64, this.questStr(quest), 10, () => {
+                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.38 + 112 * offset, 320, 96, this.questStr(quest), 10, () => {
                     this.scene.remove('QuestMenu');
                     this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
                     this.scene.start('QuestMenu');
@@ -166,7 +170,9 @@ export class TestMenu extends Phaser.Scene {
                 offset += 1;
                 this.buttons.push(button);
             }
-            this.goldText?.setText(`Gold: ${state.player.gold}`);
+            this.goldLabel?.setVisible(true);
+            this.goldText?.setVisible(true);
+            this.goldText?.setText(`${state.player.gold}`);
         } else {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
