@@ -18,6 +18,7 @@ import { Color } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
+import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
 
 export class TestMenu extends Phaser.Scene {
@@ -121,6 +122,8 @@ export class TestMenu extends Phaser.Scene {
         this.goldLabel.setVisible(false);
         this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
+
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
     }
 
     private initApi(api: DeployedGame2API) {
@@ -157,6 +160,7 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
+                
             }));
 
             let offset = 0;
