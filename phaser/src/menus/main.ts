@@ -11,7 +11,7 @@ import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, safeJSONString } from "../main";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";
@@ -130,7 +130,7 @@ export class TestMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        console.log('---state change---');
+        console.log(`---state change---: ${safeJSONString(state)}`);
         this.state = state;
 
         this.events.emit('stateChange', state);

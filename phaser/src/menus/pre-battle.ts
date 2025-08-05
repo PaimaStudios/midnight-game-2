@@ -53,7 +53,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     onStateChange(state: Game2DerivedState) {
-        // this.state = state;
+        // this.state = structuredClone(state);
         this.events.emit('stateChange', state);
     }
 
@@ -145,10 +145,10 @@ export class StartBattleMenu extends Phaser.Scene {
                         if (this.loader) {
                             this.loader.setText("Waiting on chain update");
                         }
-                        this.events.on('stateChange', () => {
+                        this.events.on('stateChange', (state: Game2DerivedState) => {
                             this.scene.stop('Loader');
                             this.scene.remove('ActiveBattle');
-                            this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, this.state));
+                            this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, state));
                             this.scene.start('ActiveBattle');
                         });
                     }).catch((e) => {

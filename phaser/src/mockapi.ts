@@ -5,10 +5,11 @@
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic, generateRandomAbility } from "./battle/logic";
+import { safeJSONString } from "./main";
 
 
 const MOCK_DELAY = 500;  // How many milliseconds to wait before responding to API requests and between state refreshes.
@@ -121,9 +122,6 @@ export class MockGame2API implements DeployedGame2API {
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
-                setTimeout(() => {
-                    this.subscriber?.next(this.mockState);
-                }, MOCK_DELAY);
                 return ret;
             });
         });
@@ -214,6 +212,7 @@ export class MockGame2API implements DeployedGame2API {
                 reject(e);
             }
             setTimeout(() => {
+                console.log(`\n   ----> new state ${safeJSONString(this.mockState)}\n\n`);
                 this.subscriber?.next(this.mockState);
             }, MOCK_DELAY);
         }, MOCK_DELAY));
