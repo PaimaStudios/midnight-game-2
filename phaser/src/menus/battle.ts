@@ -22,7 +22,7 @@ const abilityIdleY = () => GAME_HEIGHT * 0.75;
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.2;
+const enemyY = () => GAME_HEIGHT * 0.23;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
