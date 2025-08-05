@@ -1,7 +1,7 @@
 /**
  * Pre-Battle and Pre-Quest ability selection screen
  */
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
@@ -15,10 +15,13 @@ import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
-import { table } from "console";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
+
+const LAST_LOADOUT_KEY = 'last-loadout';
+// TODO: allow multiple configs in the future
+const SAVED_CONFIG_KEY = 'saved-loadout';
 
 /// gets the inner Ability from an element of the ability panels
 function getAbility(widget: Phaser.GameObjects.GameObject): Ability {
@@ -32,6 +35,8 @@ export class StartBattleMenu extends Phaser.Scene {
     subscription: Subscription;
     available: AbilityWidget[];
     startButton: Button | undefined;
+    loadButton: Button | undefined;
+    loadLastButton: Button | undefined;
     abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
     biome: BIOME_ID;
@@ -135,10 +140,7 @@ export class StartBattleMenu extends Phaser.Scene {
         const buttonWidth = 128;
         const buttonHeight = 40;
         const buttonFontSize = 10;
-        const LAST_LOADOUT_KEY = 'last-loadout';
-        // TODO: allow multiple configs in the future
-        const SAVED_CONFIG_KEY = 'saved-loadout';
-        new Button(this, GAME_WIDTH * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
+        this.loadLastButton = new Button(this, GAME_WIDTH * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
             this.loadCurrentLoadout(LAST_LOADOUT_KEY);
         });
         new Button(this, GAME_WIDTH * (7.25 / 24), topButtonY, buttonWidth, buttonHeight, 'Clear', buttonFontSize, () => {
@@ -183,12 +185,13 @@ export class StartBattleMenu extends Phaser.Scene {
             }
         }).setEnabled(false);
 
-        new Button(this, GAME_WIDTH * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
+        this.loadButton = new Button(this, GAME_WIDTH * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
             this.loadCurrentLoadout(SAVED_CONFIG_KEY);
         });
         new Button(this, GAME_WIDTH * (21.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Save', buttonFontSize, () => {
             this.saveCurrentLoadout(SAVED_CONFIG_KEY);
         });
+        this.enableLoadButtons();
     }
 
     private clearSelectedAbilities() {
@@ -217,6 +220,13 @@ export class StartBattleMenu extends Phaser.Scene {
                 .map((c) => pureCircuits.derive_ability_id(getAbility(c)));
                 console.log(`Saved ${ids.length} abilities to '${key}'`);
         localStorage.setItem(key, ids.join(','));
+        // possibly enable after saving
+        this.enableLoadButtons();
+    }
+
+    private enableLoadButtons() {
+        this.loadButton!.setEnabled(localStorage.getItem(SAVED_CONFIG_KEY) != null);
+        this.loadLastButton!.setEnabled(localStorage.getItem(LAST_LOADOUT_KEY) != null);
     }
 
     private animateSlotEnlarge(slot: Phaser.GameObjects.GameObject) {
