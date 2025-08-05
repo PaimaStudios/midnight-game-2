@@ -53,7 +53,7 @@ export class StartBattleMenu extends Phaser.Scene {
     }
 
     onStateChange(state: Game2DerivedState) {
-        // this.state = structuredClone(state);
+        this.state = structuredClone(state);
         this.events.emit('stateChange', state);
     }
 
