@@ -79,9 +79,15 @@ export function safeJSONString(obj: object): string {
         str += ']';
         return str;
     } else if (typeof obj == 'object') {
-        let str = `[${Object.entries(obj).length}]{`;
+        let entries = Object.entries(obj);
+        // this allows us to print Map properly
+        let len = ('length' in obj ? obj.length : undefined) ?? ('size' in obj ? obj.size : undefined) ?? entries.length;;
+        if ('entries' in obj && typeof obj.entries === "function") {
+            entries = obj.entries();
+        }
+        let str = `[${len}]{`;
         let first = true;
-        for (let [key, val] of Object.entries(obj)) {
+        for (let [key, val] of entries) {
             if (!first) {
                 str += ', ';
             }
@@ -91,7 +97,7 @@ export function safeJSONString(obj: object): string {
         str += '}';
         return str;
     }
-    console.log(`safeJsonString(${typeof obj}): ${JSON.stringify(obj)}`);
+    //console.log(`safeJsonString(${typeof obj}): ${JSON.stringify(obj)}`);
     return JSON.stringify(obj);
 }
 
