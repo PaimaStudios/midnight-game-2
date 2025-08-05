@@ -31,10 +31,12 @@ export class TestMenu extends Phaser.Scene {
     errorText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
+    firstRun: boolean;
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
         this.buttons = [];
+        this.firstRun = api == undefined;
         if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
@@ -106,17 +108,19 @@ export class TestMenu extends Phaser.Scene {
 
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
-        this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
-            console.log('~deploying~');
-            this.deployProvider.create().then((api) => {
-                console.log('==========GOT API========');
-                this.initApi(api);
-            }).catch((e) => console.error(`Error connecting: ${e}`));
-        }));
-        this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
-            console.log('==========MOCK API========');
-            this.initApi(new MockGame2API());
-        }));
+        if (this.firstRun) {
+            this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+                console.log('~deploying~');
+                this.deployProvider.create().then((api) => {
+                    console.log('==========GOT API========');
+                    this.initApi(api);
+                }).catch((e) => console.error(`Error connecting: ${e}`));
+            }));
+            this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
+                console.log('==========MOCK API========');
+                this.initApi(new MockGame2API());
+            }));
+        }
         this.goldLabel = this.add.text(32, GAME_HEIGHT - 64, 'Gold: ', fontStyle(12));
         this.goldText = this.add.text(100, GAME_HEIGHT - 64, '', fontStyle(12, { color: Color.Yellow }));
         this.goldLabel.setVisible(false);
