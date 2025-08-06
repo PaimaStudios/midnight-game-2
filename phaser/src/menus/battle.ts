@@ -374,6 +374,7 @@ class Actor extends Phaser.GameObjects.Container {
             }
             if (stats.enemy_type == ENEMY_TYPE.boss) {
                 texture = 'enemy-boss-dragon-1';
+                healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
             
             this.textureKey = texture;
