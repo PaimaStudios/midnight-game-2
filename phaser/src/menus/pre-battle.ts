@@ -1,7 +1,7 @@
 /**
  * Pre-Battle and Pre-Quest ability selection screen
  */
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
@@ -15,10 +15,18 @@ import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
-import { table } from "console";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
+
+const LAST_LOADOUT_KEY = 'last-loadout';
+// TODO: allow multiple configs in the future
+const SAVED_CONFIG_KEY = 'saved-loadout';
+
+/// gets the inner Ability from an element of the ability panels
+function getAbility(widget: Phaser.GameObjects.GameObject): Ability {
+    return ((widget as Phaser.GameObjects.Container).list[0] as AbilityWidget).ability;
+}
 
 export class StartBattleMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -27,6 +35,8 @@ export class StartBattleMenu extends Phaser.Scene {
     subscription: Subscription;
     available: AbilityWidget[];
     startButton: Button | undefined;
+    loadButton: Button | undefined;
+    loadLastButton: Button | undefined;
     abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
     biome: BIOME_ID;
@@ -35,6 +45,7 @@ export class StartBattleMenu extends Phaser.Scene {
     spiritPreviews: (SpiritWidget | null)[];
     summoningTablets: Phaser.GameObjects.Image[];
     activeAbilityPanel: ScrollablePanel | undefined;
+    inactiveAbilityPanel: ScrollablePanel | undefined;
 
     constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
@@ -61,7 +72,7 @@ export class StartBattleMenu extends Phaser.Scene {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(this.biome)).setDepth(-10);
 
         this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.46, GAME_WIDTH*0.96, 128, false);
-        const inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.805, GAME_WIDTH*0.96, 128);
+        this.inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.805, GAME_WIDTH*0.96, 128);
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
             // Determine which abilities are selected
             const activeAbilities = this.getOrderedActiveAbilities();
@@ -80,7 +91,7 @@ export class StartBattleMenu extends Phaser.Scene {
             },
             maxElements: MAX_ABILITIES
         });
-        inactiveAbilityPanel.enableDraggable({
+        this.inactiveAbilityPanel.enableDraggable({
             onMovedChild,
             onDragEnd: () => {
                 this.resetAllSlots()
@@ -98,7 +109,7 @@ export class StartBattleMenu extends Phaser.Scene {
             abilityContainer.add(abilityWidget);
 
             // Add new child to scrollable panel
-            inactiveAbilityPanel.addChild(abilityContainer);
+            this.inactiveAbilityPanel.addChild(abilityContainer);
 
             this.available.push(abilityWidget);
         }
@@ -120,13 +131,25 @@ export class StartBattleMenu extends Phaser.Scene {
             onDragOut: (slot) => this.animateSlotShrink(slot)
         });
         
-        inactiveAbilityPanel.addDragTargets(this.abilitySlots, {
+        this.inactiveAbilityPanel.addDragTargets(this.abilitySlots, {
             onDragOver: (slot) => this.animateSlotEnlarge(slot),
             onDragOut: (slot) => this.animateSlotShrink(slot)
         });
 
-        this.startButton = new Button(this, GAME_WIDTH / 2, 24, 100, 40, 'Start', 10, () => {
+        const topButtonY = 24;
+        const buttonWidth = 128;
+        const buttonHeight = 40;
+        const buttonFontSize = 10;
+        this.loadLastButton = new Button(this, GAME_WIDTH * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
+            this.loadCurrentLoadout(LAST_LOADOUT_KEY);
+        });
+        new Button(this, GAME_WIDTH * (7.25 / 24), topButtonY, buttonWidth, buttonHeight, 'Clear', buttonFontSize, () => {
+            this.clearSelectedAbilities();
+        });
+
+        this.startButton = new Button(this, GAME_WIDTH * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
+                this.saveCurrentLoadout(LAST_LOADOUT_KEY);
                 if (this.isQuest) {
                     // TODO: control difficulty
                     this.api.start_new_quest(this.loadout, BigInt(this.biome), BigInt(1)).then((questId) => {
@@ -161,8 +184,50 @@ export class StartBattleMenu extends Phaser.Scene {
                 console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
         }).setEnabled(false);
+
+        this.loadButton = new Button(this, GAME_WIDTH * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
+            this.loadCurrentLoadout(SAVED_CONFIG_KEY);
+        });
+        new Button(this, GAME_WIDTH * (21.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Save', buttonFontSize, () => {
+            this.saveCurrentLoadout(SAVED_CONFIG_KEY);
+        });
+        this.enableLoadButtons();
     }
 
+    private clearSelectedAbilities() {
+        this.activeAbilityPanel?.getChildren().forEach((c) => {
+            this.activeAbilityPanel?.moveChildTo(c, this.inactiveAbilityPanel!);
+        });
+    }
+
+    private loadCurrentLoadout(key: string) {
+        const raw = localStorage.getItem(key);
+        if (raw != null) {
+            this.clearSelectedAbilities();
+            const ids: bigint[] = raw.split(',').map((s) => BigInt(s));
+            const children = ids
+                .map((id) => this.inactiveAbilityPanel?.getChildren().find((c) => pureCircuits.derive_ability_id(getAbility(c)) == id))
+                .filter((c) => c != undefined);
+            console.log(`Loaded ${children.length} / ${ids.length} abilities from '${key}'`);
+            children.forEach((c) => this.inactiveAbilityPanel?.moveChildTo(c, this.activeAbilityPanel!));
+        }
+    }
+
+    private saveCurrentLoadout(key: string) {
+        const ids = this
+                .activeAbilityPanel!
+                .getChildren()
+                .map((c) => pureCircuits.derive_ability_id(getAbility(c)));
+                console.log(`Saved ${ids.length} abilities to '${key}'`);
+        localStorage.setItem(key, ids.join(','));
+        // possibly enable after saving
+        this.enableLoadButtons();
+    }
+
+    private enableLoadButtons() {
+        this.loadButton!.setEnabled(localStorage.getItem(SAVED_CONFIG_KEY) != null);
+        this.loadLastButton!.setEnabled(localStorage.getItem(LAST_LOADOUT_KEY) != null);
+    }
 
     private animateSlotEnlarge(slot: Phaser.GameObjects.GameObject) {
         this.tweens.add({

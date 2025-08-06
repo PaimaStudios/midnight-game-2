@@ -23,8 +23,9 @@ export class Button extends Phaser.GameObjects.Container {
         this.add(this.bg);
 
         // this.text = scene.add.text(0, 0, text, fontStyle(fontSize, { wordWrap: { width: w - 8 } })).setOrigin(0.5, 0.65)
+        // the -3 is to have it be centered in the top surface of the stone tablet as there is a side texture in the bottom of the sprite
         // @ts-expect-error
-        this.text = scene.add.rexBBCodeText(0, 0, text, fontStyle(fontSize, { color: this.bg.textColor, wordWrap: { width: w - 8 } }))
+        this.text = scene.add.rexBBCodeText(0, -3, text, fontStyle(fontSize, { color: this.bg.textColor, wordWrap: { width: w - 8 } }))
             .setOrigin(0.5, 0.65);
 
         this.add(this.text);
