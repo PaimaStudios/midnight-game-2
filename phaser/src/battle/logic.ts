@@ -23,7 +23,7 @@ export type CombatCallbacks = {
 };
 
 // we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
-function randIntBetween(nonce: Uint8Array, index: number, min: number, max: number): number {
+export function randIntBetween(nonce: Uint8Array, index: number, min: number, max: number): number {
     const range = BigInt(max - min + 1);
     const rng = pureCircuits.hashUtil(nonce, BigInt(index));
     return min + Number(rng % range);
@@ -78,7 +78,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 console.log(`YOU DIED`);
                 resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
             }
-            else if (battleState.enemy_hp_0 <= 0 && battleState.enemy_hp_1 <= 0 && battleState.enemy_hp_2 <= 0) {
+            else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || battleConfig.enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || battleConfig.enemy_count < 3)) {
                 console.log(`YOU WON`);
                 // TODO how to determine rewards?
                 let abilityReward = { is_some: false, value: BigInt(0) };

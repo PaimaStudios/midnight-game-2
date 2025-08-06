@@ -379,7 +379,17 @@ class Actor extends Phaser.GameObjects.Container {
                 texture = 'enemy-snowman';
             }
             if (stats.enemy_type == ENEMY_TYPE.boss) {
-                texture = 'enemy-boss-dragon-1';
+                switch (Number((scene as ActiveBattle).battle.biome)) {
+                    case BIOME_ID.cave:
+                    case BIOME_ID.grasslands:
+                        texture = 'enemy-boss-dragon-1';
+                        break;
+                    case BIOME_ID.desert:
+                    case BIOME_ID.tundra:
+                        texture = 'enemy-boss-enigma-1';
+                        break;
+                }
+                
                 healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
             
