@@ -2,7 +2,7 @@
  * All frontend functionality related to Abilities (outside of battle?)
  */
 import { Ability, Effect, EFFECT_TYPE } from "game2-contract";
-import { fontStyle } from "../main";
+import { fontStyle, logger } from "../main";
 import { addScaledImage, scale } from "../utils/scaleImage";
 import { Color, colorToNumber } from "../constants/colors";
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
@@ -14,7 +14,7 @@ export function contractDamageToBaseUI(amount: number | bigint): number {
 }
 
 function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect, xOffset: number, yOffset: number, tint: Color): Phaser.GameObjects.GameObject[] {
-    console.log(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
+    logger.ui.debug(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
     if (effect.is_aoe) {
         uiComponents.push(addScaledImage(container.scene, xOffset + 20, yOffset - 6, 'aoe').setTint(colorToNumber(tint)));

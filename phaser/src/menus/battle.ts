@@ -2,7 +2,7 @@
  * Active battle scene and relevant files.
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
@@ -60,7 +60,7 @@ export class ActiveBattle extends Phaser.Scene {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
 
         this.player = new Actor(this, playerX(), playerY(), null);
-        console.assert(this.battle.enemy_count <= BigInt(3));
+        logger.debugging.info(`Asserting enemy count <= 3: ${this.battle.enemy_count}`);
         const enemyYOffsets = [
             [0],
             [0, 16],
@@ -93,7 +93,7 @@ export class ActiveBattle extends Phaser.Scene {
                     if (loaderStarted) {
                         loader.setText("Error connecting to network.. Retrying");
                     }
-                    console.error(`Network Error during combat_round: ${err}`);
+                    logger.network.error(`Network Error during combat_round: ${err}`);
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     return retryCombatRound();
                 }
@@ -102,7 +102,7 @@ export class ActiveBattle extends Phaser.Scene {
             
             const uiPromise = combat_round_logic(id, clonedState, {
                 onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
-                    console.log(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
+                    logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
                     this.enemies[enemy].addBlock(amount);
                     this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
                 }),
@@ -124,7 +124,7 @@ export class ActiveBattle extends Phaser.Scene {
                     });
                 }),
                 onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
-                    console.log(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
+                    logger.combat.debug(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
                     let damageType = undefined;
                     switch (effectType) {
                         case EFFECT_TYPE.attack_fire:
@@ -151,7 +151,7 @@ export class ActiveBattle extends Phaser.Scene {
                                 y: enemyY(),
                                 duration: 150,
                                 onComplete: () => {
-                                    //console.log(`enemy ${target} took ${effect.amount} damage`);
+                                    //logger.combat.debug(`enemy ${target} took ${effect.amount} damage`);
                                     this.enemies[target].damage(amount);
                                     // Play damage animation
                                     this.enemies[target].takeDamageAnimation();
@@ -223,9 +223,9 @@ export class ActiveBattle extends Phaser.Scene {
                     const aura = this.spirits[source].aura!;
                     const targets = [0, 1, 2]
                         .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
-                    console.log(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
+                    logger.animation.debug(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
                     if (targets.length > 0) {
-                        console.log(`[ENERGY-UI] charge!`);
+                        logger.animation.debug(`[ENERGY-UI] charge!`);
                         aura.anims.play(chargeAnimKey);
                         this.tweens.add({
                             targets: this,// ignored since it changes no properties, just to not crash
@@ -233,10 +233,10 @@ export class ActiveBattle extends Phaser.Scene {
                             duration: CHARGE_ANIM_TIME,
                             completeDelay: 350,
                             onComplete: () => {
-                                console.log(`[ENERGY-UI] ...charged...`);
+                                logger.animation.debug(`[ENERGY-UI] ...charged...`);
                                 aura.anims.play(spiritAuraIdleKey);
                                 targets.forEach((a) => {
-                                    console.log(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
+                                    logger.animation.debug(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
                                     const target = this.spirits[a];
                                     const bullet = scale(this.add.sprite(spiritX(source), spiritY(), 'orb-aura'))
                                         .setTint(colorToNumber(energyTypeToColor(color)));
@@ -252,7 +252,7 @@ export class ActiveBattle extends Phaser.Scene {
                                             bullet.y = spiritY() + 32 * Math.sin((tween.progress + (source - a)) * Math.PI);
                                         },
                                         onComplete: () => {
-                                            console.log(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
+                                            logger.animation.debug(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
                                             bullet.destroy();
                                             resolve();
                                             // grow orb to show it has been triggered
@@ -301,7 +301,7 @@ export class ActiveBattle extends Phaser.Scene {
             this.spirits = [];
             //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
             //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
-            console.log(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
+            logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
             // TODO: check consistency (either here or in onStateChange())
             //
             // TODO: move this out of here? it gets reset by onStateChange() and also results in an error:
@@ -310,8 +310,8 @@ export class ActiveBattle extends Phaser.Scene {
             //       at BBCodeText.updateText (index-eba13966.js:322545:24)
             //       at BBCodeText.setText (index-eba13966.js:322484:14)
             //       at index-eba13966.js:393191:23
-            console.log(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
-            console.log(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
+            logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
+            logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
             button.visible = true;
             if (circuit != undefined) {
                 button.destroy();
@@ -335,9 +335,9 @@ export class ActiveBattle extends Phaser.Scene {
     private getAttackButtonString(battle: BattleConfig): string {
         const buttonDefaultText = `Click to Attack`;
         if (this.state != undefined) {
-            console.log(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
+            logger.gameState.debug(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
         } else {
-            console.log(`We dont have the state yet`);
+            logger.gameState.debug(`We dont have the state yet`);
             return buttonDefaultText;
         }
         const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
@@ -345,7 +345,7 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        console.log(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
+        logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
     }

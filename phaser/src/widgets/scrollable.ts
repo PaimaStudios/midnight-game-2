@@ -1,6 +1,7 @@
 import {Color, colorToNumber} from '../constants/colors';
 import 'phaser';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
+import { logger } from '../main';
 
 declare module 'phaser' {
   interface Scene {
@@ -92,7 +93,7 @@ export class ScrollablePanel {
         const sizer = this.getPanelElement();
         const items = (sizer as any).getElement?.('items');
         if (!items || !Array.isArray(items)) {
-            console.log("Error getting scrollable panel children in order: 'items' element does not exist.");
+            logger.ui.error("Error getting scrollable panel children in order: 'items' element does not exist.");
             return this.getPanelElement().getAll().map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
         }
         return items.map((child) => this.unwrapElement(child as Phaser.GameObjects.Container));
@@ -109,13 +110,13 @@ export class ScrollablePanel {
         const childIndex = children.indexOf(child);
         
         if (childIndex === -1) {
-            console.warn('Child not found in this scrollable panel');
+            logger.ui.warn('Child not found in this scrollable panel');
             return false;
         }
 
         // Check if target panel has maxElements limit
         if (targetPanel.maxElements && targetPanel.getChildCount() >= targetPanel.maxElements) {
-            console.warn('Target panel has reached maximum element limit');
+            logger.ui.warn('Target panel has reached maximum element limit');
             return false;
         }
 
@@ -123,7 +124,7 @@ export class ScrollablePanel {
         const sizer = this.getPanelElement();
         const items = (sizer as any).getElement?.('items');
         if (!items || !Array.isArray(items)) {
-            console.warn('Could not access panel items for child removal');
+            logger.ui.warn('Could not access panel items for child removal');
             return false;
         }
 

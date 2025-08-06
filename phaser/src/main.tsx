@@ -4,7 +4,10 @@
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import '@midnight-ntwrk/dapp-connector-api';
 import './globals';
-import * as pino from 'pino';
+import { logger } from './logger';
+
+// Export the logger for use throughout the application
+export { logger };
 
 // TODO: get this properly? it's undefined if i uncomment this
 //const networkId = import.meta.env.VITE_NETWORK_ID as NetworkId;
@@ -18,19 +21,17 @@ function getNetworkId(): NetworkId {
         case 'testnet':
             return NetworkId.TestNet;
         default:
-            console.error(`Unknown Vite MODE ${import.meta.env.MODE}, defaulting to undeployed`);
+            logger.debugging.error(`Unknown Vite MODE ${import.meta.env.MODE}, defaulting to undeployed`);
             return NetworkId.Undeployed;
     }
 }
 // Ensure that the network IDs are set within the Midnight libraries.
 setNetworkId(networkId);
-export const logger = pino.pino({
-    level: import.meta.env.VITE_LOGGING_LEVEL as string,
-});
-console.log(`networkId = ${networkId}`);
 
-console.log(`VITE: [\n${JSON.stringify(import.meta.env)}\n]`);
-// phaser part
+logger.network.info(`networkId = ${networkId}`);
+logger.debugging.info(`VITE: [\n${JSON.stringify(import.meta.env)}\n]`);
+
+// Phaser code begins
 
 import 'phaser';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin'
