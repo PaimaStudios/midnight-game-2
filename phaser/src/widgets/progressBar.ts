@@ -13,6 +13,7 @@ export interface ProgressBarConfig {
     value?: number;
     barColor?: number;
     bgColor?: number;
+    tempBarColor?: number; // if this is present there will be a temporary bar of this color until finalizeTempProgress() is called
     borderWidth?: number;
     borderColor?: Color;
     scene: Phaser.Scene;
@@ -23,6 +24,7 @@ export interface ProgressBarConfig {
 
 export class ProgressBar extends Phaser.GameObjects.Container {
     protected bar: Phaser.GameObjects.Rectangle;
+    protected barTemp: Phaser.GameObjects.Rectangle | undefined;
     protected bg: Phaser.GameObjects.Rectangle;
     protected min: number;
     protected max: number;
@@ -62,11 +64,15 @@ export class ProgressBar extends Phaser.GameObjects.Container {
 
         this.bg = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.bgColor ?? colorToNumber(Color.DeepPlum));
         this.bg.setOrigin(0, 0);
+        this.add(this.bg);
+
+        if (config.tempBarColor != undefined) {
+            this.barTemp = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.tempBarColor).setOrigin(0, 0);
+            this.add(this.barTemp);
+        }
 
         this.bar = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.barColor ?? colorToNumber(Color.Turquoise));
         this.bar.setOrigin(0, 0);
-
-        this.add(this.bg);
         this.add(this.bar);
 
         // Display total completed text if enabled
@@ -113,6 +119,16 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         this.label.setVisible(true);
     }
 
+    public finalizeTempProgress(onComplete?: () => void) {
+        this.scene.tweens.add({
+            targets: this.barTemp,
+            width: this.bar.width,
+            duration: 1000,
+            onComplete,
+            ease: 'Cubic.Out'
+        });
+    }
+
     private shouldDisplayLabel(): boolean {
         return !!(this.labelText || this.displayTotalCompleted);
     }
@@ -131,6 +147,7 @@ export class HealthBar extends ProgressBar {
             ...config,
             barColor: config.barColor ?? colorToNumber(Color.Red),
             bgColor: config.bgColor ?? colorToNumber(Color.Licorice),
+            tempBarColor: config.tempBarColor ?? colorToNumber(Color.DeepPlum),
         });
 
         const halfWidth = config.width / 2;
