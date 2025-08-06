@@ -109,17 +109,35 @@ export class TestMenu extends Phaser.Scene {
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
         if (this.firstRun) {
-            this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
-                console.log('~deploying~');
-                this.deployProvider.create().then((api) => {
-                    console.log('==========GOT API========');
-                    this.initApi(api);
-                }).catch((e) => console.error(`Error connecting: ${e}`));
-            }));
-            this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
-                console.log('==========MOCK API========');
-                this.initApi(new MockGame2API());
-            }));
+            switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
+                case 'real':
+                    console.log('~deploying~');
+                    this.deployProvider.create().then((api) => {
+                        console.log('==========GOT API========');
+                        this.initApi(api);
+                    }).catch((e) => console.error(`Error connecting: ${e}`));
+                    break;
+                case 'mock':
+                    console.log('==========MOCK API========');
+                    this.initApi(new MockGame2API());
+                    break;
+                default:
+                    if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
+                        console.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
+                    }
+                    this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+                        console.log('~deploying~');
+                        this.deployProvider.create().then((api) => {
+                            console.log('==========GOT API========');
+                            this.initApi(api);
+                        }).catch((e) => console.error(`Error connecting: ${e}`));
+                    }));
+                    this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
+                        console.log('==========MOCK API========');
+                        this.initApi(new MockGame2API());
+                    }));
+                    break;
+            }
         }
         this.goldLabel = this.add.text(32, GAME_HEIGHT - 64, 'Gold: ', fontStyle(12));
         this.goldText = this.add.text(100, GAME_HEIGHT - 64, '', fontStyle(12, { color: Color.Yellow }));
