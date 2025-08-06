@@ -299,8 +299,8 @@ export class ActiveBattle extends Phaser.Scene {
             this.abilityIcons = [];
             this.spirits.forEach((s) => s.destroy());
             this.spirits = [];
-            //console.log(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
-            //console.log(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
+            //logger.gameState.debug(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
+            //logger.gameState.debug(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
             logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
             // TODO: check consistency (either here or in onStateChange())
             //

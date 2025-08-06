@@ -98,7 +98,7 @@ export function safeJSONString(obj: object): string {
         str += '}';
         return str;
     }
-    //console.log(`safeJsonString(${typeof obj}): ${JSON.stringify(obj)}`);
+    //logger.debugging.debug(`safeJsonString(${typeof obj}): ${JSON.stringify(obj)}`);
     return JSON.stringify(obj);
 }
 
