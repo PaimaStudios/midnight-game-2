@@ -35,7 +35,7 @@ export class ShopMenu extends Phaser.Scene {
         this.goldText = this.add.text(100, 8, '', fontStyle(12, { color: Color.Yellow }));
         this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
         // this is just here to show some contrast since we won't have a black background. TOOD: replace with a specific background
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'grass').setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
         createSpiritAnimations(this);
 
         this.onStateChange(this.state);

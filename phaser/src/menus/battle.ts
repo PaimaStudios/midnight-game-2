@@ -22,7 +22,7 @@ const abilityIdleY = () => GAME_HEIGHT * 0.75;
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
-const enemyY = () => GAME_HEIGHT * 0.2;
+const enemyY = () => GAME_HEIGHT * 0.23;
 
 // TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
@@ -374,6 +374,7 @@ class Actor extends Phaser.GameObjects.Container {
             }
             if (stats.enemy_type == ENEMY_TYPE.boss) {
                 texture = 'enemy-boss-dragon-1';
+                healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
             
             this.textureKey = texture;
@@ -393,13 +394,9 @@ class Actor extends Phaser.GameObjects.Container {
             switch (stats.enemy_type) {
                 case ENEMY_TYPE.miniboss:
                     healthbarWidth = GAME_WIDTH * 0.5;
-                    // TODO: replace with actual boss/mini-boss images
-                    this.image?.setScale(BASE_SPRITE_SCALE * 2);
-                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2);
                     break;
                 case ENEMY_TYPE.boss:
                     healthbarWidth = GAME_WIDTH * 0.75;
-                    this.sprite?.setScale(BASE_SPRITE_SCALE * 2.5);
                     break;
             }
             this.maxHp = Number(stats.hp);
