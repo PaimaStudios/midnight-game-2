@@ -1,5 +1,6 @@
-import { Game2DerivedState, safeJSONString } from "game2-api";
+import { Game2DerivedState } from "game2-api";
 import { Ability, BattleRewards, Effect, EFFECT_TYPE, ENEMY_TYPE, pureCircuits } from "game2-contract";
+import { safeJSONString } from '../main';
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks
@@ -17,6 +18,8 @@ export type CombatCallbacks = {
     afterUseAbility: (abilityIndex: number) => Promise<void>;
     // triggered before all energy triggers of a given color will be applied
     onEnergyTrigger: (source: number, color: number) => Promise<void>;
+    // triggered at the end of the round during final damage application
+    onEndOfRound: () => Promise<void>;
 };
 
 // we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
@@ -57,6 +60,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         // to be able to early-abort we have this in a lambda
         const handleEndOfRound = () => {
             console.log(`${uiHooks == undefined} handleEndOfRound.player_damage = ${player_damage}`);
+            uiHooks?.onEndOfRound();
             if (enemy_damage > player_block) {
                 battleState.player_hp -= enemy_damage - player_block;
             }
@@ -115,12 +119,15 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         }
 
-
+        const aliveTargets = new Array(Number(battleConfig.enemy_count))
+            .fill(0)
+            .map((_, i) => i)
+            .filter((i) => enemy_hp[i] > BigInt(0));
 
         // player abilities (all)
         const resolveEffect = async (effect: { is_some: boolean, value: Effect }, source: number, target: number) => {
             if (effect.is_some) {
-                const targets = effect.value.is_aoe ? new Array(Number(battleConfig.enemy_count)).fill(0).map((_, i) => i) : [target];
+                const targets = effect.value.is_aoe ? aliveTargets : [target];
                 switch (effect.value.effect_type) {
                     case EFFECT_TYPE.attack_fire:
                     case EFFECT_TYPE.attack_ice:
@@ -141,8 +148,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         };
 
-        // TODO: don't target dead enemies
-        const targets = abilities.map((_, i) => randIntBetween(rng, i, 0, Number(battleConfig.enemy_count) - 1));
+        const targets = abilities.map((_, i) => aliveTargets[randIntBetween(rng, i, 0, aliveTargets.length - 1)]);
         
         // base effects
         const allEnemiesDead = () => {

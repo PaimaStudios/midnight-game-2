@@ -271,6 +271,12 @@ export class ActiveBattle extends Phaser.Scene {
                         resolve();
                     }
                 }),
+                onEndOfRound: () => new Promise((resolve) => {
+                    this.enemies.forEach((enemy) => enemy.endOfRound());
+                    this.player?.endOfRound();
+                    // just resolve instantly, it's not a big deal if the game continues during the second or so the animations play
+                    resolve();
+                }),
             }).then(result => {
                 if (!apiDone) {
                     // Display the loading scene if the API call is not done yet
@@ -439,13 +445,23 @@ class Actor extends Phaser.GameObjects.Container {
         }
     }
 
+    public endOfRound() {
+        this.hpBar.finalizeTempProgress(() => {
+            if (this.hp <= 0) {
+                this.hpBar.setLabel('DEAD');
+                // Play death animation when enemy dies
+                this.dieAnimation();
+            }
+        });
+    }
+
     private setHp(hp: number) {
         this.hp = Math.max(0, hp);
         this.hpBar.setValue(this.hp);
         if (this.hp <= 0) {
-            this.hpBar.setLabel('DEAD');
-            // Play death animation when enemy dies
-            this.dieAnimation();
+            // do we do anything here?
+            this.image?.setAlpha(0.5);
+            this.sprite?.setAlpha(0.5);
         }
     }
 
@@ -533,7 +549,7 @@ class Actor extends Phaser.GameObjects.Container {
             if (target) {
                 // Fade out and fall
                 this.scene.tweens.add({
-                    targets: target,
+                    targets: [target, this.hpBar],
                     alpha: 0,
                     angle: 90,
                     y: target.y + 50,
