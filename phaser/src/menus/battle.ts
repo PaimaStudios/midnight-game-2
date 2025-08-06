@@ -317,14 +317,14 @@ export class ActiveBattle extends Phaser.Scene {
                 button.destroy();
 
                 const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH * 0.8, GAME_HEIGHT * 0.4, battleOverText, 16, () => {
+                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.64, GAME_HEIGHT * 0.3, battleOverText, 16, () => {
                     this.scene.remove('TestMenu');
                     this.scene.add('TestMenu', new TestMenu(this.api, this.state));
                     this.scene.start('TestMenu');
                 });
                 if (circuit.alive && circuit.ability.is_some) {
-                    new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.7, this.state?.allAbilities.get(circuit.ability.value)!);
-                    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.9, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+                    new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, this.state?.allAbilities.get(circuit.ability.value)!);
+                    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
                 }
             } else {
                 button.text.setText(this.getAttackButtonString(this.battle));
