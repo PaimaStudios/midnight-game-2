@@ -20,6 +20,7 @@ import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
+import { biomeToName } from "../biome";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -155,7 +156,7 @@ export class TestMenu extends Phaser.Scene {
     }
 
     private questStr(quest: QuestConfig): string {
-        return `Quest info here. Difficulty: ${quest.difficulty}`;
+        return `Quest in ${biomeToName(Number(quest.battle_config.biome))} - ${quest.difficulty}`;
     }
 
     private onStateChange(state: Game2DerivedState) {
@@ -188,7 +189,7 @@ export class TestMenu extends Phaser.Scene {
             let offset = 0;
             for (const [id, quest] of state.quests) {
                 console.log(`got quest: ${id}`);
-                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.38 + 112 * offset, 320, 96, this.questStr(quest), 10, () => {
+                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.38 + 112 * offset, 480, 96, this.questStr(quest), 10, () => {
                     this.scene.remove('QuestMenu');
                     this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
                     this.scene.start('QuestMenu');
