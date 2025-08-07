@@ -8,7 +8,7 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BattleRewards } from "game2-contract";
 import { Subscription } from "rxjs";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { TestMenu } from "./main";
 import { Button } from "../widgets/button";
 import { AbilityWidget } from "../widgets/ability";
@@ -33,7 +33,7 @@ export class QuestMenu extends Phaser.Scene {
         this.scene.pause().launch('Loader');
         const loader = this.scene.get('Loader') as Loader;
         loader.setText("Submitting Proof");
-        console.log(`Finalizing quest ${this.questId}`);
+        logger.gameState.info(`Finalizing quest ${this.questId}`);
 
         const attemptFinalizeQuest = () => {
             this.api.finalize_quest(this.questId).then((bossBattleId) => {
@@ -46,7 +46,7 @@ export class QuestMenu extends Phaser.Scene {
                 // });
             }).catch((err) => {
                 loader.setText("Error connecting to network.. Retrying");
-                console.error(`Error Finalizing Quest: ${err}`);
+                logger.network.error(`Error Finalizing Quest: ${err}`);
                 setTimeout(attemptFinalizeQuest, 2000); // Retry after 2 seconds
             });
         };

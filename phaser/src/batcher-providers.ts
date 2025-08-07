@@ -1,5 +1,6 @@
 import { type Game2Providers } from "game2-api";
 import { type Logger } from "pino";
+import { logger } from './main';
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
@@ -56,7 +57,7 @@ const localProofServer = {
             }
         })();
 
-        console.log('Starting ZK proof');
+        logger.network.info('Starting ZK proof');
 
         const startTime = performance.now();
 
@@ -71,7 +72,7 @@ const localProofServer = {
         );
 
         const endTime = performance.now();
-        console.log(
+        logger.network.info(
             `Proved unbalanced tx in: ${Math.floor(endTime - startTime)} ms`
         );
 
