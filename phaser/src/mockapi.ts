@@ -5,11 +5,12 @@
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
-import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, PlayerLoadout, pureCircuits } from "game2-contract";
+import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
-import { combat_round_logic, generateRandomAbility } from "./battle/logic";
+import { combat_round_logic, generateRandomAbility, randIntBetween } from "./battle/logic";
 import { safeJSONString, logger } from "./main";
+import { BIOME_ID } from "./biome";
 
 
 const MOCK_DELAY = 500;  // How many milliseconds to wait before responding to API requests and between state refreshes.
@@ -69,14 +70,34 @@ export class MockGame2API implements DeployedGame2API {
     public start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
         return this.response(() => {
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
+            const rng = utils.randomBytes(32);
+            const biomeBiases = [
+                [1, -1, -1],
+                [0, 1, -3],
+                [0, -3, 1],
+                [1, 0, -1]
+            ];
+            const enemies = randIntBetween(rng, 0, 1, 3);
+            // for the demo we'll randomize these here in a straightforward way. once bytes indexing we'll need to do this consistently with the contract
+            const randomEnemy = (index: number): EnemyStats => {
+                return {
+                    enemy_type: ENEMY_TYPE.normal,
+                    hp: BigInt(randIntBetween(rng, index, 70, 80) - enemies * 10),
+                    attack: BigInt(randIntBetween(rng, index, 10 - enemies * 2, 20 - enemies * 4)),
+                    block: BigInt(randIntBetween(rng, index, 0, 10)),
+                    physical_def: BigInt(randIntBetween(rng, index, 4, 7) + biomeBiases[Number(biome)][0]),
+                    fire_def: BigInt(randIntBetween(rng, index + 100, 4, 7) + biomeBiases[Number(biome)][1]),
+                    ice_def: BigInt(randIntBetween(rng, index + 200, 4, 7) + biomeBiases[Number(biome)][2]),
+                }
+            };
             const battle = {
                 biome,
                 stats: [
-                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(60), attack: BigInt(5), block: BigInt(0), physical_def: BigInt(7), fire_def: BigInt(5), ice_def: BigInt(3) },
-                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(45), attack: BigInt(3), block: BigInt(2), physical_def: BigInt(5), fire_def: BigInt(3), ice_def: BigInt(7) },
-                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(35), attack: BigInt(4), block: BigInt(4), physical_def: BigInt(3), fire_def: BigInt(7), ice_def: BigInt(5) }
+                    randomEnemy(0),
+                    randomEnemy(1),
+                    randomEnemy(2)
                 ],
-                enemy_count: BigInt(3),
+                enemy_count: BigInt(enemies),
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
             };
@@ -129,12 +150,26 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
         return this.response(() => {
+            const noEnemy = { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) };
+            let boss = noEnemy;
+            const dragon = { enemy_type: ENEMY_TYPE.boss, hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(5), fire_def: BigInt(7), ice_def: BigInt(3) };
+            const enigma = { enemy_type: ENEMY_TYPE.boss, hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(8), fire_def: BigInt(5), ice_def: BigInt(5) };
+            switch (Number(biome)) {
+                case BIOME_ID.grasslands:
+                case BIOME_ID.cave:
+                    boss = dragon;
+                    break;
+                case BIOME_ID.desert:
+                case BIOME_ID.tundra:
+                    boss = enigma;
+                    break;
+            }
             const battle_config = {
                 biome,
                 stats: [
-                    { enemy_type: ENEMY_TYPE.boss, hp: BigInt(20), attack: BigInt(10), block: BigInt(10), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) },
-                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) },
-                    { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) }
+                    boss,
+                    noEnemy,
+                    noEnemy
                 ],
                 enemy_count: BigInt(1),
                 player_pub_key: MOCK_PLAYER_ID,
