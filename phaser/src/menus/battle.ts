@@ -7,7 +7,7 @@ import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
-import { AbilityWidget, energyTypeToColor, SpiritWidget } from "../widgets/ability";
+import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
 import { CHARGE_ANIM_TIME, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
@@ -141,6 +141,23 @@ export class ActiveBattle extends Phaser.Scene {
                             break;
                     }
                     if (damageType != undefined) {
+                        // Play spirit attack animation
+                        const spiritWidget = this.spirits[source];
+                        if (spiritWidget && spiritWidget.spirit) {
+                            const spiritType = effectTypeFileAffix(spiritWidget.ability.effect.value.effect_type);
+                            const attackAnimKey = `spirit-${spiritType}-attack`;
+                            const idleAnimKey = `spirit-${spiritType}`;
+                            if (this.anims.exists(attackAnimKey)) {
+                                spiritWidget.spirit.anims.play(attackAnimKey);
+                                // Return to idle animation after attack duration
+                                this.time.delayedCall(1000, () => {
+                                    if (spiritWidget.spirit && this.anims.exists(idleAnimKey)) {
+                                        spiritWidget.spirit.anims.play(idleAnimKey);
+                                    }
+                                });
+                            }
+                        }
+                        
                         for (let i = 0; i < targets.length; ++i) {
                             const target = targets[i];
                             const amount = amounts[i];
