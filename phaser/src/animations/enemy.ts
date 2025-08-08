@@ -5,7 +5,7 @@
 // Animation timing constants
 export const ENEMY_ANIMATION_DURATIONS = {
     idle: 1200,
-    attack: 600,
+    attack: 1000,
     hurt: 400,
     death: 1500
 };
@@ -36,10 +36,10 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             duration: ENEMY_ANIMATION_DURATIONS.idle
         });
 
-        // Create attack animation (uses both frames quickly)
+        // Create attack animation (uses frame 2)
         scene.anims.create({
             key: `${enemyType}-attack`, 
-            frames: [1, 0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            frames: [{ frame: 2, key: textureKey }],
             repeat: 0,
             duration: ENEMY_ANIMATION_DURATIONS.attack
         });
@@ -84,7 +84,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
         // Create attack animation (single frame)
         scene.anims.create({
             key: `${baseName}-attack`, 
-            frames: [{ frame: 0, key: textureKey }],
+            frames: [{ frame: 2, key: textureKey }],
             repeat: 0,
             duration: ENEMY_ANIMATION_DURATIONS.attack
         });
