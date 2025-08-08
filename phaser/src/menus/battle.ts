@@ -141,23 +141,6 @@ export class ActiveBattle extends Phaser.Scene {
                             break;
                     }
                     if (damageType != undefined) {
-                        // Play spirit attack animation
-                        const spiritWidget = this.spirits[source];
-                        if (spiritWidget && spiritWidget.spirit) {
-                            const spiritType = effectTypeFileAffix(spiritWidget.ability.effect.value.effect_type);
-                            const attackAnimKey = `spirit-${spiritType}-attack`;
-                            const idleAnimKey = `spirit-${spiritType}`;
-                            if (this.anims.exists(attackAnimKey)) {
-                                spiritWidget.spirit.anims.play(attackAnimKey);
-                                // Return to idle animation after attack duration
-                                this.time.delayedCall(1000, () => {
-                                    if (spiritWidget.spirit && this.anims.exists(idleAnimKey)) {
-                                        spiritWidget.spirit.anims.play(idleAnimKey);
-                                    }
-                                });
-                            }
-                        }
-                        
                         for (let i = 0; i < targets.length; ++i) {
                             const target = targets[i];
                             const amount = amounts[i];
@@ -197,6 +180,23 @@ export class ActiveBattle extends Phaser.Scene {
                 onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
                     const abilityIcon = this.abilityIcons[abilityIndex];
                     const spirit = this.spirits[abilityIndex];
+                    
+                    // Play spirit attack animation
+                    if (spirit && spirit.spirit) {
+                        const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
+                        const attackAnimKey = `spirit-${spiritType}-attack`;
+                        const idleAnimKey = `spirit-${spiritType}`;
+                        if (this.anims.exists(attackAnimKey)) {
+                            spirit.spirit.anims.play(attackAnimKey);
+                            // Return to idle animation after attack duration
+                            this.time.delayedCall(1000, () => {
+                                if (spirit.spirit && this.anims.exists(idleAnimKey)) {
+                                    spirit.spirit.anims.play(idleAnimKey);
+                                }
+                            });
+                        }
+                    }
+                    
                     this.tweens.add({
                         targets: [abilityIcon/*, spirit*/],
                         y: abilityInUseY(),
