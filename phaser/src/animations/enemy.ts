@@ -28,7 +28,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             continue;
         }
 
-        // Create 2-frame idle animation similar to spirits
+        // Create 2-frame idle animation
         scene.anims.create({
             key: `${enemyType}-idle`,
             frames: [0, 1].map((i) => { return { frame: i, key: textureKey }; }),
@@ -36,7 +36,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             duration: ENEMY_ANIMATION_DURATIONS.idle
         });
 
-        // Create attack animation (uses frame 2)
+        // Create attack animation
         scene.anims.create({
             key: `${enemyType}-attack`, 
             frames: [{ frame: 2, key: textureKey }],
