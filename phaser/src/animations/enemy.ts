@@ -5,7 +5,7 @@
 // Animation timing constants
 export const ENEMY_ANIMATION_DURATIONS = {
     idle: 1200,
-    attack: 1000,
+    attack: 1200,
     hurt: 400,
     death: 1500
 };

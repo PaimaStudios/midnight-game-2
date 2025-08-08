@@ -8,7 +8,7 @@ import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuit
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
-import { CHARGE_ANIM_TIME, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
+import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
@@ -247,7 +247,7 @@ export class ActiveBattle extends Phaser.Scene {
                         this.tweens.add({
                             targets: this,// ignored since it changes no properties, just to not crash
                             delay: 250,
-                            duration: CHARGE_ANIM_TIME,
+                            duration: SPIRIT_ANIMATION_DURATIONS.charge,
                             completeDelay: 350,
                             onComplete: () => {
                                 console.log(`[ENERGY-UI] ...charged...`);
