@@ -13,8 +13,21 @@ export const ENEMY_ANIMATION_DURATIONS = {
 export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
     SNOWMAN = 'snowman',
-    FIRE_SPRITE = 'fire-sprite'
+    FIRE_SPRITE = 'fire-sprite',
+    BOSS_DRAGON = 'boss-dragon',
+    BOSS_ENIGMA = 'boss-enigma',
 }
+
+// Configuration for enemy frame counts
+const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number }> = {
+    [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 1 },
+    [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6 },
+};
+
+const defaultFameConfig = { idleFrames: 2 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
     // Enemies with 2-frame sprite sheets
@@ -28,10 +41,13 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             continue;
         }
 
-        // Create 2-frame idle animation
+        // Create idle animation with configurable frame count
+        const frameConfig = ENEMY_FRAME_CONFIG[enemyType] || defaultFameConfig;
+        const idleFrames = Array.from({ length: frameConfig.idleFrames }, (_, i) => i);
+
         scene.anims.create({
             key: `${enemyType}-idle`,
-            frames: [0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            frames: idleFrames.map((i) => { return { frame: i, key: textureKey }; }),
             repeat: -1,
             duration: ENEMY_ANIMATION_DURATIONS.idle
         });
