@@ -1,6 +1,6 @@
 import { Game2DerivedState } from "game2-api";
 import { Ability, BattleRewards, Effect, EFFECT_TYPE, ENEMY_TYPE, pureCircuits } from "game2-contract";
-import { safeJSONString } from '../main';
+import { safeJSONString, logger } from '../main';
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks
@@ -39,7 +39,7 @@ export function randIntBetween(nonce: Uint8Array, index: number, min: number, ma
  */
 export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
     return new Promise(async (resolve) => {
-        console.log(`combat_round_logc(${safeJSONString(gameState)}, ${uiHooks == undefined})`);
+        logger.combat.debug(`combat_round_logc(${safeJSONString(gameState)}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
         const rng = pureCircuits.fakeTempRng(battleState, battleConfig);
@@ -59,7 +59,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         // to be able to early-abort we have this in a lambda
         const handleEndOfRound = () => {
-            console.log(`${uiHooks == undefined} handleEndOfRound.player_damage = ${player_damage}`);
+            logger.combat.debug(`${uiHooks == undefined} handleEndOfRound.player_damage = ${player_damage}`);
             uiHooks?.onEndOfRound();
             if (enemy_damage > player_block) {
                 battleState.player_hp -= enemy_damage - player_block;
@@ -73,13 +73,13 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (player_damage[2] > battleConfig.stats[2].block) {
                 battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
             }
-            console.log(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
+            logger.combat.debug(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
             if (battleState.player_hp <= 0) {
-                console.log(`YOU DIED`);
+                logger.combat.info(`YOU DIED`);
                 resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
             }
             else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || battleConfig.enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || battleConfig.enemy_count < 3)) {
-                console.log(`YOU WON`);
+                logger.combat.info(`YOU WON`);
                 // TODO how to determine rewards?
                 let abilityReward = { is_some: false, value: BigInt(0) };
                 for (let i = 0; i < battleConfig.enemy_count; ++i) {
@@ -96,10 +96,10 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 }
                 resolve({ alive: true, gold: BigInt(randIntBetween(rng, 1000, 50, 200)), ability: abilityReward });
             } else {
-                console.log(`CONTINUE BATTLE`);
+                logger.combat.info(`CONTINUE BATTLE`);
                 resolve(undefined);
             }
-            console.log(`end state[${uiHooks == undefined}]: ${safeJSONString(gameState)}`);
+            logger.combat.debug(`end state[${uiHooks == undefined}]: ${safeJSONString(gameState)}`);
         }
 
         await uiHooks?.onDrawAbilities(abilities);
@@ -110,12 +110,12 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (enemy_hp[i] > 0) {
                 // do not change vars for block since it's directly checked during player against enemy damage code
                 const block = Number(battleConfig.stats[i].block);
-                console.log(`${uiHooks == undefined}, yes block ${i}`);
+                logger.combat.debug(`${uiHooks == undefined}, yes block ${i}`);
                 if (block != 0) {
                     await uiHooks?.onEnemyBlock(i, block);
                 }
             } else {
-                console.log(`${uiHooks == undefined} skipping block ${i}`);
+                logger.combat.debug(`${uiHooks == undefined} skipping block ${i}`);
             }
         }
 
@@ -135,7 +135,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                         const amounts = targets.map((enemy) => {
                             const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
                             player_damage[enemy] += dmg;
-                            console.log(`[${uiHooks == undefined}] player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
+                            logger.combat.debug(`[${uiHooks == undefined}] player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
                             return Number(dmg)
                         });
                         await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
@@ -152,7 +152,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         
         // base effects
         const allEnemiesDead = () => {
-            console.log(`[${uiHooks == undefined}] checking damage: ${player_damage} | blocks: ${battleConfig.stats[0].block}, ${battleConfig.stats[1].block}, ${battleConfig.stats[2].block}   |  hp: ${battleState.enemy_hp_0}, ${battleState.enemy_hp_1}, ${battleState.enemy_hp_2}`);
+            logger.combat.debug(`[${uiHooks == undefined}] checking damage: ${player_damage} | blocks: ${battleConfig.stats[0].block}, ${battleConfig.stats[1].block}, ${battleConfig.stats[2].block}   |  hp: ${battleState.enemy_hp_0}, ${battleState.enemy_hp_1}, ${battleState.enemy_hp_2}`);
             return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
                                   && (player_damage[1] > battleConfig.stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
                                   && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
@@ -166,7 +166,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             await resolveEffect(ability.effect, i, targets[i]);
             await uiHooks?.afterUseAbility(i);
             if (allEnemiesDead()) {
-                console.log(`[${uiHooks == undefined}] prematurely ending`);
+                logger.combat.debug(`[${uiHooks == undefined}] prematurely ending`);
                 return handleEndOfRound();
             }
         }

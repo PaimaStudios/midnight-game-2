@@ -9,7 +9,7 @@ import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic, generateRandomAbility, randIntBetween } from "./battle/logic";
-import { safeJSONString } from "./main";
+import { safeJSONString, logger } from "./main";
 import { BIOME_ID } from "./biome";
 
 
@@ -69,7 +69,7 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
         return this.response(() => {
-            console.log(`from ${this.mockState.activeBattleConfigs.size}`);
+            logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const rng = utils.randomBytes(32);
             const biomeBiases = [
                 [1, -1, -1],
@@ -102,7 +102,7 @@ export class MockGame2API implements DeployedGame2API {
                 loadout,
             };
             const id = pureCircuits.derive_battle_id(battle);
-            console.log(`new battle: ${id}`);
+            logger.gameState.info(`new battle: ${id}`);
             this.mockState.activeBattleStates.set(id, {
                 deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
                 player_hp: BigInt(100),
@@ -111,14 +111,14 @@ export class MockGame2API implements DeployedGame2API {
                 enemy_hp_2: battle.stats[2].hp,
             });
             this.mockState.activeBattleConfigs.set(id, battle);
-            console.log(` to ${this.mockState.activeBattleConfigs.size}`);
-            console.log(`start new battle - state is now: ${safeJSONString(this.mockState)} | `);
+            logger.gameState.debug(` to ${this.mockState.activeBattleConfigs.size}`);
+            logger.gameState.debug(`start new battle - state is now: ${safeJSONString(this.mockState)} | `);
             return battle;
         });
     }
 
     public async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
-        console.log(`round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
+        logger.combat.debug(`round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
         return await this.response(async () => {
             return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
                 const battleState = this.mockState.activeBattleStates.get(battle_id)!;
@@ -247,7 +247,7 @@ export class MockGame2API implements DeployedGame2API {
                 reject(e);
             }
             setTimeout(() => {
-                console.log(`\n   ----> new state ${safeJSONString(this.mockState)}\n\n`);
+                logger.gameState.debug(`\n   ----> new state ${safeJSONString(this.mockState)}\n\n`);
                 this.subscriber?.next(this.mockState);
             }, MOCK_DELAY);
         }, MOCK_DELAY));

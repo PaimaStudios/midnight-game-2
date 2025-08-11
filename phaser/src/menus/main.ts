@@ -46,7 +46,7 @@ export class TestMenu extends Phaser.Scene {
                 }
             }, 100);
         }
-        this.deployProvider = new BrowserDeploymentManager(logger);
+        this.deployProvider = new BrowserDeploymentManager(logger.pino);
     }
 
     preload() {
@@ -112,29 +112,29 @@ export class TestMenu extends Phaser.Scene {
         if (this.firstRun) {
             switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
                 case 'real':
-                    console.log('~deploying~');
+                    logger.network.info('~deploying~');
                     this.deployProvider.create().then((api) => {
-                        console.log('==========GOT API========');
+                        logger.network.info('==========GOT API========');
                         this.initApi(api);
-                    }).catch((e) => console.error(`Error connecting: ${e}`));
+                    }).catch((e) => logger.network.error(`Error connecting: ${e}`));
                     break;
                 case 'mock':
-                    console.log('==========MOCK API========');
+                    logger.network.info('==========MOCK API========');
                     this.initApi(new MockGame2API());
                     break;
                 default:
                     if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
-                        console.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
+                        logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
                     }
                     this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
-                        console.log('~deploying~');
+                        logger.network.info('~deploying~');
                         this.deployProvider.create().then((api) => {
-                            console.log('==========GOT API========');
+                            logger.network.info('==========GOT API========');
                             this.initApi(api);
-                        }).catch((e) => console.error(`Error connecting: ${e}`));
+                        }).catch((e) => logger.network.error(`Error connecting: ${e}`));
                     }));
                     this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
-                        console.log('==========MOCK API========');
+                        logger.network.info('==========MOCK API========');
                         this.initApi(new MockGame2API());
                     }));
                     break;
@@ -160,7 +160,7 @@ export class TestMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        console.log(`---state change---: ${safeJSONString(state)}`);
+        logger.gameState.debug(`---state change---: ${safeJSONString(state)}`);
         this.state = state;
 
         this.events.emit('stateChange', state);
@@ -188,7 +188,7 @@ export class TestMenu extends Phaser.Scene {
 
             let offset = 0;
             for (const [id, quest] of state.quests) {
-                console.log(`got quest: ${id}`);
+                logger.gameState.debug(`got quest: ${id}`);
                 const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.38 + 112 * offset, 480, 96, this.questStr(quest), 10, () => {
                     this.scene.remove('QuestMenu');
                     this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
@@ -203,7 +203,7 @@ export class TestMenu extends Phaser.Scene {
         } else {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
-                console.log('Registering new player...');
+                logger.gameState.info('Registering new player...');
                 // Launch the loader scene to display during the API call
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
@@ -212,12 +212,12 @@ export class TestMenu extends Phaser.Scene {
                     this.errorText?.setText('');
                     loader.setText("Waiting on chain update");
                     this.events.on('stateChange', () => {
-                        console.log('Registered new player');
+                        logger.gameState.info('Registered new player');
                         this.scene.resume().stop('Loader');
                     });
                 }).catch((e) => {
                     this.errorText?.setText('Error Registering Player. Try again...');
-                    console.error(`Error registering new player: ${e}`);
+                    logger.network.error(`Error registering new player: ${e}`);
                     this.scene.resume().stop('Loader');
                 });
             }));

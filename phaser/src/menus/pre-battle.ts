@@ -5,7 +5,7 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
-import { GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { TestMenu } from "./main";
 import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
@@ -159,7 +159,7 @@ export class StartBattleMenu extends Phaser.Scene {
                     });
                 } else {
                     // Start a new battle
-                    console.log(`starting new battle...`);
+                    logger.gameState.info(`starting new battle...`);
                     // Launch the loader scene to display during the API call
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
@@ -176,12 +176,12 @@ export class StartBattleMenu extends Phaser.Scene {
                         });
                     }).catch((e) => {
                         this.errorText?.setText('Error Talking to the network. Try again...');
-                        console.error(`Error starting battle: ${e}`);
+                        logger.network.error(`Error starting battle: ${e}`);
                         this.scene.resume().stop('Loader');
                     });
                 }
             } else {
-                console.log(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
+                logger.ui.warn(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
         }).setEnabled(false);
 
@@ -208,7 +208,7 @@ export class StartBattleMenu extends Phaser.Scene {
             const children = ids
                 .map((id) => this.inactiveAbilityPanel?.getChildren().find((c) => pureCircuits.derive_ability_id(getAbility(c)) == id))
                 .filter((c) => c != undefined);
-            console.log(`Loaded ${children.length} / ${ids.length} abilities from '${key}'`);
+            logger.ui.info(`Loaded ${children.length} / ${ids.length} abilities from '${key}'`);
             children.forEach((c) => this.inactiveAbilityPanel?.moveChildTo(c, this.activeAbilityPanel!));
         }
     }
@@ -218,7 +218,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 .activeAbilityPanel!
                 .getChildren()
                 .map((c) => pureCircuits.derive_ability_id(getAbility(c)));
-                console.log(`Saved ${ids.length} abilities to '${key}'`);
+                logger.ui.info(`Saved ${ids.length} abilities to '${key}'`);
         localStorage.setItem(key, ids.join(','));
         // possibly enable after saving
         this.enableLoadButtons();
@@ -318,7 +318,7 @@ export const isStartingAbility = (ability: Ability) => {
 
 export function sortedAbilitiesById(state: Game2DerivedState): bigint[] {
     let abilities = [];
-    console.log(`player abilities: ${state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
+    logger.gameState.debug(`player abilities: ${state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
     for (const [id, count] of state.playerAbilities) {
         for (let i = 0; i < count; ++i) {
             abilities.push(id);

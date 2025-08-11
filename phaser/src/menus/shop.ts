@@ -3,7 +3,7 @@ import { pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { createSpiritAnimations } from "../animations/spirit";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Color } from "../constants/colors";
@@ -42,7 +42,7 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        console.log(`ShopMenu.onStateChange(): ${safeJSONString(state)}`);
+        logger.gameState.debug(`ShopMenu.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
         if (this.loader != undefined) {
@@ -73,7 +73,7 @@ export class ShopMenu extends Phaser.Scene {
                     this.loader?.setText("Waiting on chain update");
                 }).catch((e) => {
                     this.errorText?.setText('Error Talking to the network. Try again...');
-                    console.error(`Error selling ability: ${e}`);
+                    logger.network.error(`Error selling ability: ${e}`);
                     this.scene.resume().stop('Loader');
                 });
             }));

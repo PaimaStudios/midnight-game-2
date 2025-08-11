@@ -1,5 +1,6 @@
 import { type DeployedGame2API, Game2API, type Game2Providers } from 'game2-api';
 import { CompactTypeBytes, transientCommit, type ContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { logger } from './main';
 import {
   concatMap,
   filter,
@@ -47,21 +48,21 @@ export class BrowserDeploymentManager {
   }
 
   async create(): Promise<Game2API> {
-    console.log('getting providers');
+    logger.network.info('getting providers');
     const providers = await this.getProviders();
-    console.log('trying to create');
+    logger.network.info('trying to create');
     return Game2API.deploy(providers, this.logger).then((api) => {
-      console.log('got create api');
+      logger.network.info('got create api');
       return api;
     });
   }
   async join(contractAddress: ContractAddress): Promise<Game2API> {
-    console.log('getting providers');
+    logger.network.info('getting providers');
     const providers = await this.getProviders();
-    console.log('trying to join');
+    logger.network.info('trying to join');
     // TODO: do we need error handling?
     return Game2API.join(providers, contractAddress, this.logger)
-      .then((api) => { console.log('got join api'); return api; });
+      .then((api) => { logger.network.info('got join api'); return api; });
   }
 
   private getProviders(): Promise<Game2Providers> {
