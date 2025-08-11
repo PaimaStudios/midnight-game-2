@@ -23,7 +23,7 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number }> = {
     [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2 },
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2 },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2 },
-    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 1 },
+    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6 },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6 },
 };
 
@@ -78,7 +78,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
     }
     
     // Single-frame boss enemies (fallback to static animations)
-    const singleFrameEnemies = ['boss-dragon-1', 'boss-enigma-1'];
+    const singleFrameEnemies = [''];
     
     for (const enemyType of singleFrameEnemies) {
         const baseName = enemyType.replace(/-1$/, '');

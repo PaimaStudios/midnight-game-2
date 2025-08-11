@@ -89,7 +89,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
         this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 36, frameHeight: 32 });
         this.load.spritesheet('enemy-boss-enigma', 'enemy-boss-enigma-1.png', { frameWidth: 152, frameHeight: 95 });
-        this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
+        this.load.spritesheet('enemy-boss-dragon', 'enemy-boss-dragon-1.png', { frameWidth: 145, frameHeight: 97 });
 
         // Backgrounds
         this.load.image('bg-grass', 'bg-grass.png');

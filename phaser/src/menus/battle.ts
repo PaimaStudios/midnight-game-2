@@ -399,11 +399,11 @@ class Actor extends Phaser.GameObjects.Container {
                 switch (Number((scene as ActiveBattle).battle.biome)) {
                     case BIOME_ID.cave:
                     case BIOME_ID.grasslands:
-                        texture = 'enemy-boss-dragon-1';
+                        texture = 'enemy-boss-dragon';
                         break;
                     case BIOME_ID.desert:
                     case BIOME_ID.tundra:
-                        texture = 'enemy-boss-enigma-1';
+                        texture = 'enemy-boss-enigma';
                         break;
                 }
                 
