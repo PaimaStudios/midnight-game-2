@@ -76,10 +76,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('orb-def', 'orb-def.png');
 
         // Spirit Sprites
-        this.load.spritesheet('spirit-atk-fire', 'spirit-atk-fire.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('spirit-atk-ice', 'spirit-atk-ice.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('spirit-atk-phys', 'spirit-atk-phys.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('spirit-def', 'spirit-def.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('spirit-atk-fire', 'spirit-atk-fire.png', { frameWidth: 64, frameHeight: 64 });
+        this.load.spritesheet('spirit-atk-ice', 'spirit-atk-ice.png', { frameWidth: 64, frameHeight: 64 });
+        this.load.spritesheet('spirit-atk-phys', 'spirit-atk-phys.png', { frameWidth: 64, frameHeight: 64 });
+        this.load.spritesheet('spirit-def', 'spirit-def.png', { frameWidth: 64, frameHeight: 64 });
 
         this.load.spritesheet('orb-aura', 'orb-aura.png', { frameWidth: 16, frameHeight: 16 });
         this.load.spritesheet('spirit-aura', 'spirit-aura.png', { frameWidth: 32, frameHeight: 32 });
@@ -88,11 +88,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-goblin', 'enemy-goblin.png', { frameWidth: 32, frameHeight: 28 });
         this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
         this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 36, frameHeight: 32 });
-        
-        // Boss enemies remain as single images
-        this.load.image('enemy-boss-dragon-1', 'enemy-boss-dragon-1.png');
-        this.load.image('enemy-boss-enigma-1', 'enemy-boss-enigma-1.png');
+        this.load.spritesheet('enemy-boss-enigma', 'enemy-boss-enigma-1.png', { frameWidth: 152, frameHeight: 95 });
+        this.load.spritesheet('enemy-boss-dragon', 'enemy-boss-dragon-1.png', { frameWidth: 145, frameHeight: 97 });
 
+        // Backgrounds
         this.load.image('bg-grass', 'bg-grass.png');
         this.load.image('bg-desert', 'bg-desert.png');
         this.load.image('bg-tundra', 'bg-tundra.png');

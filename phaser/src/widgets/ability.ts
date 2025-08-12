@@ -167,7 +167,7 @@ export function energyTypeToColor(energyType: ENERGY_TYPE): Color {
     }
 }
 
-function effectTypeFileAffix(effectType: EFFECT_TYPE): string {
+export function effectTypeFileAffix(effectType: EFFECT_TYPE): string {
     switch (effectType) {
         case EFFECT_TYPE.attack_fire:
             return 'atk-fire';

@@ -5,7 +5,7 @@
 // Animation timing constants
 export const ENEMY_ANIMATION_DURATIONS = {
     idle: 1200,
-    attack: 600,
+    attack: 1200,
     hurt: 400,
     death: 1500
 };
@@ -13,8 +13,21 @@ export const ENEMY_ANIMATION_DURATIONS = {
 export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
     SNOWMAN = 'snowman',
-    FIRE_SPRITE = 'fire-sprite'
+    FIRE_SPRITE = 'fire-sprite',
+    BOSS_DRAGON = 'boss-dragon',
+    BOSS_ENIGMA = 'boss-enigma',
 }
+
+// Configuration for enemy frame counts
+const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number }> = {
+    [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6 },
+    [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6 },
+};
+
+const defaultFameConfig = { idleFrames: 2 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
     // Enemies with 2-frame sprite sheets
@@ -28,18 +41,21 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
             continue;
         }
 
-        // Create 2-frame idle animation similar to spirits
+        // Create idle animation with configurable frame count
+        const frameConfig = ENEMY_FRAME_CONFIG[enemyType] || defaultFameConfig;
+        const idleFrames = Array.from({ length: frameConfig.idleFrames }, (_, i) => i);
+
         scene.anims.create({
             key: `${enemyType}-idle`,
-            frames: [0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            frames: idleFrames.map((i) => { return { frame: i, key: textureKey }; }),
             repeat: -1,
             duration: ENEMY_ANIMATION_DURATIONS.idle
         });
 
-        // Create attack animation (uses both frames quickly)
+        // Create attack animation
         scene.anims.create({
             key: `${enemyType}-attack`, 
-            frames: [1, 0, 1].map((i) => { return { frame: i, key: textureKey }; }),
+            frames: [{ frame: 2, key: textureKey }],
             repeat: 0,
             duration: ENEMY_ANIMATION_DURATIONS.attack
         });
@@ -62,7 +78,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
     }
     
     // Single-frame boss enemies (fallback to static animations)
-    const singleFrameEnemies = ['boss-dragon-1', 'boss-enigma-1'];
+    const singleFrameEnemies = [''];
     
     for (const enemyType of singleFrameEnemies) {
         const baseName = enemyType.replace(/-1$/, '');
@@ -84,7 +100,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
         // Create attack animation (single frame)
         scene.anims.create({
             key: `${baseName}-attack`, 
-            frames: [{ frame: 0, key: textureKey }],
+            frames: [{ frame: 2, key: textureKey }],
             repeat: 0,
             duration: ENEMY_ANIMATION_DURATIONS.attack
         });

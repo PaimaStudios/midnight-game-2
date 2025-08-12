@@ -7,8 +7,8 @@ import { Button } from "../widgets/button";
 import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
-import { AbilityWidget, energyTypeToColor, SpiritWidget } from "../widgets/ability";
-import { CHARGE_ANIM_TIME, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
+import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
+import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { combat_round_logic } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
@@ -180,6 +180,23 @@ export class ActiveBattle extends Phaser.Scene {
                 onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
                     const abilityIcon = this.abilityIcons[abilityIndex];
                     const spirit = this.spirits[abilityIndex];
+                    
+                    // Play spirit attack animation
+                    if (spirit && spirit.spirit) {
+                        const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
+                        const attackAnimKey = `spirit-${spiritType}-attack`;
+                        const idleAnimKey = `spirit-${spiritType}`;
+                        if (this.anims.exists(attackAnimKey)) {
+                            spirit.spirit.anims.play(attackAnimKey);
+                            // Return to idle animation after attack duration
+                            this.time.delayedCall(1000, () => {
+                                if (spirit.spirit && this.anims.exists(idleAnimKey)) {
+                                    spirit.spirit.anims.play(idleAnimKey);
+                                }
+                            });
+                        }
+                    }
+                    
                     this.tweens.add({
                         targets: [abilityIcon/*, spirit*/],
                         y: abilityInUseY(),
@@ -230,7 +247,7 @@ export class ActiveBattle extends Phaser.Scene {
                         this.tweens.add({
                             targets: this,// ignored since it changes no properties, just to not crash
                             delay: 250,
-                            duration: CHARGE_ANIM_TIME,
+                            duration: SPIRIT_ANIMATION_DURATIONS.charge,
                             completeDelay: 350,
                             onComplete: () => {
                                 logger.animation.debug(`[ENERGY-UI] ...charged...`);
@@ -382,11 +399,11 @@ class Actor extends Phaser.GameObjects.Container {
                 switch (Number((scene as ActiveBattle).battle.biome)) {
                     case BIOME_ID.cave:
                     case BIOME_ID.grasslands:
-                        texture = 'enemy-boss-dragon-1';
+                        texture = 'enemy-boss-dragon';
                         break;
                     case BIOME_ID.desert:
                     case BIOME_ID.tundra:
-                        texture = 'enemy-boss-enigma-1';
+                        texture = 'enemy-boss-enigma';
                         break;
                 }
                 
