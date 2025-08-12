@@ -231,9 +231,10 @@ export class ScrollablePanel {
                     const currentTime = Date.now();
                     const lastClickTime = child.getData('lastClickTime') || 0;
                     
-                    if (currentTime - lastClickTime < 300) {
+                    const DOUBLE_CLICK_THRESHOLD = 300; // 300ms threshold for double-click
+                    if (currentTime - lastClickTime < DOUBLE_CLICK_THRESHOLD) {
                         // Double-click detected
-                        console.log('Double-click detected in scrollable.ts');
+                        logger.ui.info('Double-click detected in scrollable.ts');
                         onDoubleClick(this, this.unwrapElement(child));
                         child.setData('lastClickTime', 0); // Reset to prevent triple-click
                         return; // Don't proceed with drag setup
