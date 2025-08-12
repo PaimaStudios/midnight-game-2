@@ -116,7 +116,6 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
             abilityContainer.add(abilityWidget);
 
-
             // Add new child to scrollable panel
             this.inactiveAbilityPanel.addChild(abilityContainer);
 
