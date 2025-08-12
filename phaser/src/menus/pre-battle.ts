@@ -89,12 +89,20 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.resetAllSlots();
                 this.refreshPreviews();
             },
+            onDoubleClick: (panel, child) => {
+                logger.ui.info('Double-click from active panel');
+                this.transferAbilityBetweenPanels(child as Phaser.GameObjects.Container);
+            },
             maxElements: MAX_ABILITIES
         });
         this.inactiveAbilityPanel.enableDraggable({
             onMovedChild,
             onDragEnd: () => {
                 this.resetAllSlots()
+            },
+            onDoubleClick: (panel, child) => {
+                logger.ui.info('Double-click from inactive panel');
+                this.transferAbilityBetweenPanels(child as Phaser.GameObjects.Container);
             },
         });
 
@@ -107,6 +115,7 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityWidget = new AbilityWidget(this, 0, 2, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
             abilityContainer.add(abilityWidget);
+
 
             // Add new child to scrollable panel
             this.inactiveAbilityPanel.addChild(abilityContainer);
@@ -296,6 +305,26 @@ export class StartBattleMenu extends Phaser.Scene {
                     });
                 }
             }
+        }
+    }
+
+    private transferAbilityBetweenPanels(abilityContainer: Phaser.GameObjects.Container) {
+        logger.ui.info('Transfer called for container:', abilityContainer);
+        
+        if (this.activeAbilityPanel?.hasChild(abilityContainer)) {
+            // Move from active to inactive panel
+            logger.ui.info('Moving from active to inactive');
+            this.activeAbilityPanel.moveChildTo(abilityContainer, this.inactiveAbilityPanel!);
+        } else if (this.inactiveAbilityPanel?.hasChild(abilityContainer)) {
+            // Move from inactive to active panel (if there's room)
+            if (this.activeAbilityPanel!.getChildCount() < MAX_ABILITIES) {
+                logger.ui.info('Moving from inactive to active');
+                this.inactiveAbilityPanel.moveChildTo(abilityContainer, this.activeAbilityPanel!);
+            } else {
+                logger.ui.warn('Cannot move to active panel - at max capacity');
+            }
+        } else {
+            logger.ui.warn('Container not found in either panel');
         }
     }
 
