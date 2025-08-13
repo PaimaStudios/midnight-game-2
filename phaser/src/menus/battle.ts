@@ -206,7 +206,7 @@ export class ActiveBattle extends Phaser.Scene {
                             const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
                             this.tweens.add({
                                 // TODO: do something to the spirit too
-                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement, spirit],
+                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
                                 scale: 1.5,
                                 yoyo: true,
                                 delay: 100,
@@ -393,7 +393,7 @@ class Actor extends Phaser.GameObjects.Container {
             if (stats.fire_def > stats.physical_def && stats.fire_def > stats.ice_def) {
                 texture = 'enemy-fire-sprite';
             } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
-                texture = 'enemy-snowman';
+                texture = stats.block > stats.attack ? 'enemy-ice-golem' : 'enemy-snowman';
             }
             if (stats.enemy_type == ENEMY_TYPE.boss) {
                 switch (Number((scene as ActiveBattle).battle.biome)) {
@@ -557,7 +557,7 @@ class Actor extends Phaser.GameObjects.Container {
             // Lunge forward slightly
             this.scene.tweens.add({
                 targets: this,
-                x: this.x + 20,
+                x: this.x + 12,
                 duration: 200,
                 yoyo: true,
                 onComplete: () => {
