@@ -104,6 +104,12 @@ export class ScrollablePanel {
         return this.getChildren().length;
     }
 
+    // Checks if a specific child object is present in the panel
+    public hasChild(child: Phaser.GameObjects.GameObject): boolean {
+        const children = this.getChildren();
+        return children.includes(child);
+    }
+
     // Moves a child element from this panel to another scrollable panel
     public moveChildTo(child: Phaser.GameObjects.GameObject, targetPanel: ScrollablePanel): boolean {
         const children = this.getChildren();
@@ -187,6 +193,7 @@ export class ScrollablePanel {
         onDragStart?: (child: Phaser.GameObjects.GameObject) => void,
         onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
         onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
+        onDoubleClick?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
         maxElements?: number
     }): void {
         const maxElements = options?.maxElements;
@@ -194,6 +201,7 @@ export class ScrollablePanel {
         const onDragStart = options?.onDragStart;
         const onDragEnd = options?.onDragEnd;
         const onDrag = options?.onDrag;
+        const onDoubleClick = options?.onDoubleClick;
         
         this.maxElements = maxElements;
         this.onDragEndCallback = onDragEnd;
@@ -218,6 +226,23 @@ export class ScrollablePanel {
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
             })
             .on('child.down', (child: any) => {
+                // Double-click detection
+                if (onDoubleClick) {
+                    const currentTime = Date.now();
+                    const lastClickTime = child.getData('lastClickTime') || 0;
+                    
+                    const DOUBLE_CLICK_THRESHOLD = 300; // 300ms threshold for double-click
+                    if (currentTime - lastClickTime < DOUBLE_CLICK_THRESHOLD) {
+                        // Double-click detected
+                        logger.ui.info('Double-click detected in scrollable.ts');
+                        onDoubleClick(this, this.unwrapElement(child));
+                        child.setData('lastClickTime', 0); // Reset to prevent triple-click
+                        return; // Don't proceed with drag setup
+                    } else {
+                        child.setData('lastClickTime', currentTime);
+                    }
+                }
+
                 if (!child.drag) {
                     child.drag = dragBehavior.add(child);
                     child
