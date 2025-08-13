@@ -14,6 +14,7 @@ export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
     SNOWMAN = 'snowman',
     FIRE_SPRITE = 'fire-sprite',
+    ICE_GOLEM = 'ice-golem',
     BOSS_DRAGON = 'boss-dragon',
     BOSS_ENIGMA = 'boss-enigma',
 }
@@ -23,6 +24,7 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number }> = {
     [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2 },
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2 },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2 },
+    [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2 },
     [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6 },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6 },
 };
