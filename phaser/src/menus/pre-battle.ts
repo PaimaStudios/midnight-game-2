@@ -6,7 +6,7 @@ import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { TestMenu } from "./main";
+import { QuestsMenu } from "./quests";
 import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
@@ -161,9 +161,9 @@ export class StartBattleMenu extends Phaser.Scene {
                 if (this.isQuest) {
                     // TODO: control difficulty
                     this.api.start_new_quest(this.loadout, BigInt(this.biome), BigInt(1)).then((questId) => {
-                        this.scene.remove('TestMenu');
-                        this.scene.add('TestMenu', new TestMenu(this.api));
-                        this.scene.start('TestMenu');
+                        this.scene.remove('QuestsMenu');
+                        this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
+                        this.scene.start('QuestsMenu');
                     });
                 } else {
                     // Start a new battle

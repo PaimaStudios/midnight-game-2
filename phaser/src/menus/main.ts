@@ -12,15 +12,13 @@ import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, safeJSONString } from "../main";
-import { QuestMenu } from "./quest";
-import { QuestConfig } from "game2-contract";
 import { Color } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
-import { biomeToName } from "../biome";
+import { QuestsMenu } from "./quests";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -154,9 +152,6 @@ export class TestMenu extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
-    private questStr(quest: QuestConfig): string {
-        return `Quest in ${biomeToName(Number(quest.battle_config.biome))} - ${quest.difficulty}`;
-    }
 
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`---state change---: ${safeJSONString(state)}`);
@@ -167,35 +162,24 @@ export class TestMenu extends Phaser.Scene {
         this.buttons.forEach((b) => b.destroy());
 
         if (state.player !== undefined) {
-            // We've registered a player, so show the quest and battle buttons
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 220, 90, 'New Quest', 14, () => {
-                this.scene.remove('BiomeSelectMenu');
-                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, true, state));
-                this.scene.start('BiomeSelectMenu');
-            }));
-            this.buttons.push(new Button(this, GAME_WIDTH / 2 + 220 + 16, GAME_HEIGHT * 0.15, 220, 90, 'New Battle', 14, () => {
+            // Main menu buttons in vertical column with proper spacing
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
                 this.scene.remove('BiomeSelectMenu');
                 this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
                 this.scene.start('BiomeSelectMenu');
             }));
-            this.buttons.push(new Button(this, GAME_WIDTH / 2 - 220 - 16, GAME_HEIGHT * 0.15, 220, 90, 'Shop', 14, () => {
+            
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
+                this.scene.remove('QuestsMenu');
+                this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
+                this.scene.start('QuestsMenu');
+            }));
+            
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
-                
             }));
-
-            let offset = 0;
-            for (const [id, quest] of state.quests) {
-                logger.gameState.debug(`got quest: ${id}`);
-                const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.38 + 112 * offset, 480, 96, this.questStr(quest), 10, () => {
-                    this.scene.remove('QuestMenu');
-                    this.scene.add('QuestMenu', new QuestMenu(this.api!, id));
-                    this.scene.start('QuestMenu');
-                });
-                offset += 1;
-                this.buttons.push(button);
-            }
             this.goldLabel?.setVisible(true);
             this.goldText?.setVisible(true);
             this.goldText?.setText(`${state.player.gold}`);

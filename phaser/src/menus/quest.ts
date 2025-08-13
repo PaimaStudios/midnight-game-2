@@ -6,12 +6,10 @@
  *       check this in the main menu as well
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { BattleRewards } from "game2-contract";
 import { Subscription } from "rxjs";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
+import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { TestMenu } from "./main";
 import { Button } from "../widgets/button";
-import { AbilityWidget } from "../widgets/ability";
 import { Loader } from "./loader";
 import { ActiveBattle } from "./battle";
 
