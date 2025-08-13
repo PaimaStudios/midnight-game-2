@@ -217,7 +217,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 .map((id) => this.inactiveAbilityPanel?.getChildren().find((c) => pureCircuits.derive_ability_id(getAbility(c)) == id))
                 .filter((c) => c != undefined);
             logger.ui.info(`Loaded ${children.length} / ${ids.length} abilities from '${key}'`);
-            children.forEach((c) => this.inactiveAbilityPanel?.moveChildTo(c, this.activeAbilityPanel!));
+            children.forEach((c) => this.transferAbilityBetweenPanels(c as Phaser.GameObjects.Container));
         }
     }
 
