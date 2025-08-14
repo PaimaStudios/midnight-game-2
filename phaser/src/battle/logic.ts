@@ -1,5 +1,5 @@
 import { Game2DerivedState } from "game2-api";
-import { Ability, BattleRewards, Effect, EFFECT_TYPE, ENEMY_TYPE, pureCircuits } from "game2-contract";
+import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits } from "game2-contract";
 import { safeJSONString, logger } from '../main';
 
 export type CombatCallbacks = {
@@ -83,7 +83,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 // TODO how to determine rewards?
                 let abilityReward = { is_some: false, value: BigInt(0) };
                 for (let i = 0; i < battleConfig.enemy_count; ++i) {
-                    if (battleConfig.stats[i].enemy_type != ENEMY_TYPE.normal) {
+                    if (battleConfig.stats[i].boss_type != BOSS_TYPE.normal) {
                         const ability = generateRandomAbility(BigInt(2));
                         const abilityId = pureCircuits.derive_ability_id(ability);
                         // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract

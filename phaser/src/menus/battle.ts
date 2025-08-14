@@ -4,7 +4,7 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
-import { Ability, BattleConfig, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, EFFECT_TYPE, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
@@ -369,6 +369,18 @@ export class ActiveBattle extends Phaser.Scene {
 
 }
 
+const ENEMY_TEXTURES = [
+    'enemy-goblin',
+    'enemy-fire-sprite',
+    'enemy-ice-golem',
+    'enemy-snowman'
+];
+
+const BOSS_TEXTURES = [
+    'enemy-boss-dragon',
+    'enemy-boss-enigma'
+];
+
 class Actor extends Phaser.GameObjects.Container {
     hp: number;
     maxHp: number;
@@ -389,23 +401,9 @@ class Actor extends Phaser.GameObjects.Container {
         let healthbarWidth = 180;
         if (stats != null) {
             // TODO: replace this with other measures? how should we decide this? for now this works though
-            let texture = 'enemy-goblin';
-            if (stats.fire_def > stats.physical_def && stats.fire_def > stats.ice_def) {
-                texture = 'enemy-fire-sprite';
-            } else if (stats.ice_def > stats.physical_def && stats.ice_def > stats.physical_def) {
-                texture = stats.block > stats.attack ? 'enemy-ice-golem' : 'enemy-snowman';
-            }
-            if (stats.enemy_type == ENEMY_TYPE.boss) {
-                switch (Number((scene as ActiveBattle).battle.biome)) {
-                    case BIOME_ID.cave:
-                    case BIOME_ID.grasslands:
-                        texture = 'enemy-boss-dragon';
-                        break;
-                    case BIOME_ID.desert:
-                    case BIOME_ID.tundra:
-                        texture = 'enemy-boss-enigma';
-                        break;
-                }
+            let texture = ENEMY_TEXTURES[Math.min(ENEMY_TEXTURES.length - 1, Number(stats.enemy_type))];
+            if (stats.boss_type == BOSS_TYPE.boss) {
+                texture = BOSS_TEXTURES[Math.min(BOSS_TEXTURES.length - 1, Number(stats.enemy_type))];
                 
                 healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
@@ -424,11 +422,11 @@ class Actor extends Phaser.GameObjects.Container {
                 healtBarYOffset -= this.image.height * 1.5 + 22;
                 this.add(this.image);
             }
-            switch (stats.enemy_type) {
-                case ENEMY_TYPE.miniboss:
+            switch (stats.boss_type) {
+                case BOSS_TYPE.miniboss:
                     healthbarWidth = GAME_WIDTH * 0.5;
                     break;
-                case ENEMY_TYPE.boss:
+                case BOSS_TYPE.boss:
                     healthbarWidth = GAME_WIDTH * 0.75;
                     break;
             }

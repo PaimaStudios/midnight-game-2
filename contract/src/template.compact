@@ -31,14 +31,16 @@ export struct Ability {
     generate_color: Maybe<Uint<0..2>>,
 }
 
-export enum ENEMY_TYPE {
+export enum BOSS_TYPE {
     normal,
     miniboss,
     boss,
 }
 
 export struct EnemyStats {
-    enemy_type: ENEMY_TYPE,
+    boss_type: BOSS_TYPE,
+    /// Visual indication of what the enemy should be
+    enemy_type: Uint<32>,
     hp: Uint<32>,
     // TODO: do we need a more complicated system or is this okay?
     attack: Uint<32>,
@@ -283,7 +285,7 @@ export circuit sell_ability(ability: Ability): [] {
 }
 
 pure circuit filler_enemy_stats(): EnemyStats {
-    return EnemyStats { ENEMY_TYPE.normal, 0, 0, 0, 0, 0, 0 };
+    return EnemyStats { BOSS_TYPE.normal, 0, 0, 0, 0, 0, 0, 0 };
 }
 
 export circuit start_new_quest(loadout: PlayerLoadout, biome: Uint<32>, difficulty: Field): Field {
@@ -293,7 +295,7 @@ export circuit start_new_quest(loadout: PlayerLoadout, biome: Uint<32>, difficul
     const battle_config = BattleConfig {
         biome,
         [
-            EnemyStats { ENEMY_TYPE.boss, 150, 20, 15, 5, 5, 5 },
+            EnemyStats { BOSS_TYPE.boss, 0, 150, 20, 15, 5, 5, 5 },
             filler_enemy_stats(),
             filler_enemy_stats(),
         ],
@@ -345,9 +347,9 @@ export circuit start_new_battle(loadout: PlayerLoadout, biome: Uint<32>): Battle
     const battle = BattleConfig {
         biome,
         [
-            EnemyStats { ENEMY_TYPE.normal, 30, 5, 0, 8, 5, 3 },
-            EnemyStats { ENEMY_TYPE.normal, 25, 3, 2, 3, 8, 5 },
-            EnemyStats { ENEMY_TYPE.normal, 15, 4, 4, 5, 3, 8 }
+            EnemyStats { BOSS_TYPE.normal, 0, 30, 5, 0, 8, 5, 3 },
+            EnemyStats { BOSS_TYPE.normal, 1, 25, 3, 2, 3, 8, 5 },
+            EnemyStats { BOSS_TYPE.normal, 2, 15, 4, 4, 5, 3, 8 }
         ],
         3,
         player_pub_key,
@@ -444,7 +446,7 @@ export circuit combat_round(/*loadout: PlayerLoadout, */battle_id: Field): Maybe
         return_loadout(loadout);
         
         // TODO: properly determine rewards
-        if (config.stats[0].enemy_type != ENEMY_TYPE.normal || (config.enemy_count >= 2 && config.stats[1].enemy_type != ENEMY_TYPE.normal) || (config.enemy_count >= 3 && config.stats[2].enemy_type != ENEMY_TYPE.normal)) {
+        if (config.stats[0].boss_type != BOSS_TYPE.normal || (config.enemy_count >= 2 && config.stats[1].boss_type != BOSS_TYPE.normal) || (config.enemy_count >= 3 && config.stats[2].boss_type != BOSS_TYPE.normal)) {
             const reward_ability = random_ability(2);//quest.difficulty);
 
             player_abilities.lookup(player_pub_key).insert(reward_ability, (player_abilities.lookup(player_pub_key).lookup(reward_ability) + 1) as Uint<32>);
