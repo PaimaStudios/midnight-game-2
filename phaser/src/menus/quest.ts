@@ -106,7 +106,7 @@ export class QuestMenu extends Phaser.Scene {
         // Create summoning tablets and spirit widgets
         for (let i = 0; i < MAX_ABILITIES; ++i) {
             const x = 61 + (i * 0.98 * GAME_WIDTH / MAX_ABILITIES);
-            const spiritY = GAME_HEIGHT * 0.25; // Moved up by ~50 pixels
+            const spiritY = GAME_HEIGHT * 0.25;
             const abilityY = GAME_HEIGHT * 0.50; // Position ability cards below spirits
 
             // Add summoning tablet background
