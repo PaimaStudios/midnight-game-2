@@ -92,7 +92,7 @@ export class QuestsMenu extends Phaser.Scene {
                 10, 
                 () => {
                     this.scene.remove('QuestMenu');
-                    this.scene.add('QuestMenu', new QuestMenu(this.api, id));
+                    this.scene.add('QuestMenu', new QuestMenu(this.api, id, this.state));
                     this.scene.start('QuestMenu');
                 }
             );
