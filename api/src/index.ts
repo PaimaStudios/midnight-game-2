@@ -113,6 +113,14 @@ export interface DeployedGame2API {
     start_new_quest: (loadout: PlayerLoadout, biome: bigint, difficulty: bigint) => Promise<bigint>;
 
     /**
+     * Check if a quest is ready to be finalized (without actually finalizing it)
+     * 
+     * @param quest_id Quest to check readiness for
+     * @returns True if quest is ready to be finalized, false otherwise
+     */
+    is_quest_ready: (quest_id: bigint) => Promise<boolean>;
+
+    /**
      * Attempt to finalize a quest (enter into the boss battle)
      * 
      * @param quest_id Quest to try to end
@@ -234,6 +242,20 @@ export class Game2API implements DeployedGame2API {
         this.logger?.trace({
             transactionAdded: {
                 circuit: 'start_new_quest',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+
+        return txData.private.result;
+    }
+
+    async is_quest_ready(quest_id: bigint): Promise<boolean> {
+        const txData = await this.deployedContract.callTx.is_quest_ready(quest_id);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'is_quest_ready',
                 txHash: txData.public.txHash,
                 blockHeight: txData.public.blockHeight,
             },

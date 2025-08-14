@@ -24,10 +24,12 @@ export class MockGame2API implements DeployedGame2API {
     subscriber: Subscriber<Game2DerivedState> | undefined;
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
+    questStartTimes: Map<bigint, number>;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
+        this.questStartTimes = new Map();
         this.state$ = new Observable<Game2DerivedState>((subscriber) => {
             this.subscriber = subscriber;
         });
@@ -183,16 +185,30 @@ export class MockGame2API implements DeployedGame2API {
             };
             const questId = pureCircuits.derive_quest_id(quest);
             this.mockState.quests.set(questId, quest);
-            // Set initial quest readiness randomly, but consistently for this quest
-            this.questReadiness.set(questId, Math.random() > 0.5);
+            // Quest starts not ready, record start time
+            this.questReadiness.set(questId, false);
+            this.questStartTimes.set(questId, Date.now());
             return questId;
         });
     }
 
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
         return this.response(() => {
-            // Return consistent readiness for this quest
-            return this.questReadiness.get(quest_id) ?? false;
+            // Check if already marked as ready
+            let isReady = this.questReadiness.get(quest_id) ?? false;
+            
+            if (!isReady) {
+                // Check if 5 seconds have passed since quest creation
+                const TIME_TO_WAIT = 5000; // 5 seconds
+                const startTime = this.questStartTimes.get(quest_id);
+                if (startTime && (Date.now() - startTime) >= TIME_TO_WAIT) {
+                    // Mark as ready and keep it ready
+                    this.questReadiness.set(quest_id, true);
+                    isReady = true;
+                }
+            }
+            
+            return isReady;
         });
     }
 
@@ -203,6 +219,7 @@ export class MockGame2API implements DeployedGame2API {
                 const quest = this.mockState.quests.get(quest_id)!;
                 this.mockState.quests.delete(quest_id);
                 this.questReadiness.delete(quest_id);
+                this.questStartTimes.delete(quest_id);
 
                 const battleId = pureCircuits.derive_battle_id(quest.battle_config);
 

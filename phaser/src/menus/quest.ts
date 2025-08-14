@@ -16,6 +16,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { SpiritWidget, AbilityWidget } from "../widgets/ability";
 import { QuestsMenu } from "./quests";
 import { fontStyle } from "../main";
+import { Color } from "../constants/colors";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -48,6 +49,11 @@ export class QuestMenu extends Phaser.Scene {
     create() {
         logger.gameState.info(`Viewing quest ${this.questId}`);
         logger.gameState.info(`QuestMenu.create() called, initializing with existing state...`);
+        
+        // Show loader while checking quest status
+        this.scene.pause().launch('Loader');
+        const loader = this.scene.get('Loader') as Loader;
+        loader.setText("Checking quest status...");
         
         // Initialize with the state we already have
         this.onStateChange(this.state);
@@ -104,7 +110,7 @@ export class QuestMenu extends Phaser.Scene {
             const abilityY = GAME_HEIGHT * 0.50; // Position ability cards below spirits
 
             // Add summoning tablet background
-            this.summoningTablets.push(addScaledImage(this, x, spiritY, 'tablet-round').setDepth(1));
+            this.summoningTablets.push(addScaledImage(this, x, spiritY-5, 'tablet-round').setDepth(1));
 
             // Get ability from state
             const abilityId = abilities[i];
@@ -124,14 +130,15 @@ export class QuestMenu extends Phaser.Scene {
 
     private createQuestUI(state: Game2DerivedState) {
         // Status text
-        this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.72, '', fontStyle(16))
-            .setOrigin(0.5, 0.5);
+        this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.73, '', fontStyle(12))
+            .setOrigin(0.5, 0.5)
+            .setStroke(Color.Licorice, 10); // Black border, 10px width
 
         // Back button
         this.backButton = new Button(
             this,
             GAME_WIDTH * 0.3,
-            GAME_HEIGHT * 0.85,
+            GAME_HEIGHT * 0.9,
             200,
             50,
             'Back',
@@ -147,7 +154,7 @@ export class QuestMenu extends Phaser.Scene {
         this.initiateButton = new Button(
             this,
             GAME_WIDTH * 0.7,
-            GAME_HEIGHT * 0.85,
+            GAME_HEIGHT * 0.9,
             200,
             50,
             'Fight Boss',
@@ -172,6 +179,9 @@ export class QuestMenu extends Phaser.Scene {
         }
 
         this.api.is_quest_ready(this.questId).then((isReady) => {
+            // Hide loader once we have the result
+            this.scene.resume().stop('Loader');
+            
             if (isReady) {
                 this.statusText!.setText('Quest completed! Ready to fight the boss.');
                 this.initiateButton!.setEnabled(true);
@@ -182,6 +192,9 @@ export class QuestMenu extends Phaser.Scene {
                 this.initiateButton!.setAlpha(0.5);
             }
         }).catch((err) => {
+            // Hide loader on error too
+            this.scene.resume().stop('Loader');
+            
             logger.network.error(`Error checking quest readiness: ${err}`);
             this.statusText!.setText('Error checking quest status. Try again later.');
             this.initiateButton!.setEnabled(false);
