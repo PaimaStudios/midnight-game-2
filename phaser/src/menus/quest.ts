@@ -171,11 +171,22 @@ export class QuestMenu extends Phaser.Scene {
             return;
         }
 
-        // For now, assume all existing quests are ready to be finalized
-        // We can't check without actually finalizing the quest
-        this.statusText.setText('Quest completed! Ready to fight the boss.');
-        this.initiateButton.setEnabled(true);
-        this.initiateButton.setAlpha(1.0);
+        this.api.is_quest_ready(this.questId).then((isReady) => {
+            if (isReady) {
+                this.statusText!.setText('Quest completed! Ready to fight the boss.');
+                this.initiateButton!.setEnabled(true);
+                this.initiateButton!.setAlpha(1.0);
+            } else {
+                this.statusText!.setText('Quest in progress... Check back later.');
+                this.initiateButton!.setEnabled(false);
+                this.initiateButton!.setAlpha(0.5);
+            }
+        }).catch((err) => {
+            logger.network.error(`Error checking quest readiness: ${err}`);
+            this.statusText!.setText('Error checking quest status. Try again later.');
+            this.initiateButton!.setEnabled(false);
+            this.initiateButton!.setAlpha(0.5);
+        });
     }
 
     private initiateQuest(state: Game2DerivedState) {

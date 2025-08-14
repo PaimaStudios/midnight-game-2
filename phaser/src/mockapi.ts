@@ -23,9 +23,11 @@ export class MockGame2API implements DeployedGame2API {
     readonly state$: Observable<Game2DerivedState>;
     subscriber: Subscriber<Game2DerivedState> | undefined;
     mockState: Game2DerivedState;
+    questReadiness: Map<bigint, boolean>;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
+        this.questReadiness = new Map();
         this.state$ = new Observable<Game2DerivedState>((subscriber) => {
             this.subscriber = subscriber;
         });
@@ -181,15 +183,26 @@ export class MockGame2API implements DeployedGame2API {
             };
             const questId = pureCircuits.derive_quest_id(quest);
             this.mockState.quests.set(questId, quest);
+            // Set initial quest readiness randomly, but consistently for this quest
+            this.questReadiness.set(questId, Math.random() > 0.5);
             return questId;
+        });
+    }
+
+    public is_quest_ready(quest_id: bigint): Promise<boolean> {
+        return this.response(() => {
+            // Return consistent readiness for this quest
+            return this.questReadiness.get(quest_id) ?? false;
         });
     }
 
     public finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
         return this.response(() => {
-            if (Math.random() > 0.5) {
+            // Use the stored readiness state instead of new random
+            if (this.questReadiness.get(quest_id) ?? false) {
                 const quest = this.mockState.quests.get(quest_id)!;
                 this.mockState.quests.delete(quest_id);
+                this.questReadiness.delete(quest_id);
 
                 const battleId = pureCircuits.derive_battle_id(quest.battle_config);
 
