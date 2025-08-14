@@ -317,9 +317,9 @@ circuit random_ability(difficulty: Field): Field {
 }
 
 /**
- * Attempt to finalize a quest (enter into the boss battle)
+ * Check if a quest is ready to be finalized (i.e. the player can enter the boss battle)
  * 
- * @returns The battle ID of the resulting boss battle, or none if quest not ready yet
+ * @returns a boolean indicating if the quest is ready
  */
 export circuit is_quest_ready(quest_id: Field): Boolean {
     const quest = quests.lookup(quest_id);
@@ -333,6 +333,11 @@ export circuit is_quest_ready(quest_id: Field): Boolean {
     return true;
 }
 
+/**
+ * Attempt to finalize a quest (enter into the boss battle)
+ * 
+ * @returns The battle ID of the resulting boss battle, or none if quest not ready yet
+ */
 export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     const quest = quests.lookup(quest_id);
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
