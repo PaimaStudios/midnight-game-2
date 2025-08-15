@@ -6,7 +6,7 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, ENEMY_TYPE, EnemyStats, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, EnemyStats, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic, generateRandomAbility, randIntBetween } from "./battle/logic";
 import { safeJSONString, logger } from "./main";
@@ -80,14 +80,26 @@ export class MockGame2API implements DeployedGame2API {
             const enemies = randIntBetween(rng, 0, 1, 3);
             // for the demo we'll randomize these here in a straightforward way. once bytes indexing we'll need to do this consistently with the contract
             const randomEnemy = (index: number): EnemyStats => {
+                const attack =  BigInt(randIntBetween(rng, index, 10 - enemies * 2, 20 - enemies * 4));
+                const block = BigInt(randIntBetween(rng, index, 0, 10));
+                const physical_def = BigInt(randIntBetween(rng, index, 4, 7) + biomeBiases[Number(biome)][0]);
+                const fire_def = BigInt(randIntBetween(rng, index + 100, 4, 7) + biomeBiases[Number(biome)][1]);
+                const ice_def = BigInt(randIntBetween(rng, index + 200, 4, 7) + biomeBiases[Number(biome)][2]);
+                let enemy_type = 0;
+                if (fire_def > physical_def && fire_def > ice_def) {
+                    enemy_type = 1;
+                } else if (ice_def > physical_def && ice_def > physical_def) {
+                    enemy_type = block > attack ? 2 : 3;
+                }
                 return {
-                    enemy_type: ENEMY_TYPE.normal,
+                    boss_type: BOSS_TYPE.normal,
+                    enemy_type: BigInt(enemy_type),
                     hp: BigInt(randIntBetween(rng, index, 70, 80) - enemies * 10),
-                    attack: BigInt(randIntBetween(rng, index, 10 - enemies * 2, 20 - enemies * 4)),
-                    block: BigInt(randIntBetween(rng, index, 0, 10)),
-                    physical_def: BigInt(randIntBetween(rng, index, 4, 7) + biomeBiases[Number(biome)][0]),
-                    fire_def: BigInt(randIntBetween(rng, index + 100, 4, 7) + biomeBiases[Number(biome)][1]),
-                    ice_def: BigInt(randIntBetween(rng, index + 200, 4, 7) + biomeBiases[Number(biome)][2]),
+                    attack,
+                    block,
+                    physical_def,
+                    fire_def,
+                    ice_def,
                 }
             };
             const battle = {
@@ -150,10 +162,10 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
         return this.response(() => {
-            const noEnemy = { enemy_type: ENEMY_TYPE.normal, hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) };
+            const noEnemy = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) };
             let boss = noEnemy;
-            const dragon = { enemy_type: ENEMY_TYPE.boss, hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(5), fire_def: BigInt(7), ice_def: BigInt(3) };
-            const enigma = { enemy_type: ENEMY_TYPE.boss, hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(8), fire_def: BigInt(5), ice_def: BigInt(5) };
+            const dragon = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(5), fire_def: BigInt(7), ice_def: BigInt(3) };
+            const enigma = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(8), fire_def: BigInt(5), ice_def: BigInt(5) };
             switch (Number(biome)) {
                 case BIOME_ID.grasslands:
                 case BIOME_ID.cave:
