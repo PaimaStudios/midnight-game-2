@@ -319,6 +319,23 @@ circuit random_ability(difficulty: Field): Field {
 }
 
 /**
+ * Check if a quest is ready to be finalized (i.e. the player can enter the boss battle)
+ * 
+ * @returns a boolean indicating if the quest is ready
+ */
+export circuit is_quest_ready(quest_id: Field): Boolean {
+    const quest = quests.lookup(quest_id);
+    const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
+    
+    assert quest.battle_config.player_pub_key == player_pub_key "Player auth failed";
+
+    // TODO: check block height here - for now always return true
+    // In the future, this would check if enough time has passed based on block height
+    
+    return true;
+}
+
+/**
  * Attempt to finalize a quest (enter into the boss battle)
  * 
  * @returns The battle ID of the resulting boss battle, or none if quest not ready yet
