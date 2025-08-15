@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "compact": "npm run gen && run-compactc src/game2.compact ./src/managed/game2",
+    "compact": "npm run gen && compact compile src/game2.compact ./src/managed/game2",
     "test": "jest --passWithNoTests",
     "prepack": "yarn build",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp ./src/game2.compact ./dist",

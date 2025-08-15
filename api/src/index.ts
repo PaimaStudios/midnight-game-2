@@ -175,12 +175,12 @@ export class Game2API implements DeployedGame2API {
             (ledgerState, privateState) => {
                 const playerId = pureCircuits.derive_player_pub_key(privateState.secretKey);
                 return {
-                  activeBattleConfigs: new Map(ledgerState.activeBattleConfigs),
-                  activeBattleStates: new Map(ledgerState.activeBattleStates),
+                  activeBattleConfigs: new Map(ledgerState.active_battle_configs),
+                  activeBattleStates: new Map(ledgerState.active_battle_states),
                   quests: new Map(ledgerState.quests),
                   player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
-                  playerAbilities: new Map(ledgerState.playerAbilities.member(playerId) ? ledgerState.playerAbilities.lookup(playerId) : []),
-                  allAbilities: new Map(ledgerState.allAbilities),
+                  playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
+                  allAbilities: new Map(ledgerState.all_abilities),
                 };
             },
         );
