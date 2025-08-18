@@ -25,7 +25,7 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: num
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2, attackFrames: [2] },
-    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7, 8, 9] },
+    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7] },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6, attackFrames: [6, 7, 8, 9] },
 };
 
