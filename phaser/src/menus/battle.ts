@@ -404,7 +404,7 @@ class Actor extends Phaser.GameObjects.Container {
             let texture = ENEMY_TEXTURES[Math.min(ENEMY_TEXTURES.length - 1, Number(stats.enemy_type))];
             if (stats.boss_type == BOSS_TYPE.boss) {
                 texture = BOSS_TEXTURES[Math.min(BOSS_TEXTURES.length - 1, Number(stats.enemy_type))];
-                
+
                 healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
             

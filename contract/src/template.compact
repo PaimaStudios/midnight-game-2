@@ -325,10 +325,10 @@ circuit random_ability(difficulty: Field): Field {
  * @returns a boolean indicating if the quest is ready
  */
 export circuit is_quest_ready(quest_id: Field): Boolean {
-    const quest = quests.lookup(quest_id);
+    const quest = quests.lookup(disclose(quest_id));
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     
-    assert quest.battle_config.player_pub_key == player_pub_key "Player auth failed";
+    assert(quest.battle_config.player_pub_key == player_pub_key, "Player auth failed");
 
     // TODO: check block height here - for now always return true
     // In the future, this would check if enough time has passed based on block height

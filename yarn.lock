@@ -1088,18 +1088,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact@workspace:*, @midnight-ntwrk/compact@workspace:compact":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/compact@workspace:compact"
-  dependencies:
-    eslint: "npm:^8.52.0"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.2.2"
-  bin:
-    run-compactc: src/run-compactc.cjs
-  languageName: unknown
-  linkType: soft
-
 "@midnight-ntwrk/dapp-connector-api@npm:^3.0.0":
   version: 3.0.0
   resolution: "@midnight-ntwrk/dapp-connector-api@npm:3.0.0"
@@ -4616,7 +4604,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "game2-contract@workspace:contract"
   dependencies:
-    "@midnight-ntwrk/compact": "workspace:*"
     "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
@@ -8802,7 +8789,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-node@npm:^10.9.1, ts-node@npm:^10.9.2":
+"ts-node@npm:^10.9.1":
   version: 10.9.2
   resolution: "ts-node@npm:10.9.2"
   dependencies:
