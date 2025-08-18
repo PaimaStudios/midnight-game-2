@@ -155,7 +155,7 @@ export class QuestMenu extends Phaser.Scene {
             this,
             GAME_WIDTH * 0.7,
             GAME_HEIGHT * 0.9,
-            200,
+            220,
             50,
             'Fight Boss',
             14,
