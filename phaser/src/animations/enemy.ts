@@ -20,13 +20,13 @@ export enum SPRITE_SHEET_ENEMIES {
 }
 
 // Configuration for enemy frame counts
-const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number }> = {
-    [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2 },
-    [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2 },
-    [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2 },
-    [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2 },
-    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6 },
-    [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6 },
+const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: number[] }> = {
+    [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7, 8, 9] },
+    [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6, attackFrames: [6, 7, 8, 9] },
 };
 
 const defaultFameConfig = { idleFrames: 2 };
@@ -57,7 +57,7 @@ export function createEnemyAnimations(scene: Phaser.Scene): void {
         // Create attack animation
         scene.anims.create({
             key: `${enemyType}-attack`, 
-            frames: [{ frame: 2, key: textureKey }],
+            frames: frameConfig.attackFrames.map((i) => { return { frame: i, key: textureKey }; }),
             repeat: 0,
             duration: ENEMY_ANIMATION_DURATIONS.attack
         });
