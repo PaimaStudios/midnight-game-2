@@ -481,7 +481,8 @@ class Actor extends Phaser.GameObjects.Container {
     }
 
     private setHp(hp: number) {
-        this.hp = Math.max(0, hp); this.hpBar.setValue(this.hp);
+        this.hp = Math.max(0, hp);
+        this.hpBar.setValue(this.hp);
         if (this.hp <= 0) {
             // do we do anything here?
             this.image?.setAlpha(0.5);
