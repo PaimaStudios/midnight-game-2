@@ -4,12 +4,12 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
-import { Ability, BattleConfig, EFFECT_TYPE, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, EFFECT_TYPE, BOSS_TYPE, EnemyStats, pureCircuits, BattleRewards, Effect } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
 import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
-import { combat_round_logic } from "../battle/logic";
+import { CombatCallbacks } from "../battle/logic";
 import { Loader } from "./loader";
 import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { colorToNumber } from "../constants/colors";
@@ -33,6 +33,11 @@ const spiritX = (spiritIndex: number): number => {
 }
 const spiritY = () => GAME_HEIGHT * 0.5;
 
+enum BattlePhase {
+    SPIRIT_TARGETING,
+    COMBAT_ANIMATION
+}
+
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
@@ -42,6 +47,12 @@ export class ActiveBattle extends Phaser.Scene {
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
     spirits: SpiritWidget[];
+    
+    // Spirit targeting state
+    private battlePhase: BattlePhase = BattlePhase.SPIRIT_TARGETING;
+    private currentSpiritIndex: number = 0;
+    private spiritTargets: (number | null)[] = [null, null, null];
+    private fightButton: Button | null = null;
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
@@ -72,299 +83,696 @@ export class ActiveBattle extends Phaser.Scene {
             this.enemies.push(actor);
         }
 
-        // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.80, 250, 48, this.getAttackButtonString(this.battle), 10, async () => {
-            const id = pureCircuits.derive_battle_id(this.battle);
-            const clonedState = structuredClone(this.state!);
-            let apiDone = false;
-            let loaderStarted = false;
-
-            button.visible = false;
-            
-            const retryCombatRound = async (): Promise<any> => {
-                try {
-                    const result = await this.api.combat_round(id);
-                    apiDone = true;
-                    if (loaderStarted) {
-                        this.scene.resume().stop('Loader');
-                    }
-                    return result;
-                } catch (err) {
-                    if (loaderStarted) {
-                        loader.setText("Error connecting to network.. Retrying");
-                    }
-                    logger.network.error(`Network Error during combat_round: ${err}`);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    return retryCombatRound();
-                }
-            };
-            const apiPromise = retryCombatRound();
-            
-            const uiPromise = combat_round_logic(id, clonedState, {
-                onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
-                    logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
-                    this.enemies[enemy].addBlock(amount);
-                    this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
-                }),
-                onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    // Play enemy attack animation
-                    this.enemies[enemy].performAttackAnimation().then(() => {
-                        const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
-                        this.tweens.add({
-                            targets: fist,
-                            x: playerX(),
-                            y: playerY(),
-                            duration: 100,
-                            onComplete: () => {
-                                fist.destroy();
-                                this.player?.damage(amount);
-                                this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
-                            }
-                        });
-                    });
-                }),
-                onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
-                    logger.combat.debug(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
-                    let damageType = undefined;
-                    switch (effectType) {
-                        case EFFECT_TYPE.attack_fire:
-                            damageType = 'fire';
-                            break;
-                        case EFFECT_TYPE.attack_ice:
-                            damageType = 'ice';
-                            break;
-                        case EFFECT_TYPE.attack_phys:
-                            damageType = 'physical';
-                            break;
-                        case EFFECT_TYPE.block:
-                            this.player?.addBlock(amounts[0]);
-                            break;
-                    }
-                    if (damageType != undefined) {
-                        for (let i = 0; i < targets.length; ++i) {
-                            const target = targets[i];
-                            const amount = amounts[i];
-                            const bullet = addScaledImage(this, spiritX(source), spiritY(), damageType);
-                            this.tweens.add({
-                                targets: bullet,
-                                x: enemyX(this.battle, target),
-                                y: enemyY(),
-                                duration: 150,
-                                onComplete: () => {
-                                    //logger.combat.debug(`enemy ${target} took ${effect.amount} damage`);
-                                    this.enemies[target].damage(amount);
-                                    // Play damage animation
-                                    this.enemies[target].takeDamageAnimation();
-                                    this.add.existing(new BattleEffect(this, bullet.x, bullet.y - 32, effectType, amount, resolve));
-                                    bullet.destroy();
-                                },
-                            });
-                        }
-                    } else {
-                        // TODO: why was this here? in case we forgot to code something???
-                        this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amounts[0], resolve));
-                    }
-                }),
-                onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
-                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, spiritY(), ability).setAlpha(0));
-                    this.tweens.add({
-                        targets: [...this.abilityIcons, ...this.spirits],
-                        alpha: 1,
-                        duration: 500,
-                        onComplete: () => {
-                            resolve();
-                        },
-                    });
-                }),
-                onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                    const abilityIcon = this.abilityIcons[abilityIndex];
-                    const spirit = this.spirits[abilityIndex];
-                    
-                    // Play spirit attack animation
-                    if (spirit && spirit.spirit) {
-                        const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
-                        const attackAnimKey = `spirit-${spiritType}-attack`;
-                        const idleAnimKey = `spirit-${spiritType}`;
-                        if (this.anims.exists(attackAnimKey)) {
-                            spirit.spirit.anims.play(attackAnimKey);
-                            // Return to idle animation after attack duration
-                            this.time.delayedCall(1000, () => {
-                                if (spirit.spirit && this.anims.exists(idleAnimKey)) {
-                                    spirit.spirit.anims.play(idleAnimKey);
-                                }
-                            });
-                        }
-                    }
-                    
-                    this.tweens.add({
-                        targets: [abilityIcon/*, spirit*/],
-                        y: abilityInUseY(),
-                        delay: 150,
-                        duration: 250,
-                        onComplete: () => {
-                            const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
-                            this.tweens.add({
-                                // TODO: do something to the spirit too
-                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
-                                scale: 1.5,
-                                yoyo: true,
-                                delay: 100,
-                                duration: 200,
-                                onComplete: () => resolve(),
-                            });
-                        },
-                    });
-                    // shrink orb after use
-                    if (energy != undefined) {
-                        const orb = this.spirits[abilityIndex].orbs[energy]!;
-                        this.tweens.add({
-                            targets: orb,
-                            scale: 1,
-                            duration: 250,
-                        });
-                    }
-                }),
-                afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
-                    this.tweens.add({
-                        targets: [this.abilityIcons[abilityIndex]/*, this.spirits[abilityIndex]*/],
-                        y: abilityIdleY(),
-                        delay: 150,
-                        duration: 250,
-                        onComplete: () => {
-                            resolve();
-                        },
-                    });
-                }),
-                onEnergyTrigger: (source: number, color: number) => new Promise((resolve) => {
-                    const aura = this.spirits[source].aura!;
-                    const targets = [0, 1, 2]
-                        .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
-                    logger.animation.debug(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
-                    if (targets.length > 0) {
-                        logger.animation.debug(`[ENERGY-UI] charge!`);
-                        aura.anims.play(chargeAnimKey);
-                        this.tweens.add({
-                            targets: this,// ignored since it changes no properties, just to not crash
-                            delay: 250,
-                            duration: SPIRIT_ANIMATION_DURATIONS.charge,
-                            completeDelay: 350,
-                            onComplete: () => {
-                                logger.animation.debug(`[ENERGY-UI] ...charged...`);
-                                aura.anims.play(spiritAuraIdleKey);
-                                targets.forEach((a) => {
-                                    logger.animation.debug(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
-                                    const target = this.spirits[a];
-                                    const bullet = scale(this.add.sprite(spiritX(source), spiritY(), 'orb-aura'))
-                                        .setTint(colorToNumber(energyTypeToColor(color)));
-                                    bullet.anims.play(orbAuraIdleKey);
-                                    this.tweens.add({
-                                        targets: bullet,
-                                        delay: 100,
-                                        duration: 500, // TODO: vary based on distance?
-                                        // TODO; target orb instead and compute position it'll be in in 1100ms?
-                                        x: target.x,
-                                        onUpdate: (tween) => {
-                                            // sin-arcs over or below the other spirits (alternates so avoid overlap)
-                                            bullet.y = spiritY() + 32 * Math.sin((tween.progress + (source - a)) * Math.PI);
-                                        },
-                                        onComplete: () => {
-                                            logger.animation.debug(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
-                                            bullet.destroy();
-                                            resolve();
-                                            // grow orb to show it has been triggered
-                                            const orb = target.orbs[color]!;
-                                            this.tweens.add({
-                                                targets: orb,
-                                                scale: 1.5, // do we want 1.5 or 2x? 1.5 x base(2) is 3 so still whole-integer scalingi
-                                                duration: 500,
-                                            });
-                                        },
-                                    });
-                                });
-                            },
-                        });
-                    } else {
-                        resolve();
-                    }
-                }),
-                onEndOfRound: () => new Promise((resolve) => {
-                    this.enemies.forEach((enemy) => enemy.endOfRound());
-                    this.player?.endOfRound();
-                    // just resolve instantly, it's not a big deal if the game continues during the second or so the animations play
-                    resolve();
-                }),
-            }).then(result => {
-                if (!apiDone) {
-                    // Display the loading scene if the API call is not done yet
-                    loaderStarted = true;
-                    
-                    this.scene.pause().launch('Loader');
-                    loader.setText("Waiting on chain update");
-                }
-                return result;
-            });
-
-            // Wait for both API and UI to finish
-            const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
-
-            this.player?.setBlock(0);
-            for (const enemy of this.enemies) {
-                enemy.setBlock(0);
-            }
-            this.abilityIcons.forEach((a) => a.destroy());
-            this.abilityIcons = [];
-            this.spirits.forEach((s) => s.destroy());
-            this.spirits = [];
-            //logger.gameState.debug(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
-            //logger.gameState.debug(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
-            logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
-            // TODO: check consistency (either here or in onStateChange())
-            //
-            // TODO: move this out of here? it gets reset by onStateChange() and also results in an error:
-            //
-            //    Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'updatePenManager')
-            //       at BBCodeText.updateText (index-eba13966.js:322545:24)
-            //       at BBCodeText.setText (index-eba13966.js:322484:14)
-            //       at index-eba13966.js:393191:23
-            logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
-            logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
-            button.visible = true;
-            if (circuit != undefined) {
-                button.destroy();
-
-                const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.64, GAME_HEIGHT * 0.3, battleOverText, 16, () => {
-                    this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                    this.scene.start('TestMenu');
-                });
-                if (circuit.alive && circuit.ability.is_some) {
-                    new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, this.state?.allAbilities.get(circuit.ability.value)!);
-                    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
-                }
-            } else {
-                button.text.setText(this.getAttackButtonString(this.battle));
-            }
-        });
-    }
-
-    private getAttackButtonString(battle: BattleConfig): string {
-        const buttonDefaultText = `Click to Attack`;
-        if (this.state != undefined) {
-            logger.gameState.debug(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
-        } else {
-            logger.gameState.debug(`We dont have the state yet`);
-            return buttonDefaultText;
-        }
-        const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        return state != undefined ? buttonDefaultText : '404';
+        // Initialize spirits and start targeting immediately
+        this.initializeSpiritsForTargeting();
     }
 
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
+    }
+
+    private initializeSpiritsForTargeting() {
+        if (!this.state || !this.battle) return;
+        
+        const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
+        const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
+        
+        if (!battleConfig || !battleState) return;
+        
+        // Clean up existing spirits first
+        this.spirits.forEach((s) => s.destroy());
+        this.spirits = [];
+        
+        const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+        const abilities = abilityIds.map((id) => this.state!.allAbilities.get(id)!);
+        
+        // Create spirits immediately
+        this.spirits = abilities.map((ability, i) => new SpiritWidget(this, spiritX(i), spiritY(), ability));
+        
+        // Start targeting phase
+        this.startSpiritTargeting();
+    }
+
+    private startSpiritTargeting() {
+        this.battlePhase = BattlePhase.SPIRIT_TARGETING;
+        this.currentSpiritIndex = 0;
+        this.spiritTargets = [null, null, null];
+        
+        // Make spirits and enemies interactive
+        this.setupSpiritInteractions();
+        this.setupEnemyInteractions();
+        
+        // Highlight the current spirit
+        this.highlightCurrentSpirit();
+    }
+
+    private setupSpiritInteractions() {
+        this.spirits.forEach((spirit, index) => {
+            spirit.setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => this.selectSpirit(index));
+        });
+    }
+
+    private setupEnemyInteractions() {
+        this.enemies.forEach((enemy, index) => {
+            enemy.setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => this.targetEnemy(index))
+                .on('pointerover', () => {
+                    if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && enemy.hp > 0) {
+                        // Highlight enemy on hover
+                        if (enemy.sprite) {
+                            enemy.sprite.setTint(0x88ff88); // Light green tint
+                        } else if (enemy.image) {
+                            enemy.image.setTint(0x88ff88);
+                        }
+                    }
+                })
+                .on('pointerout', () => {
+                    // Remove highlight
+                    if (enemy.sprite) {
+                        enemy.sprite.clearTint();
+                    } else if (enemy.image) {
+                        enemy.image.clearTint();
+                    }
+                });
+        });
+    }
+
+    private selectSpirit(index: number) {
+        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
+        
+        this.currentSpiritIndex = index;
+        this.highlightCurrentSpirit();
+    }
+
+    private targetEnemy(enemyIndex: number) {
+        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
+        if (this.enemies[enemyIndex].hp <= 0) return; // Can't target dead enemies
+        
+        // Set target for current spirit
+        this.spiritTargets[this.currentSpiritIndex] = enemyIndex;
+        
+        // Move to next spirit that doesn't have a target
+        this.moveToNextUntagetedSpirit();
+        
+        // Check if all spirits have targets
+        this.checkAllSpiritsTargeted();
+    }
+
+    private moveToNextUntagetedSpirit() {
+        let nextIndex = (this.currentSpiritIndex + 1) % 3;
+        let attempts = 0;
+        
+        // Find next spirit without a target
+        while (this.spiritTargets[nextIndex] !== null && attempts < 3) {
+            nextIndex = (nextIndex + 1) % 3;
+            attempts++;
+        }
+        
+        if (attempts < 3) {
+            this.currentSpiritIndex = nextIndex;
+            this.highlightCurrentSpirit();
+        }
+    }
+
+    private highlightCurrentSpirit() {
+        // Remove existing highlights and reset positions
+        this.spirits.forEach((spirit, index) => {
+            this.tweens.killTweensOf(spirit);
+            if (spirit.spirit) {
+                spirit.spirit.clearTint();
+                spirit.spirit.setScale(2); // Reset to normal scale
+            }
+            // Move non-current spirits back
+            if (index !== this.currentSpiritIndex) {
+                this.tweens.add({
+                    targets: spirit,
+                    y: spiritY(),
+                    duration: 200,
+                    ease: 'Power2.easeOut'
+                });
+            }
+        });
+        
+        // Highlight and bring forward the current spirit
+        const currentSpirit = this.spirits[this.currentSpiritIndex];
+        if (currentSpirit && currentSpirit.spirit) {
+            // Yellow tint and larger scale
+            currentSpirit.spirit.setTint(0xffff00);
+            currentSpirit.spirit.setScale(2.5);
+            
+            // Move forward and up slightly
+            this.tweens.add({
+                targets: currentSpirit,
+                y: spiritY() - 30,
+                duration: 300,
+                ease: 'Back.easeOut'
+            });
+            
+            // Add a subtle pulsing animation
+            this.tweens.add({
+                targets: currentSpirit.spirit,
+                scaleX: 2.8,
+                scaleY: 2.8,
+                duration: 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+    }
+
+    private checkAllSpiritsTargeted() {
+        const allTargeted = this.spiritTargets.every(target => target !== null);
+        
+        if (allTargeted && !this.fightButton) {
+            this.createFightButton();
+        } else if (!allTargeted && this.fightButton) {
+            this.fightButton.destroy();
+            this.fightButton = null;
+        }
+    }
+
+    private createFightButton() {
+        this.fightButton = new Button(
+            this,
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * 0.90,
+            200,
+            48,
+            'Fight',
+            12,
+            () => this.executeCombatWithTargets()
+        );
+    }
+
+    private async executeCombatWithTargets() {
+        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
+        if (!this.spiritTargets.every(target => target !== null)) return;
+        
+        this.battlePhase = BattlePhase.COMBAT_ANIMATION;
+        
+        // Hide fight button and disable interactions
+        if (this.fightButton) {
+            this.fightButton.destroy();
+            this.fightButton = null;
+        }
+        
+        this.disableInteractions();
+        
+        // Execute combat round with selected targets
+        await this.runCombatWithTargets();
+    }
+
+    private disableInteractions() {
+        this.spirits.forEach(spirit => spirit.disableInteractive());
+        this.enemies.forEach(enemy => enemy.disableInteractive());
+        
+        // Remove spirit highlights and animations
+        this.spirits.forEach((spirit) => {
+            this.tweens.killTweensOf(spirit);
+            this.tweens.killTweensOf(spirit.spirit);
+            spirit.y = spiritY();
+            if (spirit.spirit) {
+                spirit.spirit.clearTint();
+                spirit.spirit.setScale(2); // Reset to normal scale
+            }
+        });
+    }
+
+    private resetSpiritTargeting() {
+        this.battlePhase = BattlePhase.SPIRIT_TARGETING;
+        this.currentSpiritIndex = 0;
+        this.spiritTargets = [null, null, null];
+        
+        if (this.fightButton) {
+            this.fightButton.destroy();
+            this.fightButton = null;
+        }
+        
+        this.disableInteractions();
+        
+        // Re-enable targeting for next round
+        if (this.spirits.length > 0) {
+            this.setupSpiritInteractions();
+            this.setupEnemyInteractions();
+            this.highlightCurrentSpirit();
+        }
+    }
+
+    private async runCombatWithTargets() {
+        const id = pureCircuits.derive_battle_id(this.battle);
+        const clonedState = structuredClone(this.state!);
+        let loaderStarted = false;
+        
+        const retryCombatRound = async (): Promise<any> => {
+            try {
+                // Use new combat_round_with_targets method when available
+                // For now, fall back to original method since contract needs to be updated
+                const result = await this.api.combat_round(id);
+                // TODO: Uncomment when contract is deployed with new method:
+                // const targets = this.spiritTargets.map(t => BigInt(t!)) as [bigint, bigint, bigint];
+                // const result = await this.api.combat_round_with_targets(id, targets);
+                if (loaderStarted) {
+                    this.scene.resume().stop('Loader');
+                }
+                return result;
+            } catch (err) {
+                if (loaderStarted) {
+                    const loader = this.scene.get('Loader') as Loader;
+                    loader.setText("Error connecting to network.. Retrying");
+                }
+                logger.network.error(`Network Error during combat_round: ${err}`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return retryCombatRound();
+            }
+        };
+        const apiPromise = retryCombatRound();
+        
+        // Modified combat logic to use selected targets
+        const uiPromise = this.runCombatLogicWithTargets(id, clonedState);
+        
+        // Wait for both API and UI to finish
+        const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
+        
+        // Reset for next round or end battle
+        this.handleCombatComplete(circuit, ui);
+    }
+
+    private runCombatLogicWithTargets(id: bigint, clonedState: Game2DerivedState) {
+        // Modify the combat logic to use our selected targets instead of random ones
+        return this.modifiedCombatRoundLogic(id, clonedState, this.spiritTargets as number[], {
+            onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
+                logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
+                this.enemies[enemy].addBlock(amount);
+                this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
+            }),
+            onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].performAttackAnimation().then(() => {
+                    const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
+                    this.tweens.add({
+                        targets: fist,
+                        x: playerX(),
+                        y: playerY(),
+                        duration: 100,
+                        onComplete: () => {
+                            fist.destroy();
+                            this.player?.damage(amount);
+                            this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
+                        }
+                    });
+                });
+            }),
+            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
+                logger.combat.debug(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
+                let damageType = undefined;
+                switch (effectType) {
+                    case EFFECT_TYPE.attack_fire:
+                        damageType = 'fire';
+                        break;
+                    case EFFECT_TYPE.attack_ice:
+                        damageType = 'ice';
+                        break;
+                    case EFFECT_TYPE.attack_phys:
+                        damageType = 'physical';
+                        break;
+                    case EFFECT_TYPE.block:
+                        this.player?.addBlock(amounts[0]);
+                        break;
+                }
+                if (damageType != undefined) {
+                    for (let i = 0; i < targets.length; ++i) {
+                        const target = targets[i];
+                        const amount = amounts[i];
+                        const bullet = addScaledImage(this, spiritX(source), spiritY(), damageType);
+                        this.tweens.add({
+                            targets: bullet,
+                            x: enemyX(this.battle, target),
+                            y: enemyY(),
+                            duration: 150,
+                            onComplete: () => {
+                                this.enemies[target].damage(amount);
+                                this.enemies[target].takeDamageAnimation();
+                                this.add.existing(new BattleEffect(this, bullet.x, bullet.y - 32, effectType, amount, resolve));
+                                bullet.destroy();
+                            },
+                        });
+                    }
+                } else {
+                    this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amounts[0], resolve));
+                }
+            }),
+            onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
+                this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                
+                // Only create spirits if they don't already exist (from targeting phase)
+                if (this.spirits.length === 0) {
+                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, spiritY(), ability).setAlpha(0));
+                } else {
+                    // Spirits already exist from targeting, just ensure they're positioned correctly and visible
+                    this.spirits.forEach((spirit, i) => {
+                        spirit.x = GAME_WIDTH * (i + 0.5) / abilities.length;
+                        spirit.y = spiritY();
+                        spirit.setAlpha(1);
+                    });
+                }
+                
+                this.tweens.add({
+                    targets: [...this.abilityIcons, ...this.spirits],
+                    alpha: 1,
+                    duration: 500,
+                    onComplete: () => {
+                        resolve();
+                    },
+                });
+            }),
+            onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
+                const abilityIcon = this.abilityIcons[abilityIndex];
+                const spirit = this.spirits[abilityIndex];
+                
+                if (spirit && spirit.spirit) {
+                    const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
+                    const attackAnimKey = `spirit-${spiritType}-attack`;
+                    const idleAnimKey = `spirit-${spiritType}`;
+                    if (this.anims.exists(attackAnimKey)) {
+                        spirit.spirit.anims.play(attackAnimKey);
+                        this.time.delayedCall(1000, () => {
+                            if (spirit.spirit && this.anims.exists(idleAnimKey)) {
+                                spirit.spirit.anims.play(idleAnimKey);
+                            }
+                        });
+                    }
+                }
+                
+                this.tweens.add({
+                    targets: [abilityIcon],
+                    y: abilityInUseY(),
+                    delay: 150,
+                    duration: 250,
+                    onComplete: () => {
+                        const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
+                        this.tweens.add({
+                            targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
+                            scale: 1.5,
+                            yoyo: true,
+                            delay: 100,
+                            duration: 200,
+                            onComplete: () => resolve(),
+                        });
+                    },
+                });
+                if (energy != undefined) {
+                    const orb = this.spirits[abilityIndex].orbs[energy]!;
+                    this.tweens.add({
+                        targets: orb,
+                        scale: 1,
+                        duration: 250,
+                    });
+                }
+            }),
+            afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
+                this.tweens.add({
+                    targets: [this.abilityIcons[abilityIndex]],
+                    y: abilityIdleY(),
+                    delay: 150,
+                    duration: 250,
+                    onComplete: () => {
+                        resolve();
+                    },
+                });
+            }),
+            onEnergyTrigger: (source: number, color: number) => new Promise((resolve) => {
+                const aura = this.spirits[source].aura!;
+                const targets = [0, 1, 2]
+                    .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
+                logger.animation.debug(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
+                if (targets.length > 0) {
+                    logger.animation.debug(`[ENERGY-UI] charge!`);
+                    aura.anims.play(chargeAnimKey);
+                    this.tweens.add({
+                        targets: this,
+                        delay: 250,
+                        duration: SPIRIT_ANIMATION_DURATIONS.charge,
+                        completeDelay: 350,
+                        onComplete: () => {
+                            logger.animation.debug(`[ENERGY-UI] ...charged...`);
+                            aura.anims.play(spiritAuraIdleKey);
+                            targets.forEach((a) => {
+                                logger.animation.debug(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
+                                const target = this.spirits[a];
+                                const bullet = scale(this.add.sprite(spiritX(source), spiritY(), 'orb-aura'))
+                                    .setTint(colorToNumber(energyTypeToColor(color)));
+                                bullet.anims.play(orbAuraIdleKey);
+                                this.tweens.add({
+                                    targets: bullet,
+                                    delay: 100,
+                                    duration: 500,
+                                    x: target.x,
+                                    onUpdate: (tween) => {
+                                        bullet.y = spiritY() + 32 * Math.sin((tween.progress + (source - a)) * Math.PI);
+                                    },
+                                    onComplete: () => {
+                                        logger.animation.debug(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
+                                        bullet.destroy();
+                                        resolve();
+                                        const orb = target.orbs[color]!;
+                                        this.tweens.add({
+                                            targets: orb,
+                                            scale: 1.5,
+                                            duration: 500,
+                                        });
+                                    },
+                                });
+                            });
+                        },
+                    });
+                } else {
+                    resolve();
+                }
+            }),
+            onEndOfRound: () => new Promise((resolve) => {
+                this.enemies.forEach((enemy) => enemy.endOfRound());
+                this.player?.endOfRound();
+                resolve();
+            }),
+        });
+    }
+
+    private handleCombatComplete(circuit: any, ui: any) {
+        this.player?.setBlock(0);
+        for (const enemy of this.enemies) {
+            enemy.setBlock(0);
+        }
+        this.abilityIcons.forEach((a) => a.destroy());
+        this.abilityIcons = [];
+        
+        logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
+        logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
+        logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
+        
+        if (circuit != undefined) {
+            // Battle is over, show end-of-battle screen
+            this.spirits.forEach((s) => s.destroy());
+            this.spirits = [];
+
+            const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
+            new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.64, GAME_HEIGHT * 0.3, battleOverText, 16, () => {
+                this.scene.remove('TestMenu');
+                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
+                this.scene.start('TestMenu');
+            });
+            if (circuit.alive && circuit.ability.is_some) {
+                new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, this.state?.allAbilities.get(circuit.ability.value)!);
+                this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+            }
+        } else {
+            // Battle continues, reset targeting state for next round
+            // First, refresh spirits for the new round (abilities might have changed)
+            this.refreshSpiritsForNextRound();
+            this.resetSpiritTargeting();
+        }
+    }
+
+    private refreshSpiritsForNextRound() {
+        if (!this.state || !this.battle) return;
+        
+        const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
+        const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
+        
+        if (!battleConfig || !battleState) return;
+        
+        // Clean up existing spirits
+        this.spirits.forEach((s) => s.destroy());
+        this.spirits = [];
+        
+        const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+        const abilities = abilityIds.map((id) => this.state!.allAbilities.get(id)!);
+        
+        // Create new spirits for the next round
+        this.spirits = abilities.map((ability, i) => new SpiritWidget(this, spiritX(i), spiritY(), ability));
+    }
+
+    /**
+     * Modified combat round logic that uses player-selected targets instead of random ones
+     */
+    private modifiedCombatRoundLogic(battle_id: bigint, gameState: Game2DerivedState, playerTargets: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
+        return new Promise(async (resolve) => {
+            logger.combat.debug(`modifiedCombatRoundLogic with targets: ${playerTargets}`);
+            const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
+            const battleState = gameState.activeBattleStates.get(battle_id)!;
+            
+            if (uiHooks != undefined) {
+                gameState.ui = true;
+            } else {
+                gameState.circuit = true;
+            }
+
+            const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+            const abilities = abilityIds.map((id) => gameState.allAbilities.get(id)!)
+
+            let player_block = BigInt(0);
+            const enemy_count = Number(battleConfig.enemy_count);
+            let player_damage = new Array(enemy_count).fill(BigInt(0));
+            let enemy_damage = BigInt(0);
+
+            const handleEndOfRound = () => {
+                logger.combat.debug(`handleEndOfRound.player_damage = ${player_damage}`);
+                uiHooks?.onEndOfRound();
+                if (enemy_damage > player_block) {
+                    battleState.player_hp -= enemy_damage - player_block;
+                }
+                if (player_damage[0] > battleConfig.stats[0].block) {
+                    battleState.enemy_hp_0 = BigInt(Math.max(0, Number(battleState.enemy_hp_0 + battleConfig.stats[0].block - player_damage[0])));
+                }
+                if (player_damage[1] > battleConfig.stats[1].block) {
+                    battleState.enemy_hp_1 = BigInt(Math.max(0, Number(battleState.enemy_hp_1 + battleConfig.stats[1].block - player_damage[1])));
+                }
+                if (player_damage[2] > battleConfig.stats[2].block) {
+                    battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
+                }
+                logger.combat.debug(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
+                if (battleState.player_hp <= 0) {
+                    logger.combat.info(`YOU DIED`);
+                    resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
+                }
+                else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || battleConfig.enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || battleConfig.enemy_count < 3)) {
+                    logger.combat.info(`YOU WON`);
+                    let abilityReward = { is_some: false, value: BigInt(0) };
+                    for (let i = 0; i < battleConfig.enemy_count; ++i) {
+                        if (battleConfig.stats[i].boss_type != BOSS_TYPE.normal) {
+                            // For UI, we don't generate random abilities - let the circuit handle rewards
+                            break;
+                        }
+                    }
+                    resolve({ alive: true, gold: BigInt(100), ability: abilityReward });
+                } else {
+                    logger.combat.info(`CONTINUE BATTLE`);
+                    resolve(undefined);
+                }
+            }
+
+            await uiHooks?.onDrawAbilities(abilities);
+
+            // Enemy block phase
+            let enemy_hp = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
+            for (let i = 0; i < battleConfig.enemy_count; ++i) {
+                if (enemy_hp[i] > 0) {
+                    const block = Number(battleConfig.stats[i].block);
+                    if (block != 0) {
+                        await uiHooks?.onEnemyBlock(i, block);
+                    }
+                }
+            }
+
+            const aliveTargets = new Array(Number(battleConfig.enemy_count))
+                .fill(0)
+                .map((_, i) => i)
+                .filter((i) => enemy_hp[i] > BigInt(0));
+
+            // Player abilities with selected targets
+            const resolveEffect = async (effect: { is_some: boolean, value: Effect }, source: number, target: number) => {
+                if (effect.is_some) {
+                    const targets = effect.value.is_aoe ? aliveTargets : [target];
+                    switch (effect.value.effect_type) {
+                        case EFFECT_TYPE.attack_fire:
+                        case EFFECT_TYPE.attack_ice:
+                        case EFFECT_TYPE.attack_phys:
+                            const amounts = targets.map((enemy) => {
+                                const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
+                                player_damage[enemy] += dmg;
+                                logger.combat.debug(`player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
+                                return Number(dmg)
+                            });
+                            await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
+                            break;
+                        case EFFECT_TYPE.block:
+                            await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, [Number(effect.value.amount)]);
+                            player_block += effect.value.amount;
+                            break;
+                    }
+                }
+            };
+
+            // Use player-selected targets, but validate they're alive
+            const targets = playerTargets.map((selectedTarget) => {
+                // If selected target is dead, fall back to first alive target
+                if (aliveTargets.includes(selectedTarget)) {
+                    return selectedTarget;
+                } else {
+                    return aliveTargets[0]; // Fallback to first alive enemy
+                }
+            });
+            
+            const allEnemiesDead = () => {
+                return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
+                                      && (player_damage[1] > battleConfig.stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
+                                      && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
+            };
+            
+            // Base effects with player-selected targets
+            for (let i = 0; i < abilities.length; ++i) {
+                const ability = abilities[i];
+                await uiHooks?.onUseAbility(i, undefined);
+                if (ability.generate_color.is_some) {
+                    await uiHooks?.onEnergyTrigger(i, Number(ability.generate_color.value));
+                }
+                await resolveEffect(ability.effect, i, targets[i]);
+                await uiHooks?.afterUseAbility(i);
+                if (allEnemiesDead()) {
+                    return handleEndOfRound();
+                }
+            }
+            
+            // Energy triggers - use the same targets as base effects
+            for (let i = 0; i < abilities.length; ++i) {
+                const ability = abilities[i];
+                for (let c = 0; c < 3; ++c) {
+                    if (ability.on_energy[c].is_some && abilities.some((a2, j) => i != j && a2.generate_color.is_some && Number(a2.generate_color.value) == c)) {
+                        await uiHooks?.onUseAbility(i, c);
+                        await resolveEffect(ability.on_energy[c], i, targets[i]); // Use same target as base effect
+                        await uiHooks?.afterUseAbility(i);
+                        if (allEnemiesDead()) {
+                            return handleEndOfRound();
+                        }
+                    }
+                }
+            }
+
+            // Enemy damage phase
+            for (let i = 0; i < battleConfig.enemy_count; ++i) {
+                if (enemy_hp[i] > 0) {
+                    const damage = battleConfig.stats[i].attack;
+                    enemy_damage += damage;
+                    if (Number(damage) != 0) {
+                        await uiHooks?.onEnemyAttack(i, Number(damage));
+                    }
+                }
+            }
+
+            handleEndOfRound();
+        });
     }
 
 }
