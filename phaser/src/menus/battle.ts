@@ -15,28 +15,22 @@ import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
 import { colorToNumber } from "../constants/colors";
 import { HealthBar } from "../widgets/progressBar";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
+import { SpiritTargetingManager, BattlePhase } from "../battle/SpiritTargetingManager";
+import { BattleLayout } from "../battle/BattleLayout";
 
+// Legacy layout functions - TODO: replace these with layout manager usage
 const abilityInUseY = () => GAME_HEIGHT * 0.7;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
-
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
     return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
 }
 const enemyY = () => GAME_HEIGHT * 0.23;
-
-// TODO: keep this? is it an invisible player? or show it somewhere?
 const playerX = () => GAME_WIDTH / 2;
 const playerY = () => GAME_HEIGHT * 0.95;
-
 const spiritX = (spiritIndex: number): number => {
     return GAME_WIDTH * (spiritIndex + 0.5) / 3;
 }
 const spiritY = () => GAME_HEIGHT * 0.5;
-
-enum BattlePhase {
-    SPIRIT_TARGETING,
-    COMBAT_ANIMATION
-}
 
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
@@ -48,10 +42,9 @@ export class ActiveBattle extends Phaser.Scene {
     abilityIcons: AbilityWidget[];
     spirits: SpiritWidget[];
     
-    // Spirit targeting state
-    private battlePhase: BattlePhase = BattlePhase.SPIRIT_TARGETING;
-    private currentSpiritIndex: number = 0;
-    private spiritTargets: (number | null)[] = [null, null, null];
+    // Managers
+    private layout: BattleLayout;
+    private spiritTargetingManager!: SpiritTargetingManager;
     private fightButton: Button | null = null;
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
@@ -64,6 +57,9 @@ export class ActiveBattle extends Phaser.Scene {
         this.abilityIcons = [];
         this.spirits = [];
         this.state = state;
+        
+        // Initialize managers
+        this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
     }
 
     create() {
@@ -114,178 +110,28 @@ export class ActiveBattle extends Phaser.Scene {
         this.spirits = abilities.map((ability, i) => new SpiritWidget(this, spiritX(i), spiritY(), ability));
         this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability));
         
+        // Initialize spirit targeting manager
+        this.spiritTargetingManager = new SpiritTargetingManager(this, this.spirits, this.enemies, this.layout);
+        this.spiritTargetingManager.setCallbacks({
+            onAllSpiritsTargeted: () => this.createFightButton(),
+            onSpiritSelected: (index) => {
+                // Optional: could add additional spirit selection logic here
+            },
+            onTargetingStarted: () => this.removeFightButton()
+        });
+        
         // Start targeting phase
-        this.startSpiritTargeting();
+        this.spiritTargetingManager.startTargeting();
         
     }
 
-    private startSpiritTargeting() {
-        this.battlePhase = BattlePhase.SPIRIT_TARGETING;
-        this.currentSpiritIndex = 0;
-        
-        // Force a completely new array to avoid any reference issues
-        this.spiritTargets = [];
-        this.spiritTargets.push(null, null, null);
-        
-        logger.combat.info(`[RESET] startSpiritTargeting: reset spiritTargets to ${JSON.stringify(this.spiritTargets)}`);
-        logger.combat.info(`[RESET] startSpiritTargeting: setting currentSpiritIndex to 0`);
-        
-        // Ensure no fight button exists
-        if (this.fightButton) {
-            this.fightButton.destroy();
-            this.fightButton = null;
-        }
-        
-        // Make spirits and enemies interactive
-        this.setupSpiritInteractions();
-        this.setupEnemyInteractions();
-        
-        // Highlight the current spirit
-        this.highlightCurrentSpirit();
-        
-        // Debug: Log final initial state
-        logger.combat.info(`[RESET] startSpiritTargeting complete: currentSpirit=${this.currentSpiritIndex}, spiritTargets=${JSON.stringify(this.spiritTargets)}`);
-    }
 
-    private setupSpiritInteractions() {
-        this.spirits.forEach((spirit, index) => {
-            // Remove any existing listeners first
-            spirit.removeAllListeners();
-            
-            spirit.setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => this.selectSpirit(index));
-        });
-    }
 
-    private setupEnemyInteractions() {
-        this.enemies.forEach((enemy, index) => {
-            // Remove any existing listeners first
-            enemy.removeAllListeners();
-            
-            enemy.setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => this.targetEnemy(index))
-                .on('pointerover', () => {
-                    if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && enemy.hp > 0) {
-                        // Highlight enemy on hover
-                        if (enemy.sprite) {
-                            enemy.sprite.setTint(0x88ff88); // Light green tint
-                        } else if (enemy.image) {
-                            enemy.image.setTint(0x88ff88);
-                        }
-                    }
-                })
-                .on('pointerout', () => {
-                    // Remove highlight
-                    if (enemy.sprite) {
-                        enemy.sprite.clearTint();
-                    } else if (enemy.image) {
-                        enemy.image.clearTint();
-                    }
-                });
-        });
-    }
-
-    private selectSpirit(index: number) {
-        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
-        
-        this.currentSpiritIndex = index;
-        this.highlightCurrentSpirit();
-    }
-
-    private targetEnemy(enemyIndex: number) {
-        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
-        if (this.enemies[enemyIndex].hp <= 0) return; // Can't target dead enemies
-        
-        // Set target for current spirit
-        this.spiritTargets[this.currentSpiritIndex] = enemyIndex;
-        
-        // Move to next spirit that doesn't have a target
-        this.moveToNextUntagetedSpirit();
-        
-        // Check if all spirits have targets
-        this.checkAllSpiritsTargeted();
-    }
-
-    private moveToNextUntagetedSpirit() {
-        let nextIndex = (this.currentSpiritIndex + 1) % 3;
-        let attempts = 0;
-        
-        // Find next spirit without a target
-        while (this.spiritTargets[nextIndex] !== null && attempts < 3) {
-            nextIndex = (nextIndex + 1) % 3;
-            attempts++;
-        }
-        
-        if (attempts < 3) {
-            this.currentSpiritIndex = nextIndex;
-            this.highlightCurrentSpirit();
-        }
-    }
-
-    private highlightCurrentSpirit() {
-        // Remove existing highlights and reset positions
-        this.spirits.forEach((spirit, index) => {
-            this.tweens.killTweensOf(spirit);
-            if (spirit.spirit) {
-                spirit.spirit.clearTint();
-                spirit.spirit.setScale(2); // Reset to normal scale
-            }
-            // Move non-current spirits back
-            if (index !== this.currentSpiritIndex) {
-                this.tweens.add({
-                    targets: spirit,
-                    y: spiritY(),
-                    duration: 200,
-                    ease: 'Power2.easeOut'
-                });
-            }
-        });
-        
-        // Highlight and bring forward the current spirit
-        const currentSpirit = this.spirits[this.currentSpiritIndex];
-        if (currentSpirit && currentSpirit.spirit) {
-            // Yellow tint and larger scale
-            currentSpirit.spirit.setTint(0xffff00);
-            currentSpirit.spirit.setScale(2.5);
-            
-            // Move forward and up slightly
-            this.tweens.add({
-                targets: currentSpirit,
-                y: spiritY() - 30,
-                duration: 300,
-                ease: 'Back.easeOut'
-            });
-            
-            // Add a subtle pulsing animation
-            this.tweens.add({
-                targets: currentSpirit.spirit,
-                scaleX: 2.8,
-                scaleY: 2.8,
-                duration: 800,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-        }
-    }
-
-    private checkAllSpiritsTargeted() {
-        // Only check if we're in the targeting phase
-        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) {
-            return;
-        }
-        
-        const allTargeted = this.spiritTargets.every(target => target !== null);
-        
-        if (allTargeted && !this.fightButton) {
-            this.createFightButton();
-        } else if (!allTargeted && this.fightButton) {
-            this.fightButton.destroy();
-            this.fightButton = null;
-        }
-    }
 
     private createFightButton() {
+        // Prevent duplicate buttons
+        if (this.fightButton) return;
+        
         this.fightButton = new Button(
             this,
             GAME_WIDTH / 2,
@@ -298,64 +144,33 @@ export class ActiveBattle extends Phaser.Scene {
         );
     }
 
-    private async executeCombatWithTargets() {
-        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
-        if (!this.spiritTargets.every(target => target !== null)) return;
-        
-        this.battlePhase = BattlePhase.COMBAT_ANIMATION;
-        
-        // Hide fight button and disable interactions
+    private removeFightButton() {
         if (this.fightButton) {
             this.fightButton.destroy();
             this.fightButton = null;
         }
+    }
+
+    private async executeCombatWithTargets() {
+        if (this.spiritTargetingManager.getBattlePhase() !== BattlePhase.SPIRIT_TARGETING) return;
+        if (!this.spiritTargetingManager.getTargets().every(target => target !== null)) return;
         
-        this.disableInteractions();
+        // Immediately remove the fight button to prevent double-clicks
+        this.removeFightButton();
+        
+        this.spiritTargetingManager.setBattlePhase(BattlePhase.COMBAT_ANIMATION);
+        this.spiritTargetingManager.disableInteractions();
         
         // Execute combat round with selected targets
         await this.runCombatWithTargets();
     }
 
-    private disableInteractions() {
-        this.spirits.forEach(spirit => spirit.disableInteractive());
-        this.enemies.forEach(enemy => enemy.disableInteractive());
-        
-        // Remove spirit highlights and animations
-        this.spirits.forEach((spirit) => {
-            this.tweens.killTweensOf(spirit);
-            this.tweens.killTweensOf(spirit.spirit);
-            spirit.y = spiritY();
-            if (spirit.spirit) {
-                spirit.spirit.clearTint();
-                spirit.spirit.setScale(2); // Reset to normal scale
-            }
-        });
-    }
 
     private resetSpiritTargeting() {
-        this.battlePhase = BattlePhase.SPIRIT_TARGETING;
-        this.currentSpiritIndex = 0;
-        
-        // Force a completely new array to avoid any reference issues
-        this.spiritTargets = [];
-        this.spiritTargets.push(null, null, null);
-        
-        logger.combat.info(`[RESET] resetSpiritTargeting: reset spiritTargets to ${JSON.stringify(this.spiritTargets)}`);
-        logger.combat.info(`[RESET] resetSpiritTargeting: setting currentSpiritIndex to 0`);
-        
-        if (this.fightButton) {
-            this.fightButton.destroy();
-            this.fightButton = null;
-        }
-        
-        this.disableInteractions();
-        
-        // Re-enable targeting for next round
-        if (this.spirits.length > 0) {
-            this.setupSpiritInteractions();
-            this.setupEnemyInteractions();
-            this.highlightCurrentSpirit();
-        }
+        // Reset and start targeting for next round
+        // The fight button will be removed by the onTargetingStarted callback
+        this.spiritTargetingManager.reset();
+        this.spiritTargetingManager.startTargeting();
     }
 
     private async runCombatWithTargets() {
@@ -369,7 +184,7 @@ export class ActiveBattle extends Phaser.Scene {
                 // For now, fall back to original method since contract needs to be updated
                 const result = await this.api.combat_round(id);
                 // TODO: Uncomment when contract is deployed with new method:
-                // const targets = this.spiritTargets.map(t => BigInt(t!)) as [bigint, bigint, bigint];
+                // const targets = this.spiritTargetingManager.getTargets().map(t => BigInt(t!)) as [bigint, bigint, bigint];
                 // const result = await this.api.combat_round_with_targets(id, targets);
                 if (loaderStarted) {
                     this.scene.resume().stop('Loader');
@@ -400,7 +215,7 @@ export class ActiveBattle extends Phaser.Scene {
     private runCombatLogicWithTargets(id: bigint, clonedState: Game2DerivedState) {
         // Modify the combat logic to use our selected targets instead of random ones
         // Create a copy of spiritTargets to avoid any reference issues
-        const targetsCopy = this.spiritTargets.map(target => target!) as number[];
+        const targetsCopy = this.spiritTargetingManager.getTargets().map(target => target!) as number[];
         logger.combat.debug(`runCombatLogicWithTargets: using targets ${JSON.stringify(targetsCopy)}`);
         
         return this.modifiedCombatRoundLogic(id, clonedState, targetsCopy, {
@@ -641,6 +456,10 @@ export class ActiveBattle extends Phaser.Scene {
             // Battle continues, reset targeting state for next round
             // First, refresh spirits for the new round (abilities might have changed)
             this.refreshSpiritsForNextRound();
+            
+            // Update manager references to the new spirits
+            this.spiritTargetingManager.updateReferences(this.spirits, this.enemies);
+            
             this.resetSpiritTargeting();
         }
     }
