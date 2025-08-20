@@ -481,7 +481,7 @@ export circuit combat_round(battle_id: Field): Maybe<BattleRewards> {
     return none<BattleRewards>();
 }
 
-export circuit combat_round_with_targets(battle_id: Field, spirit_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
+export circuit combat_round_with_targets(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
 
@@ -494,7 +494,7 @@ export circuit combat_round_with_targets(battle_id: Field, spirit_targets: Vecto
         all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[2])),
     ];
     
-    const result = combat_round_impl_with_targets(disclose(battle_id), round_abilities, disclose(spirit_targets));
+    const result = combat_round_impl_with_targets(disclose(battle_id), round_abilities, disclose(ability_targets));
     active_battle_states.insert(disclose(battle_id), result);
     if (result.player_hp == 0) {
         active_battle_configs.remove(disclose(battle_id));
@@ -535,13 +535,13 @@ pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
     };
 }
 
-circuit combat_round_impl_with_targets(battle_id: Field, abilities: Vector<3, Ability>, spirit_targets: Vector<3, Uint<0..2>>): BattleState {
+circuit combat_round_impl_with_targets(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..2>>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
 
-    // Modified code generation needed to use spirit_targets instead of random targeting
+    // Modified code generation needed to use ability_targets instead of random targeting
     // For now, use the first target as fallback until full implementation
-    const target = spirit_targets[0] as Uint<32>;
+    const target = ability_targets[0] as Uint<32>;
 
     INSERT_ENEMY_BLOCK_CODE_HERE
 
@@ -575,7 +575,6 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     // CODE-GENERATION START
     
     INSERT_ENEMY_BLOCK_CODE_HERE
-
     
     INSERT_PLAYER_BLOCK_CODE_HERE
 

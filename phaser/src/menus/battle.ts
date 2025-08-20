@@ -101,24 +101,40 @@ export class ActiveBattle extends Phaser.Scene {
         
         if (!battleConfig || !battleState) return;
         
-        // Clean up existing spirits first
+        // Clean up existing spirits and ability cards first
         this.spirits.forEach((s) => s.destroy());
         this.spirits = [];
+        this.abilityIcons.forEach((a) => a.destroy());
+        this.abilityIcons = [];
         
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => this.state!.allAbilities.get(id)!);
         
-        // Create spirits immediately
+        // Create spirits and ability cards immediately
         this.spirits = abilities.map((ability, i) => new SpiritWidget(this, spiritX(i), spiritY(), ability));
+        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability));
         
         // Start targeting phase
         this.startSpiritTargeting();
+        
     }
 
     private startSpiritTargeting() {
         this.battlePhase = BattlePhase.SPIRIT_TARGETING;
         this.currentSpiritIndex = 0;
-        this.spiritTargets = [null, null, null];
+        
+        // Force a completely new array to avoid any reference issues
+        this.spiritTargets = [];
+        this.spiritTargets.push(null, null, null);
+        
+        logger.combat.info(`[RESET] startSpiritTargeting: reset spiritTargets to ${JSON.stringify(this.spiritTargets)}`);
+        logger.combat.info(`[RESET] startSpiritTargeting: setting currentSpiritIndex to 0`);
+        
+        // Ensure no fight button exists
+        if (this.fightButton) {
+            this.fightButton.destroy();
+            this.fightButton = null;
+        }
         
         // Make spirits and enemies interactive
         this.setupSpiritInteractions();
@@ -126,10 +142,16 @@ export class ActiveBattle extends Phaser.Scene {
         
         // Highlight the current spirit
         this.highlightCurrentSpirit();
+        
+        // Debug: Log final initial state
+        logger.combat.info(`[RESET] startSpiritTargeting complete: currentSpirit=${this.currentSpiritIndex}, spiritTargets=${JSON.stringify(this.spiritTargets)}`);
     }
 
     private setupSpiritInteractions() {
         this.spirits.forEach((spirit, index) => {
+            // Remove any existing listeners first
+            spirit.removeAllListeners();
+            
             spirit.setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => this.selectSpirit(index));
         });
@@ -137,6 +159,9 @@ export class ActiveBattle extends Phaser.Scene {
 
     private setupEnemyInteractions() {
         this.enemies.forEach((enemy, index) => {
+            // Remove any existing listeners first
+            enemy.removeAllListeners();
+            
             enemy.setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => this.targetEnemy(index))
                 .on('pointerover', () => {
@@ -245,6 +270,11 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     private checkAllSpiritsTargeted() {
+        // Only check if we're in the targeting phase
+        if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) {
+            return;
+        }
+        
         const allTargeted = this.spiritTargets.every(target => target !== null);
         
         if (allTargeted && !this.fightButton) {
@@ -305,7 +335,13 @@ export class ActiveBattle extends Phaser.Scene {
     private resetSpiritTargeting() {
         this.battlePhase = BattlePhase.SPIRIT_TARGETING;
         this.currentSpiritIndex = 0;
-        this.spiritTargets = [null, null, null];
+        
+        // Force a completely new array to avoid any reference issues
+        this.spiritTargets = [];
+        this.spiritTargets.push(null, null, null);
+        
+        logger.combat.info(`[RESET] resetSpiritTargeting: reset spiritTargets to ${JSON.stringify(this.spiritTargets)}`);
+        logger.combat.info(`[RESET] resetSpiritTargeting: setting currentSpiritIndex to 0`);
         
         if (this.fightButton) {
             this.fightButton.destroy();
@@ -363,7 +399,11 @@ export class ActiveBattle extends Phaser.Scene {
 
     private runCombatLogicWithTargets(id: bigint, clonedState: Game2DerivedState) {
         // Modify the combat logic to use our selected targets instead of random ones
-        return this.modifiedCombatRoundLogic(id, clonedState, this.spiritTargets as number[], {
+        // Create a copy of spiritTargets to avoid any reference issues
+        const targetsCopy = this.spiritTargets.map(target => target!) as number[];
+        logger.combat.debug(`runCombatLogicWithTargets: using targets ${JSON.stringify(targetsCopy)}`);
+        
+        return this.modifiedCombatRoundLogic(id, clonedState, targetsCopy, {
             onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
                 this.enemies[enemy].addBlock(amount);
@@ -425,7 +465,17 @@ export class ActiveBattle extends Phaser.Scene {
                 }
             }),
             onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                // Only create ability cards if they don't already exist (from targeting phase)
+                if (this.abilityIcons.length === 0) {
+                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
+                } else {
+                    // Ability cards already exist from targeting, just ensure they're positioned correctly and visible
+                    this.abilityIcons.forEach((abilityIcon, i) => {
+                        abilityIcon.x = GAME_WIDTH * (i + 0.5) / abilities.length;
+                        abilityIcon.y = abilityIdleY();
+                        abilityIcon.setAlpha(1);
+                    });
+                }
                 
                 // Only create spirits if they don't already exist (from targeting phase)
                 if (this.spirits.length === 0) {
@@ -603,15 +653,18 @@ export class ActiveBattle extends Phaser.Scene {
         
         if (!battleConfig || !battleState) return;
         
-        // Clean up existing spirits
+        // Clean up existing spirits and ability cards
         this.spirits.forEach((s) => s.destroy());
         this.spirits = [];
+        this.abilityIcons.forEach((a) => a.destroy());
+        this.abilityIcons = [];
         
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => this.state!.allAbilities.get(id)!);
         
-        // Create new spirits for the next round
+        // Create new spirits and ability cards for the next round
         this.spirits = abilities.map((ability, i) => new SpiritWidget(this, spiritX(i), spiritY(), ability));
+        this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability));
     }
 
     /**
