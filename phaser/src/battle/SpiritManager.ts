@@ -238,6 +238,10 @@ export class SpiritManager {
         if (attempts < 3) {
             this.currentSpiritIndex = nextIndex;
             this.highlightCurrentSpirit();
+        } else {
+            // All spirits have targets, no need to highlight
+            this.currentSpiritIndex = -1;  
+            this.highlightCurrentSpirit();
         }
     }
 
