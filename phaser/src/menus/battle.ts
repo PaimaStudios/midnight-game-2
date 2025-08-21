@@ -192,7 +192,7 @@ export class ActiveBattle extends Phaser.Scene {
         };
         const apiPromise = retryCombatRound();
         
-        // Modified combat logic to use selected targets
+        // Combat logic to use selected targets
         const uiPromise = this.runCombatLogicWithTargets(id, clonedState);
         
         // Wait for both API and UI to finish
