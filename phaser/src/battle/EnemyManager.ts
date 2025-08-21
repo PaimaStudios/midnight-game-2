@@ -5,6 +5,7 @@ import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { HealthBar } from "../widgets/progressBar";
 import { GAME_WIDTH, GAME_HEIGHT, fontStyle } from "../main";
 import { BattleLayout } from "./BattleLayout";
+import { Color, colorToNumber } from "../constants/colors";
 
 const ENEMY_TEXTURES = [
     'enemy-goblin',
@@ -159,7 +160,7 @@ export class Actor extends Phaser.GameObjects.Container {
             }
 
             // Flash red and play hurt animation
-            target.setTint(0xff0000);
+            target.setTint(colorToNumber(Color.Red));
             this.playAnimation('hurt');
 
             // Scale effect for impact

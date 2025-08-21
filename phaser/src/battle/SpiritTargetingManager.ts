@@ -1,6 +1,7 @@
 import { SpiritWidget } from "../widgets/ability";
 import { logger } from "../main";
 import { BattleLayout } from "./BattleLayout";
+import { Color, colorToNumber } from "../constants/colors";
 
 export enum BattlePhase {
     SPIRIT_TARGETING,
@@ -139,9 +140,9 @@ export class SpiritTargetingManager {
                     .on('pointerover', () => {
                         if (this.battlePhase === BattlePhase.SPIRIT_TARGETING) {
                             if (enemy.sprite) {
-                                enemy.sprite.setTint(0x88ff88);
+                                enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
-                                enemy.image.setTint(0x88ff88);
+                                enemy.image.setTint(colorToNumber(Color.Green));
                             }
                         }
                     })
@@ -224,7 +225,7 @@ export class SpiritTargetingManager {
         const currentSpirit = this.spirits[this.currentSpiritIndex];
         if (currentSpirit && currentSpirit.spirit) {
             // Yellow tint and larger scale
-            currentSpirit.spirit.setTint(0xffff00);
+            currentSpirit.spirit.setTint(colorToNumber(Color.Yellow));
             currentSpirit.spirit.setScale(2.5);
             
             // Move forward and up slightly

@@ -494,11 +494,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     const old_state = active_battle_states.lookup(battle_id);
 
     // Handle targeting: use player targets if provided, otherwise random target
-    const target = if (ability_targets.is_some) {
-        ability_targets.value[0] as Uint<32>  // For now, use first target as fallback
-    } else {
-        mock_rand_target()
-    };
+    const target = ability_targets.is_some ? (ability_targets.value[0] as Uint<32>) : mock_rand_target();
 
     // See generate.js for an explanation of the code generation
 
