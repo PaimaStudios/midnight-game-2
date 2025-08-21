@@ -5,7 +5,7 @@ import { BattleConfig, pureCircuits } from "game2-contract";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "../menus/main";
 
-// Legacy layout functions - TODO: replace these with layout manager usage
+// Legacy layout functions - TODO: replace this with layout manager usage
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
 
 export class UIStateManager {
