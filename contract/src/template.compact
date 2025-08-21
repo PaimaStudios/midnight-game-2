@@ -459,13 +459,16 @@ export circuit combat_round(battle_id: Field, ability_targets: Maybe<Vector<3, U
             none<Field>()
         });
     } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+        // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
+        // TODO: properly determine rewards
         if (config.stats[0].boss_type != BOSS_TYPE.normal || (config.enemy_count >= 2 && config.stats[1].boss_type != BOSS_TYPE.normal) || (config.enemy_count >= 3 && config.stats[2].boss_type != BOSS_TYPE.normal)) {
             const reward_ability = random_ability(2);
             player_abilities.lookup(player_pub_key).insert(reward_ability, (player_abilities.lookup(player_pub_key).lookup(reward_ability) + 1) as Uint<32>);
         }
 
+        // TODO: when and how to generate?
         const reward = BattleRewards {
             true,
             100,

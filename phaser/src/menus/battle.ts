@@ -4,12 +4,12 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
-import { BattleConfig, EFFECT_TYPE, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
+import { BattleConfig, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
 import { TestMenu } from "./main";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
-import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
+import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { SpiritTargetingManager, BattlePhase } from "../battle/SpiritTargetingManager";
 import { BattleLayout } from "../battle/BattleLayout";
@@ -275,35 +275,3 @@ export class ActiveBattle extends Phaser.Scene {
 
 }
 
-export function effectTypeToIcon(effectType: EFFECT_TYPE): string {
-    switch (effectType) {
-        case EFFECT_TYPE.attack_fire:
-            return 'fire';
-        case EFFECT_TYPE.attack_ice:
-            return 'ice';
-        case EFFECT_TYPE.attack_phys:
-            return 'physical';
-        case EFFECT_TYPE.block:
-            return 'block';
-    }
-}
-
-export class BattleEffect extends Phaser.GameObjects.Container {
-    constructor(scene: Phaser.Scene, x: number, y: number, effectType: EFFECT_TYPE, amount: number, onComplete: () => void) {
-        super(scene, x, y);
-
-        this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
-
-        this.setSize(48, 48);
-        scene.tweens.add({
-            targets: this,
-            alpha: 0,
-            delay: 250,
-            duration: 1500,
-            onComplete: () => {
-                onComplete();
-            },
-        });
-    }
-}

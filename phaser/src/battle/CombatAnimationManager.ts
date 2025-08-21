@@ -6,8 +6,7 @@ import { colorToNumber } from "../constants/colors";
 import { BattleLayout } from "./BattleLayout";
 import { CombatCallbacks } from "../battle/logic";
 import { logger } from "../main";
-// TODO: Import BattleEffect when it's created
-// import { BattleEffect } from "../widgets/battleEffect";
+import { BattleEffect } from "../widgets/BattleEffect";
 
 export class CombatAnimationManager {
     private scene: Phaser.Scene;
@@ -53,9 +52,17 @@ export class CombatAnimationManager {
             onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
                 this.enemies[enemy].addBlock(amount);
-                // TODO: Replace with BattleEffect when created
-                // For now, resolve immediately since blocking has no animation
-                resolve();
+                
+                // Show block effect on enemy
+                new BattleEffect(
+                    this.scene, 
+                    this.layout.enemyX(this.battle, enemy), 
+                    this.layout.enemyY() - 20, 
+                    EFFECT_TYPE.block, 
+                    amount, 
+                    () => resolve()
+                );
+                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
             }),
 
             onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
@@ -69,9 +76,17 @@ export class CombatAnimationManager {
                         onComplete: () => {
                             fist.destroy();
                             this.player?.damage(amount);
-                            // TODO: Replace with BattleEffect when created
-                            // Resolve after the fist animation completes
-                            resolve();
+                            
+                            // Show damage effect on player
+                            new BattleEffect(
+                                this.scene, 
+                                this.layout.playerX(), 
+                                this.layout.playerY() - 20, 
+                                EFFECT_TYPE.attack_phys, 
+                                amount, 
+                                () => resolve()
+                            );
+                            this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
                         }
                     });
                 });
@@ -92,6 +107,16 @@ export class CombatAnimationManager {
                         break;
                     case EFFECT_TYPE.block:
                         this.player?.addBlock(amounts[0]);
+                        // Show block effect
+                        new BattleEffect(
+                            this.scene, 
+                            this.layout.playerX(), 
+                            this.layout.playerY() - 20, 
+                            effectType, 
+                            amounts[0], 
+                            () => {}
+                        );
+                        this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
                         break;
                 }
                 if (damageType != undefined) {
@@ -107,16 +132,23 @@ export class CombatAnimationManager {
                             onComplete: () => {
                                 this.enemies[target].damage(amount);
                                 this.enemies[target].takeDamageAnimation();
-                                // TODO: Replace with BattleEffect when created
-                                // Resolve after the bullet animation completes
-                                resolve();
                                 bullet.destroy();
+                                
+                                // Show damage number effect
+                                new BattleEffect(
+                                    this.scene, 
+                                    this.layout.enemyX(this.battle, target), 
+                                    this.layout.enemyY() - 20, 
+                                    effectType, 
+                                    amount, 
+                                    () => resolve()
+                                );
+                                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
                             },
                         });
                     }
                 } else {
-                    // TODO: Replace with BattleEffect when created
-                    // Resolve immediately for block effects (no animation)
+                    // Resolve immediately for block effects
                     resolve();
                 }
             }),
