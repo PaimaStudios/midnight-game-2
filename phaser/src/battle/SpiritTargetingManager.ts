@@ -44,6 +44,13 @@ export class SpiritTargetingManager {
     }
 
     public startTargeting() {
+        // Safety check: don't start targeting if no enemies are alive
+        const aliveEnemies = this.enemies.filter(enemy => enemy.hp > 0);
+        if (aliveEnemies.length === 0) {
+            logger.combat.error(`Attempted to start targeting with no alive enemies! Enemy HP: [${this.enemies.map(e => e.hp).join(',')}]`);
+            return;
+        }
+        
         this.battlePhase = BattlePhase.SPIRIT_TARGETING;
         this.currentSpiritIndex = 0;
         

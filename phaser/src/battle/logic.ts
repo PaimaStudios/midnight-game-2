@@ -202,6 +202,170 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
     });
 }
 
+/**
+ * Combat logic that accepts specific player targets instead of using random targeting.
+ * This is identical to combat_round_logic except it uses playerTargets instead of random selection.
+ */
+export function combat_round_logic_with_targets(battle_id: bigint, gameState: Game2DerivedState, playerTargets: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
+    return new Promise(async (resolve) => {
+        logger.combat.debug(`combat_round_logic_with_targets(${playerTargets}, ${uiHooks == undefined})`);
+        const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
+        const battleState = gameState.activeBattleStates.get(battle_id)!;
+        const rng = pureCircuits.fakeTempRng(battleState, battleConfig);
+        if (uiHooks != undefined) {
+            gameState.ui = true;
+        } else {
+            gameState.circuit = true;
+        }
+
+        const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
+        const abilities = abilityIds.map((id) => gameState.allAbilities.get(id)!)
+
+        let player_block = BigInt(0);
+        const enemy_count = Number(battleConfig.enemy_count);
+        let player_damage = new Array(enemy_count).fill(BigInt(0));
+        let enemy_damage = BigInt(0);
+
+        const handleEndOfRound = () => {
+            logger.combat.debug(`handleEndOfRound.player_damage = ${player_damage}`);
+            uiHooks?.onEndOfRound();
+            if (enemy_damage > player_block) {
+                battleState.player_hp -= enemy_damage - player_block;
+            }
+            if (player_damage[0] > battleConfig.stats[0].block) {
+                battleState.enemy_hp_0 = BigInt(Math.max(0, Number(battleState.enemy_hp_0 + battleConfig.stats[0].block - player_damage[0])));
+            }
+            if (player_damage[1] > battleConfig.stats[1].block) {
+                battleState.enemy_hp_1 = BigInt(Math.max(0, Number(battleState.enemy_hp_1 + battleConfig.stats[1].block - player_damage[1])));
+            }
+            if (player_damage[2] > battleConfig.stats[2].block) {
+                battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
+            }
+            logger.combat.debug(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
+            if (battleState.player_hp <= 0) {
+                logger.combat.info(`YOU DIED`);
+                resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
+            }
+            else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || battleConfig.enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || battleConfig.enemy_count < 3)) {
+                logger.combat.info(`YOU WON`);
+                let abilityReward = { is_some: false, value: BigInt(0) };
+                for (let i = 0; i < battleConfig.enemy_count; ++i) {
+                    if (battleConfig.stats[i].boss_type != BOSS_TYPE.normal) {
+                        // For UI, we don't generate random abilities - let the circuit handle rewards
+                        break;
+                    }
+                }
+                resolve({ alive: true, gold: BigInt(100), ability: abilityReward });
+            } else {
+                logger.combat.info(`CONTINUE BATTLE`);
+                resolve(undefined);
+            }
+        }
+
+        await uiHooks?.onDrawAbilities(abilities);
+
+        // Enemy block phase
+        let enemy_hp = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
+        for (let i = 0; i < battleConfig.enemy_count; ++i) {
+            if (enemy_hp[i] > 0) {
+                const block = Number(battleConfig.stats[i].block);
+                if (block != 0) {
+                    await uiHooks?.onEnemyBlock(i, block);
+                }
+            }
+        }
+
+        const aliveTargets = new Array(Number(battleConfig.enemy_count))
+            .fill(0)
+            .map((_, i) => i)
+            .filter((i) => enemy_hp[i] > BigInt(0));
+
+        // Player abilities with player-selected targets (key difference!)
+        const resolveEffect = async (effect: { is_some: boolean, value: Effect }, source: number, target: number) => {
+            if (effect.is_some) {
+                const targets = effect.value.is_aoe ? aliveTargets : [target];
+                switch (effect.value.effect_type) {
+                    case EFFECT_TYPE.attack_fire:
+                    case EFFECT_TYPE.attack_ice:
+                    case EFFECT_TYPE.attack_phys:
+                        const amounts = targets.map((enemy) => {
+                            const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
+                            player_damage[enemy] += dmg;
+                            logger.combat.debug(`player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
+                            return Number(dmg)
+                        });
+                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
+                        break;
+                    case EFFECT_TYPE.block:
+                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, [Number(effect.value.amount)]);
+                        player_block += effect.value.amount;
+                        break;
+                }
+            }
+        };
+
+        // Use player-selected targets, validate they're alive
+        const targets = playerTargets.map((selectedTarget, spiritIndex) => {
+            if (aliveTargets.includes(selectedTarget)) {
+                return selectedTarget;
+            } else {
+                const fallback = aliveTargets[0];
+                return fallback;
+            }
+        });
+        
+        // base effects
+        const allEnemiesDead = () => {
+            logger.combat.debug(`[${uiHooks == undefined}] checking damage: ${player_damage} | blocks: ${battleConfig.stats[0].block}, ${battleConfig.stats[1].block}, ${battleConfig.stats[2].block}   |  hp: ${battleState.enemy_hp_0}, ${battleState.enemy_hp_1}, ${battleState.enemy_hp_2}`);
+            return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
+                                  && (player_damage[1] > battleConfig.stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
+                                  && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
+        };
+        for (let i = 0; i < abilities.length; ++i) {
+            const ability = abilities[i];
+            await uiHooks?.onUseAbility(i, undefined);
+            if (ability.generate_color.is_some) {
+                await uiHooks?.onEnergyTrigger(i, Number(ability.generate_color.value));
+            }
+            await resolveEffect(ability.effect, i, targets[i]);
+            await uiHooks?.afterUseAbility(i);
+            if (allEnemiesDead()) {
+                logger.combat.debug(`[${uiHooks == undefined}] prematurely ending`);
+                return handleEndOfRound();
+            }
+        }
+        
+        // energy triggers
+        for (let i = 0; i < abilities.length; ++i) {
+            const ability = abilities[i];
+            for (let c = 0; c < 3; ++c) {
+                if (ability.on_energy[c].is_some && abilities.some((a2, j) => i != j && a2.generate_color.is_some && Number(a2.generate_color.value) == c)) {
+                    await uiHooks?.onUseAbility(i, c);
+                    await resolveEffect(ability.on_energy[c], i, targets[i]); // Use same target as base effect
+                    await uiHooks?.afterUseAbility(i);
+                    if (allEnemiesDead()) {
+                        logger.combat.debug(`[${uiHooks == undefined}] prematurely ending`);
+                        return handleEndOfRound();
+                    }
+                }
+            }
+        }
+
+        // Enemy damage phase
+        for (let i = 0; i < battleConfig.enemy_count; ++i) {
+            if (enemy_hp[i] > 0) {
+                const damage = battleConfig.stats[i].attack;
+                enemy_damage += damage;
+                if (Number(damage) != 0) {
+                    await uiHooks?.onEnemyAttack(i, Number(damage));
+                }
+            }
+        }
+
+        handleEndOfRound();
+    });
+}
+
 export function generateRandomAbility(difficulty: bigint): Ability {
     const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
     const randomEffect = (factor: number) => {

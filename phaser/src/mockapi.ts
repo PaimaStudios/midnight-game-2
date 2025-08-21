@@ -133,10 +133,38 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
-        logger.combat.debug(`round size: ${this.mockState.activeBattleConfigs.size} for id ${battle_id}`);
+    public async combat_round(battle_id: bigint, targets?: [bigint, bigint, bigint]): Promise<BattleRewards | undefined> {
         return await this.response(async () => {
-            return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
+            if (targets) {
+                const targetsCopy = targets.map(t => Number(t));
+                const { combat_round_logic_with_targets } = await import('./battle/logic');
+                return combat_round_logic_with_targets(battle_id, this.mockState, targetsCopy, undefined).then((ret) => {
+                    const battleState = this.mockState.activeBattleStates.get(battle_id)!;
+                    // shift deck current abilities
+                    const DECK_SIZE = 7;
+                    const OFFSETS = [1, 2, 3];
+                    for (let i = 0; i < battleState.deck_indices.length; ++i) {
+                        battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + OFFSETS[i]) % DECK_SIZE);
+                        for (let j = 0; j < i; ++j) {
+                            if (battleState.deck_indices[i] == battleState.deck_indices[j]) {
+                                battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                            }
+                            for ( let k = 0; k < j; ++k) {
+                                if (battleState.deck_indices[i] == battleState.deck_indices[k]) {
+                                    battleState.deck_indices[i] = BigInt((Number(battleState.deck_indices[i]) + 1) % DECK_SIZE);
+                                }
+                            }
+                        }
+                    }
+                    if (ret != undefined) {
+                        this.addRewards(ret);
+                        this.mockState.activeBattleConfigs.delete(battle_id);
+                        this.mockState.activeBattleStates.delete(battle_id);
+                    }
+                    return ret;
+                });
+            } else {
+                return combat_round_logic(battle_id, this.mockState, undefined).then((ret) => {
                 const battleState = this.mockState.activeBattleStates.get(battle_id)!;
                 // shift deck current abilities
                 const DECK_SIZE = 7;
@@ -161,6 +189,7 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 return ret;
             });
+            }
         });
     }
 
