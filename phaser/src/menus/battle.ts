@@ -214,7 +214,6 @@ export class ActiveBattle extends Phaser.Scene {
 
     private handleCombatComplete(circuit: any, ui: any) {
         // Synchronize visual actor HP with battle state HP
-        this.enemyManager.synchronizeEnemyHP(this.state, this.battle);
         
         this.player?.setBlock(0);
         this.enemyManager.clearBlocks();

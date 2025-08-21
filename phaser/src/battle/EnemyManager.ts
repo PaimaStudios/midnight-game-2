@@ -260,27 +260,6 @@ export class EnemyManager {
         return this.enemies;
     }
 
-    public synchronizeEnemyHP(state: Game2DerivedState, battle: BattleConfig) {
-        const battleState = state.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        if (!battleState) return;
-        
-        const battleStateHP = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
-        
-        for (let i = 0; i < this.enemies.length && i < battleStateHP.length; i++) {
-            const newHP = Number(battleStateHP[i]);
-            if (this.enemies[i].hp !== newHP) {
-                const currentHP = this.enemies[i].hp;
-                if (newHP < currentHP) {
-                    this.enemies[i].damage(currentHP - newHP);
-                } else if (newHP > currentHP) {
-                    // Healing - directly set HP (rare case)
-                    this.enemies[i].hp = newHP;
-                    this.enemies[i].hpBar.setValue(newHP);
-                }
-            }
-        }
-    }
-
     public clearBlocks() {
         this.enemies.forEach(enemy => enemy.setBlock(0));
     }
