@@ -137,8 +137,8 @@ export class MockGame2API implements DeployedGame2API {
         return await this.response(async () => {
             if (targets) {
                 const targetsCopy = targets.map(t => Number(t));
-                const { combat_round_logic_with_targets } = await import('./battle/logic');
-                return combat_round_logic_with_targets(battle_id, this.mockState, targetsCopy, undefined).then((ret) => {
+                const { combat_round_logic } = await import('./battle/logic');
+                return combat_round_logic(battle_id, this.mockState, targetsCopy).then((ret) => {
                     const battleState = this.mockState.activeBattleStates.get(battle_id)!;
                     // shift deck current abilities
                     const DECK_SIZE = 7;
