@@ -209,10 +209,35 @@ export class SpiritManager {
         });
     }
 
+    private resetSpiritToDefault(spiritIndex: number) {
+        if (spiritIndex < 0 || spiritIndex >= this.spirits.length) return;
+        
+        const spirit = this.spirits[spiritIndex];
+        if (spirit) {
+            this.scene.tweens.add({
+                targets: spirit,
+                y: this.layout.spiritY(),
+                duration: 400,
+                ease: 'Power2.easeOut'
+            });
+            if (spirit.spirit) {
+                spirit.spirit.clearTint();
+                spirit.spirit.setScale(2);
+            }
+        }
+    }
+
     private selectSpirit(index: number) {
         if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
         
+        const previousIndex = this.currentSpiritIndex;
         this.currentSpiritIndex = index;
+        
+        // Reset the previously selected spirit if it's different
+        if (previousIndex !== index) {
+            this.resetSpiritToDefault(previousIndex);
+        }
+        
         this.highlightCurrentSpirit();
         this.onSpiritSelected?.(index);
     }
@@ -249,22 +274,8 @@ export class SpiritManager {
             this.currentSpiritIndex = -1;  
         }
 
-        // Smoothly tween the previously selected spirit back to default position
-        if (previousIndex >= 0 && previousIndex < this.spirits.length) {
-            const previousSpirit = this.spirits[previousIndex];
-            if (previousSpirit) {
-                this.scene.tweens.add({
-                    targets: previousSpirit,
-                    y: this.layout.spiritY(),
-                    duration: 400,
-                    ease: 'Power2.easeOut'
-                });
-                if (previousSpirit.spirit) {
-                    previousSpirit.spirit.clearTint();
-                    previousSpirit.spirit.setScale(2);
-                }
-            }
-        }
+        // Reset the previously selected spirit to default position
+        this.resetSpiritToDefault(previousIndex);
 
         this.highlightCurrentSpirit();
     }
