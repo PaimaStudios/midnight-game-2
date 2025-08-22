@@ -127,8 +127,6 @@ export class MockGame2API implements DeployedGame2API {
                 enemy_hp_2: battle.stats[2].hp,
             });
             this.mockState.activeBattleConfigs.set(id, battle);
-            logger.gameState.debug(` to ${this.mockState.activeBattleConfigs.size}`);
-            logger.gameState.debug(`start new battle - state is now: ${safeJSONString(this.mockState)} | `);
             return battle;
         });
     }
@@ -290,7 +288,6 @@ export class MockGame2API implements DeployedGame2API {
                 reject(e);
             }
             setTimeout(() => {
-                logger.gameState.debug(`\n   ----> new state ${safeJSONString(this.mockState)}\n\n`);
                 this.subscriber?.next(this.mockState);
             }, MOCK_DELAY);
         }, MOCK_DELAY));

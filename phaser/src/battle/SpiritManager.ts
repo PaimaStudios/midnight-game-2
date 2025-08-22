@@ -21,6 +21,9 @@ export class SpiritManager {
     private currentSpiritIndex: number = 0;
     private spiritTargets: (number | null)[] = [null, null, null];
     
+    // Mouse tracking for spirit leaning
+    private mouseMoveHandler?: (pointer: Phaser.Input.Pointer) => void;
+    
     // Callbacks
     private onAllSpiritsTargeted?: () => void;
     private onSpiritSelected?: (index: number) => void;
@@ -123,6 +126,9 @@ export class SpiritManager {
     public disableInteractions() {
         this.spirits.forEach(spirit => spirit.disableInteractive());
         this.enemies.forEach(enemy => enemy.disableInteractive());
+        
+        // Disable mouse tracking
+        this.disableMouseTracking();
         
         // Remove spirit highlights and animations
         this.spirits.forEach((spirit) => {
@@ -237,15 +243,18 @@ export class SpiritManager {
         
         if (attempts < 3) {
             this.currentSpiritIndex = nextIndex;
-            this.highlightCurrentSpirit();
         } else {
             // All spirits have targets, no need to highlight
             this.currentSpiritIndex = -1;  
-            this.highlightCurrentSpirit();
         }
+
+        this.highlightCurrentSpirit();
     }
 
     private highlightCurrentSpirit() {
+        // Disable mouse tracking for the previous spirit
+        this.disableMouseTracking();
+        
         // Remove existing highlights and reset positions
         this.spirits.forEach((spirit, index) => {
             this.scene.tweens.killTweensOf(spirit);
@@ -267,6 +276,8 @@ export class SpiritManager {
         // Highlight and bring forward the current spirit
         const currentSpirit = this.spirits[this.currentSpiritIndex];
         if (currentSpirit && currentSpirit.spirit) {
+            logger.combat.debug(`Found current spirit, enabling mouse tracking`);
+            
             // Yellow tint and larger scale
             currentSpirit.spirit.setTint(colorToNumber(Color.Yellow));
             currentSpirit.spirit.setScale(2.5);
@@ -289,6 +300,9 @@ export class SpiritManager {
                 repeat: -1,
                 ease: 'Sine.easeInOut'
             });
+            
+            // Enable mouse tracking for the current spirit
+            this.enableMouseTrackingForSpirit(currentSpirit);
         }
     }
 
@@ -302,5 +316,64 @@ export class SpiritManager {
         if (allTargeted) {
             this.onAllSpiritsTargeted?.();
         }
+    }
+
+
+    private enableMouseTrackingForSpirit(spirit: SpiritWidget) {
+        if (!spirit || !spirit.spirit) {
+            return;
+        }
+        
+        // Remove any existing handler first
+        this.removeMouseHandler();
+        
+        // Store the original highlighted position (base position for lean calculations)
+        const baseX = this.layout.spiritX(this.currentSpiritIndex);
+        const baseY = this.layout.spiritY() - 30; // Account for highlight offset
+        
+        // Create and store the mouse move handler
+        this.mouseMoveHandler = (pointer: Phaser.Input.Pointer) => {
+            if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
+            if (this.spirits[this.currentSpiritIndex] !== spirit) return;
+            
+            // Simple lean toward cursor
+            const deltaX = pointer.x - baseX;
+            const deltaY = pointer.y - baseY;
+            const leanX = deltaX * 0.04; // 4% of the distance
+            const leanY = deltaY * 0.04;
+            
+            // Apply position to the container - always relative to base position
+            this.scene.tweens.add({
+                targets: spirit,
+                x: baseX + leanX,
+                y: baseY + leanY,
+                duration: 100,
+                ease: 'Power2.easeOut'
+            });
+        };
+        
+        // Add the handler
+        this.scene.input.on('pointermove', this.mouseMoveHandler);
+    }
+
+    private removeMouseHandler() {
+        if (this.mouseMoveHandler) {
+            this.scene.input.removeListener('pointermove', this.mouseMoveHandler);
+            this.mouseMoveHandler = undefined;
+        }
+    }
+
+    private disableMouseTracking() {
+        // Remove the specific handler
+        this.removeMouseHandler();
+        
+        // Reset position on all spirits
+        this.spirits.forEach((spirit, index) => {
+            if (spirit) {
+                // Reset position to layout position
+                spirit.x = this.layout.spiritX(index);
+                spirit.y = this.layout.spiritY();
+            }
+        });
     }
 }

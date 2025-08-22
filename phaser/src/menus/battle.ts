@@ -39,7 +39,8 @@ export class ActiveBattle extends Phaser.Scene {
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
-
+        
+        logger.combat.debug('ActiveBattle constructor called');
         this.api = api;
         this.battle = battle;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -56,6 +57,7 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     create() {
+        logger.combat.debug('ActiveBattle.create() called');
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
 
         this.player = new Actor(this, playerX(), playerY(), null);
@@ -72,12 +74,19 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     private initializeSpirits() {
-        if (!this.state || !this.battle) return;
+        logger.combat.debug('initializeSpirits called');
+        if (!this.state || !this.battle) {
+            logger.combat.debug('No state or battle found');
+            return;
+        }
         
         const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
         const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
         
-        if (!battleConfig || !battleState) return;
+        if (!battleConfig || !battleState) {
+            logger.combat.debug('No battleConfig or battleState found');
+            return;
+        }
         
         // Create spirits using SpiritManager
         this.spirits = this.spiritManager.createSpirits(this.state, this.battle);

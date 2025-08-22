@@ -64,7 +64,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         let enemy_damage = BigInt(0);
 
         const handleEndOfRound = () => {
-            logger.combat.debug(`handleEndOfRound.player_damage = ${player_damage}`);
             uiHooks?.onEndOfRound();
             if (enemy_damage > player_block) {
                 battleState.player_hp -= enemy_damage - player_block;
@@ -78,7 +77,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (player_damage[2] > battleConfig.stats[2].block) {
                 battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
             }
-            logger.combat.debug(`Player HP ${battleState.player_hp} | Enemy HP: ${battleState.enemy_hp_0} / ${battleState.enemy_hp_1} / ${battleState.enemy_hp_2}`);
             if (battleState.player_hp <= 0) {
                 logger.combat.info(`YOU DIED`);
                 resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
@@ -128,7 +126,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                         const amounts = targets.map((enemy) => {
                             const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
                             player_damage[enemy] += dmg;
-                            logger.combat.debug(`player_damage[${enemy}] = ${player_damage[enemy]} // took ${dmg} damage`);
                             return Number(dmg)
                         });
                         await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
@@ -153,7 +150,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         
         // base effects
         const allEnemiesDead = () => {
-            logger.combat.debug(`[${uiHooks == undefined}] checking damage: ${player_damage} | blocks: ${battleConfig.stats[0].block}, ${battleConfig.stats[1].block}, ${battleConfig.stats[2].block}   |  hp: ${battleState.enemy_hp_0}, ${battleState.enemy_hp_1}, ${battleState.enemy_hp_2}`);
             return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
                                   && (player_damage[1] > battleConfig.stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
                                   && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);

@@ -95,8 +95,10 @@ export class UIStateManager {
     }
 
     public showBattleEndScreen(circuit: any, state: Game2DerivedState) {
-        const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
-        new Button(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.64, GAME_HEIGHT * 0.3, battleOverText, 16, () => {
+        const returnButtonText = 'Return to Hub';
+        const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!` : `You Died :(`;
+        this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.5, battleOverText, fontStyle(16)).setOrigin(0.5, 0.5);
+        new Button(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.8, GAME_WIDTH * 0.5, GAME_HEIGHT * 0.23, returnButtonText, 16, () => {
             this.scene.scene.remove('TestMenu');
             this.scene.scene.add('TestMenu', new TestMenu(this.api, state));
             this.scene.scene.start('TestMenu');

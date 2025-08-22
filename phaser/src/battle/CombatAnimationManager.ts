@@ -93,7 +93,6 @@ export class CombatAnimationManager {
             }),
 
             onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
-                logger.combat.debug(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
                 let damageType = undefined;
                 switch (effectType) {
                     case EFFECT_TYPE.attack_fire:
@@ -249,7 +248,6 @@ export class CombatAnimationManager {
                 const aura = this.spirits[source].aura!;
                 const targets = [0, 1, 2]
                     .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
-                logger.animation.debug(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
                 if (targets.length > 0) {
                     logger.animation.debug(`[ENERGY-UI] charge!`);
                     aura.anims.play(chargeAnimKey);
