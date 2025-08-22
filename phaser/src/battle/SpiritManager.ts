@@ -232,6 +232,7 @@ export class SpiritManager {
     }
 
     private moveToNextUntagetedSpirit() {
+        const previousIndex = this.currentSpiritIndex;
         let nextIndex = (this.currentSpiritIndex + 1) % 3;
         let attempts = 0;
         
@@ -248,6 +249,23 @@ export class SpiritManager {
             this.currentSpiritIndex = -1;  
         }
 
+        // Smoothly tween the previously selected spirit back to default position
+        if (previousIndex >= 0 && previousIndex < this.spirits.length) {
+            const previousSpirit = this.spirits[previousIndex];
+            if (previousSpirit) {
+                this.scene.tweens.add({
+                    targets: previousSpirit,
+                    y: this.layout.spiritY(),
+                    duration: 400,
+                    ease: 'Power2.easeOut'
+                });
+                if (previousSpirit.spirit) {
+                    previousSpirit.spirit.clearTint();
+                    previousSpirit.spirit.setScale(2);
+                }
+            }
+        }
+
         this.highlightCurrentSpirit();
     }
 
@@ -255,21 +273,14 @@ export class SpiritManager {
         // Disable mouse tracking for the previous spirit
         this.disableMouseTracking();
         
-        // Remove existing highlights and reset positions
+        // Reset visual state for spirits that aren't current and don't have targets
         this.spirits.forEach((spirit, index) => {
-            this.scene.tweens.killTweensOf(spirit);
             if (spirit.spirit) {
-                spirit.spirit.clearTint();
-                spirit.spirit.setScale(2);
-            }
-            // Move non-current spirits back
-            if (index !== this.currentSpiritIndex) {
-                this.scene.tweens.add({
-                    targets: spirit,
-                    y: this.layout.spiritY(),
-                    duration: 200,
-                    ease: 'Power2.easeOut'
-                });
+                // Only reset spirits that aren't currently selected and don't have targets
+                if (index !== this.currentSpiritIndex && this.spiritTargets[index] === null) {
+                    spirit.spirit.clearTint();
+                    spirit.spirit.setScale(2);
+                }
             }
         });
         
@@ -278,27 +289,50 @@ export class SpiritManager {
         if (currentSpirit && currentSpirit.spirit) {
             logger.combat.debug(`Found current spirit, enabling mouse tracking`);
             
-            // Yellow tint and larger scale
-            currentSpirit.spirit.setTint(colorToNumber(Color.Yellow));
-            currentSpirit.spirit.setScale(2.5);
+            // Smoothly transition to highlighted state
+            this.scene.tweens.add({
+                targets: currentSpirit.spirit,
+                scale: 2.5,
+                duration: 400,
+                ease: 'Back.easeOut',
+                onComplete: () => {
+                    // Add the pulsing animation after the initial scale tween
+                    this.scene.tweens.add({
+                        targets: currentSpirit.spirit,
+                        scaleX: 2.8,
+                        scaleY: 2.8,
+                        duration: 800,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+            });
+            
+            // Smoothly apply yellow tint
+            this.scene.tweens.addCounter({
+                from: 0,
+                to: 1,
+                duration: 400,
+                ease: 'Power2.easeOut',
+                onUpdate: (tween) => {
+                    const progress = tween.getValue();
+                    const tintValue = Phaser.Display.Color.Interpolate.ColorWithColor(
+                        Phaser.Display.Color.ValueToColor(0xffffff),
+                        Phaser.Display.Color.ValueToColor(colorToNumber(Color.Yellow)),
+                        1,
+                        progress
+                    );
+                    currentSpirit.spirit.setTint(Phaser.Display.Color.GetColor(tintValue.r, tintValue.g, tintValue.b));
+                }
+            });
             
             // Move forward and up slightly
             this.scene.tweens.add({
                 targets: currentSpirit,
                 y: this.layout.spiritY() - 30,
-                duration: 300,
+                duration: 400,
                 ease: 'Back.easeOut'
-            });
-            
-            // Add a subtle pulsing animation
-            this.scene.tweens.add({
-                targets: currentSpirit.spirit,
-                scaleX: 2.8,
-                scaleY: 2.8,
-                duration: 800,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
             });
             
             // Enable mouse tracking for the current spirit
