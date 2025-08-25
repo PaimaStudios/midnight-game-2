@@ -328,7 +328,7 @@ export class SpiritManager {
                 duration: 400,
                 ease: 'Power2.easeOut',
                 onUpdate: (tween) => {
-                    const progress = tween.getValue();
+                    const progress = tween.progress;
                     const tintValue = Phaser.Display.Color.Interpolate.ColorWithColor(
                         Phaser.Display.Color.ValueToColor(0xffffff),
                         Phaser.Display.Color.ValueToColor(colorToNumber(Color.Yellow)),

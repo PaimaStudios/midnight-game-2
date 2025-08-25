@@ -25,7 +25,7 @@ export class ActiveBattle extends Phaser.Scene {
     subscription: Subscription;
     battle: BattleConfig;
     state: Game2DerivedState;
-    player: Actor | undefined;
+    player: Actor;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
     spirits: SpiritWidget[];
@@ -50,6 +50,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.state = state;
         
         // Initialize managers
+        this.player = new Actor(this, playerX(), playerY(), null);
         this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
         this.enemyManager = new EnemyManager(this, this.layout);
         this.spiritManager = new SpiritManager(this, this.layout);
@@ -60,7 +61,6 @@ export class ActiveBattle extends Phaser.Scene {
         logger.combat.debug('ActiveBattle.create() called');
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
 
-        this.player = new Actor(this, playerX(), playerY(), null);
         this.enemies = this.enemyManager.createEnemies(this.battle);
 
         // Initialize spirits and start targeting
