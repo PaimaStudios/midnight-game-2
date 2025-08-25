@@ -1,6 +1,7 @@
 import { Game2DerivedState } from "game2-api";
 import { BattleConfig, pureCircuits } from "game2-contract";
 import { SpiritWidget } from "../widgets/ability";
+import { Actor } from "../battle/EnemyManager";
 import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 import { logger } from "../main";
@@ -14,7 +15,7 @@ export class SpiritManager {
     private scene: Phaser.Scene;
     private layout: BattleLayout;
     private spirits: SpiritWidget[] = [];
-    private enemies: any[] = []; // Actor type
+    private enemies: Actor[] = [];
     
     // Targeting state
     private battlePhase: BattlePhase = BattlePhase.SPIRIT_TARGETING;

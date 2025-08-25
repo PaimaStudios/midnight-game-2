@@ -19,6 +19,8 @@ const BOSS_TEXTURES = [
     'enemy-boss-enigma'
 ];
 
+type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
+
 export class Actor extends Phaser.GameObjects.Container {
     hp: number;
     maxHp: number;
@@ -137,12 +139,12 @@ export class Actor extends Phaser.GameObjects.Container {
         }
     }
 
-    private getAnimationKey(animationType: 'idle' | 'attack' | 'hurt' | 'death'): string {
+    private getAnimationKey(animationType: AnimationType): string {
         const baseName = this.textureKey.replace('enemy-', '').replace(/-1$/, '');
         return `${baseName}-${animationType}`;
     }
 
-    public playAnimation(animationType: 'idle' | 'attack' | 'hurt' | 'death'): void {
+    public playAnimation(animationType: AnimationType): void {
         if (this.sprite) {
             const animKey = this.getAnimationKey(animationType);
             if (this.scene.anims.exists(animKey)) {
