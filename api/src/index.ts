@@ -15,10 +15,11 @@ import {
     pureCircuits,
     witnesses,
     Ability,
-    EnemyStats,
+    Level,
     PlayerLoadout,
     BattleConfig,
     BattleRewards,
+    EnemiesConfig,
   // Command,
 } from 'game2-contract';
 import * as utils from './utils/index.js';
@@ -89,10 +90,10 @@ export interface DeployedGame2API {
     /**
      * Start a new active battle
      * @param loadout Abilities used in this battle. They will be (temporarily) removed until battle end.
-     * @param biome The area to start the battle in.
+     * @param level The level (biome / difficulty) to start the battle in
      * @returns The config corresponding to the created battle.
      */
-    start_new_battle: (loadout: PlayerLoadout, biome: bigint) => Promise<BattleConfig>;
+    start_new_battle: (loadout: PlayerLoadout, level: Level) => Promise<BattleConfig>;
 
     /**
      * Run a combat round of an already existing active battle
@@ -106,11 +107,10 @@ export interface DeployedGame2API {
      * Start a new quest
      * 
      * @param loadout Abilities used in this quest. They will be (temporarily) removed until battle end.
-     * @param biome The area to start the battle in.
-     * @param difficulty The difficulty of the quest
+     * @param level The level (biome / difficulty) to start the quest in
      * @returns The quest ID of the new quest
      */
-    start_new_quest: (loadout: PlayerLoadout, biome: bigint, difficulty: bigint) => Promise<bigint>;
+    start_new_quest: (loadout: PlayerLoadout, level: Level) => Promise<bigint>;
 
     /**
      * Check if a quest is ready to be finalized (without actually finalizing it)
@@ -134,6 +134,11 @@ export interface DeployedGame2API {
      * @param ability The ability to sell. You must own at least 1
      */
     sell_ability: (ability: Ability) => Promise<void>;
+
+    // TODO: add an admin-only API or not?
+    admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
+
+    admin_level_add_config: (level: Level, enemies: EnemiesConfig) => Promise<void>;
 }
 
 /**
@@ -174,13 +179,56 @@ export class Game2API implements DeployedGame2API {
             // ...and combine them to produce the required derived state.
             (ledgerState, privateState) => {
                 const playerId = pureCircuits.derive_player_pub_key(privateState.secretKey);
+                // we can't index by Level directly so we map by biome then difficulty and add an extra map (for both levels + bosses)
+                // levels
+                const levelsByBiomes = new Map();
+                // TODO: for some reason ledgerState.levels has no [Symbol.iterator]() and thus can't be converted or iterated
+                // so we're just going to manually index by biome id... we should have a better way to do this!
+                const BIOME_COUNT = 4;
+                const DIFFICULTY_COUNT = 1;
+                const iteratingLevels: [bigint, bigint, any][] = [];
+                for (let biome = 0; biome < BIOME_COUNT; ++biome) {
+                    for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
+                        const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
+                        if (ledgerState.levels.member(level)) {
+                            iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
+                        }
+                    }
+                }
+                for (let [biome, difficulty, configs] of iteratingLevels) {
+                    let byBiome = levelsByBiomes.get(biome);
+                    if (byBiome == undefined) {
+                        byBiome = new Map();
+                        levelsByBiomes.set(biome, byBiome);
+                    }
+                    let byDifficulty = byBiome.get(difficulty);
+                    if (byDifficulty == undefined) {
+                        byDifficulty = new Map();
+                        byBiome.set(difficulty, byDifficulty)
+                    }
+                    for (let [index, config] of configs) {
+                        byDifficulty.set(index, config);
+                    }
+                }
+                // bosses
+                const bossesByBiomes = new Map();
+                for (let [level, boss] of ledgerState.bosses) {
+                    let byBiome = bossesByBiomes.get(level.biome);
+                    if (byBiome == undefined) {
+                        byBiome = new Map();
+                        bossesByBiomes.set(level.biome, byBiome);
+                    }
+                    byBiome.set(level.difficulty, boss);
+                }
                 return {
-                  activeBattleConfigs: new Map(ledgerState.active_battle_configs),
-                  activeBattleStates: new Map(ledgerState.active_battle_states),
-                  quests: new Map(ledgerState.quests),
-                  player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
-                  playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
-                  allAbilities: new Map(ledgerState.all_abilities),
+                    activeBattleConfigs: new Map(ledgerState.active_battle_configs),
+                    activeBattleStates: new Map(ledgerState.active_battle_states),
+                    quests: new Map(ledgerState.quests),
+                    player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
+                    playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
+                    allAbilities: new Map(ledgerState.all_abilities),
+                    levels: levelsByBiomes,
+                    bosses: bossesByBiomes,
                 };
             },
         );
@@ -209,8 +257,8 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
-        const txData = await this.deployedContract.callTx.start_new_battle(loadout, biome);
+    async start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
+        const txData = await this.deployedContract.callTx.start_new_battle(loadout, level);
 
         this.logger?.trace({
             transactionAdded: {
@@ -236,8 +284,8 @@ export class Game2API implements DeployedGame2API {
         return txData.private.result.is_some ? txData.private.result.value : undefined;
     }
 
-    async start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
-        const txData = await this.deployedContract.callTx.start_new_quest(loadout, biome, difficulty);
+    async start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.start_new_quest(loadout, level);
 
         this.logger?.trace({
             transactionAdded: {
@@ -284,6 +332,29 @@ export class Game2API implements DeployedGame2API {
         this.logger?.trace({
             transactionAdded: {
                 circuit: 'sell_ability',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+    }
+    async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
+        const txData = await this.deployedContract.callTx.admin_level_new(level, boss);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'admin_level_new',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+    }
+
+    async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
+        const txData = await this.deployedContract.callTx.admin_level_add_config(level, enemies);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'admin_level_add_config',
                 txHash: txData.public.txHash,
                 blockHeight: txData.public.blockHeight,
             },

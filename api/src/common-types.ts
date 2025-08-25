@@ -6,7 +6,7 @@
 
 import { type MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import { type FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { Game2PrivateState, Contract, Witnesses, BattleState, BattleConfig, Player, QuestConfig, Ability } from 'game2-contract';
+import type { Game2PrivateState, Contract, Witnesses, BattleState, BattleConfig, Level, EnemiesConfig, Player, QuestConfig, Ability } from 'game2-contract';
 
 /**
  * The private states consumed throughout the application.
@@ -66,7 +66,8 @@ export type Game2DerivedState = {
   player?: Player;
   playerAbilities: Map<bigint, bigint>;
   allAbilities: Map<bigint, Ability>;
-  // for debugging - TODO remove
-  ui?: boolean;
-  circuit?: boolean;
+  // biome -> difficulty -> index
+  levels: Map<bigint, Map<bigint, Map<bigint, EnemiesConfig>>>;
+  // biome -> difficulty
+  bosses: Map<bigint, Map<bigint, EnemiesConfig>>;
 }

@@ -20,7 +20,7 @@ const abilityInUseY = () => GAME_HEIGHT * 0.7;
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
 
 const enemyX = (config: BattleConfig, enemyIndex: number): number => {
-    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
+    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemies.count);
 }
 const enemyY = () => GAME_HEIGHT * 0.23;
 
@@ -57,18 +57,18 @@ export class ActiveBattle extends Phaser.Scene {
 
     create() {
         const loader = this.scene.get('Loader') as Loader;
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.level.biome) as BIOME_ID)).setDepth(-10);
 
         this.player = new Actor(this, playerX(), playerY(), null);
-        logger.debugging.info(`Asserting enemy count <= 3: ${this.battle.enemy_count}`);
+        logger.debugging.info(`Asserting enemy count <= 3: ${this.battle.enemies.count}`);
         const enemyYOffsets = [
             [0],
             [0, 16],
             [25, 0, 25]
         ];
-        for (let i = 0; i < this.battle.enemy_count; ++i) {
-            const stats = this.battle.stats[i];
-            const actor = new Actor(this, enemyX(this.battle, i), enemyY() + enemyYOffsets[Number(this.battle.enemy_count) - 1][i], stats);
+        for (let i = 0; i < this.battle.enemies.count; ++i) {
+            const stats = this.battle.enemies.stats[i];
+            const actor = new Actor(this, enemyX(this.battle, i), enemyY() + enemyYOffsets[Number(this.battle.enemies.count) - 1][i], stats);
             this.enemies.push(actor);
         }
 

@@ -6,7 +6,7 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, EnemyStats, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic, generateRandomAbility, randIntBetween } from "./battle/logic";
 import { safeJSONString, logger } from "./main";
@@ -45,8 +45,8 @@ export class MockGame2API implements DeployedGame2API {
             quests: new Map(),
             player: undefined,
             playerAbilities: new Map(),
-            ui: undefined,
-            circuit: undefined
+            levels: new Map(),
+            bosses: new Map(),
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -71,49 +71,15 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public start_new_battle(loadout: PlayerLoadout, biome: bigint): Promise<BattleConfig> {
+    public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
         return this.response(() => {
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const rng = utils.randomBytes(32);
-            const biomeBiases = [
-                [1, -1, -1],
-                [0, 1, -3],
-                [0, -3, 1],
-                [1, 0, -1]
-            ];
-            const enemies = randIntBetween(rng, 0, 1, 3);
-            // for the demo we'll randomize these here in a straightforward way. once bytes indexing we'll need to do this consistently with the contract
-            const randomEnemy = (index: number): EnemyStats => {
-                const attack =  BigInt(randIntBetween(rng, index, 10 - enemies * 2, 20 - enemies * 4));
-                const block = BigInt(randIntBetween(rng, index, 0, 10));
-                const physical_def = BigInt(randIntBetween(rng, index, 4, 7) + biomeBiases[Number(biome)][0]);
-                const fire_def = BigInt(randIntBetween(rng, index + 100, 4, 7) + biomeBiases[Number(biome)][1]);
-                const ice_def = BigInt(randIntBetween(rng, index + 200, 4, 7) + biomeBiases[Number(biome)][2]);
-                let enemy_type = 0;
-                if (fire_def > physical_def && fire_def > ice_def) {
-                    enemy_type = 1;
-                } else if (ice_def > physical_def && ice_def > physical_def) {
-                    enemy_type = block > attack ? 2 : 3;
-                }
-                return {
-                    boss_type: BOSS_TYPE.normal,
-                    enemy_type: BigInt(enemy_type),
-                    hp: BigInt(randIntBetween(rng, index, 70, 80) - enemies * 10),
-                    attack,
-                    block,
-                    physical_def,
-                    fire_def,
-                    ice_def,
-                }
-            };
+            const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
+            const battleConfig = configs.get(BigInt(randIntBetween(rng, 0, 0, configs.size - 1)));
             const battle = {
-                biome,
-                stats: [
-                    randomEnemy(0),
-                    randomEnemy(1),
-                    randomEnemy(2)
-                ],
-                enemy_count: BigInt(enemies),
+                level,
+                enemies: battleConfig!,
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
             };
@@ -122,9 +88,9 @@ export class MockGame2API implements DeployedGame2API {
             this.mockState.activeBattleStates.set(id, {
                 deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
                 player_hp: BigInt(100),
-                enemy_hp_0: battle.stats[0].hp,
-                enemy_hp_1: battle.stats[1].hp,
-                enemy_hp_2: battle.stats[2].hp,
+                enemy_hp_0: battle.enemies.stats[0].hp,
+                enemy_hp_1: battle.enemies.stats[1].hp,
+                enemy_hp_2: battle.enemies.stats[2].hp,
             });
             this.mockState.activeBattleConfigs.set(id, battle);
             logger.gameState.debug(` to ${this.mockState.activeBattleConfigs.size}`);
@@ -164,36 +130,12 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public start_new_quest(loadout: PlayerLoadout, biome: bigint, difficulty: bigint): Promise<bigint> {
+    public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
         return this.response(() => {
-            const noEnemy = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(0), attack: BigInt(0), block: BigInt(0), physical_def: BigInt(0), fire_def: BigInt(0), ice_def: BigInt(0) };
-            let boss = noEnemy;
-            const dragon = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(5), fire_def: BigInt(7), ice_def: BigInt(3) };
-            const enigma = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(8), fire_def: BigInt(5), ice_def: BigInt(5) };
-            switch (Number(biome)) {
-                case BIOME_ID.grasslands:
-                case BIOME_ID.cave:
-                    boss = dragon;
-                    break;
-                case BIOME_ID.desert:
-                case BIOME_ID.tundra:
-                    boss = enigma;
-                    break;
-            }
-            const battle_config = {
-                biome,
-                stats: [
-                    boss,
-                    noEnemy,
-                    noEnemy
-                ],
-                enemy_count: BigInt(1),
+            const quest = {
+                level,
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
-            };
-            const quest = {
-                battle_config,
-                difficulty,
             };
             const questId = pureCircuits.derive_quest_id(quest);
             this.mockState.quests.set(questId, quest);
@@ -233,16 +175,23 @@ export class MockGame2API implements DeployedGame2API {
                 this.questReadiness.delete(quest_id);
                 this.questStartTimes.delete(quest_id);
 
-                const battleId = pureCircuits.derive_battle_id(quest.battle_config);
+                const battle_config = {
+                    level: quest.level,
+                    enemies: this.mockState.bosses.get(quest.level.biome)!.get(quest.level.difficulty)!,
+                    player_pub_key: MOCK_PLAYER_ID,
+                    loadout: quest.loadout,
+                };
+
+                const battleId = pureCircuits.derive_battle_id(battle_config);
 
                 this.mockState.activeBattleStates.set(battleId, {
                     deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
                     player_hp: BigInt(100),
-                    enemy_hp_0: quest.battle_config.stats[0].hp,
-                    enemy_hp_1: quest.battle_config.stats[1].hp,
-                    enemy_hp_2: quest.battle_config.stats[2].hp,
+                    enemy_hp_0: battle_config.enemies.stats[0].hp,
+                    enemy_hp_1: battle_config.enemies.stats[1].hp,
+                    enemy_hp_2: battle_config.enemies.stats[2].hp,
                 });
-                this.mockState.activeBattleConfigs.set(battleId, quest.battle_config);
+                this.mockState.activeBattleConfigs.set(battleId, battle_config);
 
                 return battleId;
             }
@@ -263,6 +212,33 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
+    public async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
+        return this.response(() => {
+            let bossesByBiome = this.mockState.bosses.get(level.biome);
+            if (bossesByBiome == undefined) {
+                bossesByBiome = new Map();
+                this.mockState.bosses.set(level.biome, bossesByBiome);
+            }
+            bossesByBiome.set(level.difficulty, boss);
+        }, 50);
+    }
+
+    public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
+        return this.response(() => {
+            let byBiome = this.mockState.levels.get(level.biome);
+            if (byBiome == undefined) {
+                byBiome = new Map();
+                this.mockState.levels.set(level.biome, byBiome);
+            }
+            let byDifficulty = byBiome.get(level.difficulty);
+            if (byDifficulty == undefined) {
+                byDifficulty = new Map();
+                byBiome.set(level.difficulty, byDifficulty);
+            }
+            byDifficulty.set(BigInt(byDifficulty.size), enemies);
+        }, 50);
+    }
+
 
     private addRewards(rewards: BattleRewards) {
         this.mockState.player!.gold += rewards.gold;
@@ -280,7 +256,7 @@ export class MockGame2API implements DeployedGame2API {
         return abilityId;
     }
 
-    private response<T>(body: () => T): Promise<T> {
+    private response<T>(body: () => T, delay: number = MOCK_DELAY): Promise<T> {
         return new Promise((resolve, reject) => setTimeout(() => {
             try {
                 const ret = body();
@@ -291,7 +267,7 @@ export class MockGame2API implements DeployedGame2API {
             setTimeout(() => {
                 logger.gameState.debug(`\n   ----> new state ${safeJSONString(this.mockState)}\n\n`);
                 this.subscriber?.next(this.mockState);
-            }, MOCK_DELAY);
-        }, MOCK_DELAY));
+            }, delay);
+        }, delay));
     }
 }
