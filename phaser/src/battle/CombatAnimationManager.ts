@@ -1,4 +1,4 @@
-import { EFFECT_TYPE, Ability } from "game2-contract";
+import { EFFECT_TYPE, Ability, BattleConfig } from "game2-contract";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
 import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { addScaledImage, scale } from "../utils/scaleImage";
@@ -7,24 +7,25 @@ import { BattleLayout } from "./BattleLayout";
 import { CombatCallbacks } from "../battle/logic";
 import { logger } from "../main";
 import { BattleEffect } from "../widgets/BattleEffect";
+import { Actor } from "./EnemyManager";
 
 export class CombatAnimationManager {
     private scene: Phaser.Scene;
     private layout: BattleLayout;
     private spirits: SpiritWidget[];
     private abilityIcons: AbilityWidget[];
-    private enemies: any[]; // Actor type
-    private player: any; // Actor type
-    private battle: any; // BattleConfig type
+    private enemies: Actor[];
+    private player: Actor;
+    private battle: BattleConfig
 
     constructor(
         scene: Phaser.Scene,
         layout: BattleLayout,
         spirits: SpiritWidget[],
         abilityIcons: AbilityWidget[],
-        enemies: any[],
-        player: any,
-        battle: any
+        enemies: Actor[],
+        player: Actor,
+        battle: BattleConfig
     ) {
         this.scene = scene;
         this.layout = layout;
@@ -38,8 +39,8 @@ export class CombatAnimationManager {
     public updateReferences(
         spirits: SpiritWidget[],
         abilityIcons: AbilityWidget[],
-        enemies: any[],
-        player: any
+        enemies: Actor[],
+        player: Actor
     ) {
         this.spirits = spirits;
         this.abilityIcons = abilityIcons;
