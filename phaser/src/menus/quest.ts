@@ -17,6 +17,7 @@ import { SpiritWidget, AbilityWidget } from "../widgets/ability";
 import { QuestsMenu } from "./quests";
 import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
+import { QuestConfig } from "game2-contract";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -66,8 +67,8 @@ export class QuestMenu extends Phaser.Scene {
         if (!this.backgroundSet) {
             const quest = state.quests.get(this.questId);
             if (quest) {
-                logger.gameState.info(`Setting background for biome: ${quest.battle_config.biome}`);
-                const biomeId = Number(quest.battle_config.biome) as BIOME_ID;
+                logger.gameState.info(`Setting background for biome: ${quest.level.biome}`);
+                const biomeId = Number(quest.level.biome) as BIOME_ID;
                 addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(biomeId)).setDepth(-10);
                 this.backgroundSet = true;
             } else {
@@ -78,7 +79,7 @@ export class QuestMenu extends Phaser.Scene {
         // Display quest abilities (only once)
         if (!this.abilitiesDisplayed) {
             const quest = state.quests.get(this.questId);
-            if (quest) {
+            if (quest != undefined) {
                 this.displayQuestAbilities(quest, state);
                 this.abilitiesDisplayed = true;
             }
@@ -99,9 +100,9 @@ export class QuestMenu extends Phaser.Scene {
         }
     }
 
-    private displayQuestAbilities(quest: any, state: Game2DerivedState) {
+    private displayQuestAbilities(quest: QuestConfig, state: Game2DerivedState) {
         const MAX_ABILITIES = 7;
-        const abilities = quest.battle_config.loadout.abilities;
+        const abilities = quest.loadout.abilities;
 
         // Create summoning tablets and spirit widgets
         for (let i = 0; i < MAX_ABILITIES; ++i) {

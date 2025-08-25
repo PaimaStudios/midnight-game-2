@@ -32,7 +32,7 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     private questStr(quest: QuestConfig): string {
-        return `Quest in ${biomeToName(Number(quest.battle_config.biome))} - ${quest.difficulty}`;
+        return `Quest in ${biomeToName(Number(quest.level.biome))} - ${quest.level.difficulty}`;
     }
 
     onStateChange(state: Game2DerivedState) {
