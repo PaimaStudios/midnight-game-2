@@ -433,7 +433,7 @@ pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
     return (start + add - (((start + add >= n) as Uint<1>) * n)) as Uint<32>;
 }
 
-export circuit combat_round(battle_id: Field, ability_targets: Maybe<Vector<3, Uint<0..2>>>): Maybe<BattleRewards> {
+export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
 
@@ -492,12 +492,9 @@ pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
     };
 }
 
-circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Maybe<Vector<3, Uint<0..2>>>): BattleState {
+circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..2>>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
-
-    // Handle targeting: use player targets if provided, otherwise random target
-    const target = ability_targets.is_some ? (ability_targets.value[0] as Uint<32>) : mock_rand_target();
 
     // See generate.js for an explanation of the code generation
 
