@@ -14,7 +14,6 @@ export function contractDamageToBaseUI(amount: number | bigint): number {
 }
 
 function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect, xOffset: number, yOffset: number, tint: Color): Phaser.GameObjects.GameObject[] {
-    logger.ui.debug(`addEffectIcons(${effect.effect_type}, ${effect.amount})`);
     let uiComponents = [];
     if (effect.is_aoe) {
         uiComponents.push(addScaledImage(container.scene, xOffset + 20, yOffset - 6, 'aoe').setTint(colorToNumber(tint)));

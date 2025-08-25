@@ -97,9 +97,10 @@ export interface DeployedGame2API {
     /**
      * Run a combat round of an already existing active battle
      * @param battle_id Battle to attempt a combat round of
+     * @param ability_targets Enemy targets for each ability
      * @returns Rewards if battle is complete (win or lose), or undefined if not
      */
-    combat_round: (battle_id: bigint) => Promise<BattleRewards | undefined>;
+    combat_round: (battle_id: bigint, ability_targets: [bigint, bigint, bigint]) => Promise<BattleRewards | undefined>;
 
 
     /**
@@ -222,8 +223,8 @@ export class Game2API implements DeployedGame2API {
 
         return txData.private.result;
     }
-    async combat_round(battle_id: bigint): Promise<BattleRewards | undefined> {
-        const txData = await this.deployedContract.callTx.combat_round(battle_id);
+    async combat_round(battle_id: bigint, ability_targets: [bigint, bigint, bigint]): Promise<BattleRewards | undefined> {
+        const txData = await this.deployedContract.callTx.combat_round(battle_id, ability_targets);
 
         this.logger?.trace({
             transactionAdded: {

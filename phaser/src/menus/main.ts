@@ -155,7 +155,6 @@ export class TestMenu extends Phaser.Scene {
 
 
     private onStateChange(state: Game2DerivedState) {
-        logger.gameState.debug(`---state change---: ${safeJSONString(state)}`);
         this.state = state;
 
         this.events.emit('stateChange', state);

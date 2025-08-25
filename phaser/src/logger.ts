@@ -41,7 +41,7 @@ class GameLogger {
     this.logAsObject = !!logAsObjectEnv || logAsObjectEnv === 'true'; // Default to false unless explicitly set to 'true'
 
     this.baseLogger = pino.pino({
-      level: import.meta.env.VITE_LOGGING_LEVEL || 'info',
+      level: import.meta.env.VITE_LOGGING_LEVEL || 'debug',
       browser: {
         asObject: this.logAsObject,
       },
