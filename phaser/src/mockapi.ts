@@ -131,9 +131,9 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
-    public async combat_round(battle_id: bigint, targets?: [bigint, bigint, bigint]): Promise<BattleRewards | undefined> {
+    public async combat_round(battle_id: bigint, ability_targets: [bigint, bigint, bigint]): Promise<BattleRewards | undefined> {
         return await this.response(async () => {
-            const targetsUnwrapped = targets?.map(t => Number(t));
+            const targetsUnwrapped = ability_targets.map(t => Number(t));
 
             return combat_round_logic(battle_id, this.mockState, targetsUnwrapped).then((ret) => {
                 const battleState = this.mockState.activeBattleStates.get(battle_id)!;
