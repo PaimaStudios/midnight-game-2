@@ -1,7 +1,7 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Button } from "../widgets/button";
 import { AbilityWidget } from "../widgets/ability";
-import { BattleConfig, pureCircuits } from "game2-contract";
+import { BattleConfig, BattleRewards, pureCircuits } from "game2-contract";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "../menus/main";
 
@@ -63,8 +63,6 @@ export class UIStateManager {
     }
 
     public refreshAbilityIconsForNextRound(state: Game2DerivedState, battle: BattleConfig): AbilityWidget[] {
-        if (!state || !battle) return [];
-        
         const battleConfig = state.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle));
         const battleState = state.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
         
@@ -94,7 +92,7 @@ export class UIStateManager {
         return this.abilityIcons;
     }
 
-    public showBattleEndScreen(circuit: any, state: Game2DerivedState) {
+    public showBattleEndScreen(circuit: BattleRewards, state: Game2DerivedState) {
         const returnButtonText = 'Return to Hub';
         const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!` : `You Died :(`;
         this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.5, battleOverText, fontStyle(16)).setOrigin(0.5, 0.5);

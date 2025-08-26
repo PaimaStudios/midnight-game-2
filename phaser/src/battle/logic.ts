@@ -37,17 +37,11 @@ export function randIntBetween(nonce: Uint8Array, index: number, min: number, ma
  * @param uiHooks Optional callbacks that can hook into UI animations when calling this for frontend simulation.
  * @returns Rewards from the battle if it is completed (all enemies died or player died). or undefined if it remains in progress
  */
-export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, playerTargets?: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
+export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, playerTargets: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
     return new Promise(async (resolve) => {
         logger.combat.debug(`combat_round_logic(${playerTargets}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
-
-        if (playerTargets == undefined) {
-            // If no playerTargets are provided, default to targeting first enemy
-            logger.combat.debug(`No player targets provided, defaulting to first enemy`);
-            playerTargets = new Array(Number(battleConfig.enemy_count)).fill(0).map((_, i) => i);
-        }
 
         if (uiHooks != undefined) {
             gameState.ui = true;
