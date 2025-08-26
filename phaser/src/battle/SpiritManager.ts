@@ -116,7 +116,7 @@ export class SpiritManager {
     }
 
     public getTargets(): (number | null)[] {
-        return [...this.spiritTargets];
+        return this.spiritTargets;
     }
 
     public getBattlePhase(): BattlePhase {
