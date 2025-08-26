@@ -42,7 +42,10 @@ export class SpiritManager {
         const battleConfig = state.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle));
         const battleState = state.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
         
-        if (!battleConfig || !battleState) return this.spirits;
+        if (!battleConfig || !battleState) {
+            logger.combat.debug('No battleConfig or battleState found: ', battleConfig, battleState);
+            return this.spirits;
+        }
         
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => state.allAbilities.get(id)!);
