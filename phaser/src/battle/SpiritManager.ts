@@ -140,7 +140,6 @@ export class SpiritManager {
             this.scene.tweens.killTweensOf(spirit.spirit);
             spirit.y = this.layout.spiritY();
             if (spirit.spirit) {
-                spirit.spirit.clearTint();
                 spirit.spirit.setScale(2);
             }
         });
@@ -152,7 +151,7 @@ export class SpiritManager {
         this.spiritTargets = [null, null, null];
     }
 
-    public updateTargetingReferences(spirits: SpiritWidget[], enemies: any[]) {
+    public updateTargetingReferences(spirits: SpiritWidget[], enemies: Actor[]) {
         this.spirits = spirits;
         this.enemies = enemies;
     }
@@ -225,7 +224,6 @@ export class SpiritManager {
                 ease: 'Power2.easeOut'
             });
             if (spirit.spirit) {
-                spirit.spirit.clearTint();
                 spirit.spirit.setScale(2);
             }
         }
@@ -293,7 +291,6 @@ export class SpiritManager {
             if (spirit.spirit) {
                 // Only reset spirits that aren't currently selected and don't have targets
                 if (index !== this.currentSpiritIndex && this.spiritTargets[index] === null) {
-                    spirit.spirit.clearTint();
                     spirit.spirit.setScale(2);
                 }
             }
@@ -310,18 +307,6 @@ export class SpiritManager {
                 scale: 2.5,
                 duration: 400,
                 ease: 'Back.easeOut',
-                onComplete: () => {
-                    // Add the pulsing animation after the initial scale tween
-                    this.scene.tweens.add({
-                        targets: currentSpirit.spirit,
-                        scaleX: 2.8,
-                        scaleY: 2.8,
-                        duration: 800,
-                        yoyo: true,
-                        repeat: -1,
-                        ease: 'Sine.easeInOut'
-                    });
-                }
             });
             
             // Smoothly apply yellow tint
@@ -330,16 +315,6 @@ export class SpiritManager {
                 to: 1,
                 duration: 400,
                 ease: 'Power2.easeOut',
-                onUpdate: (tween) => {
-                    const progress = tween.progress;
-                    const tintValue = Phaser.Display.Color.Interpolate.ColorWithColor(
-                        Phaser.Display.Color.ValueToColor(0xffffff),
-                        Phaser.Display.Color.ValueToColor(colorToNumber(Color.Yellow)),
-                        1,
-                        progress
-                    );
-                    currentSpirit.spirit.setTint(Phaser.Display.Color.GetColor(tintValue.r, tintValue.g, tintValue.b));
-                }
             });
             
             // Move forward and up slightly
