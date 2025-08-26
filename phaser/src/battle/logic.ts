@@ -37,9 +37,9 @@ export function randIntBetween(nonce: Uint8Array, index: number, min: number, ma
  * @param uiHooks Optional callbacks that can hook into UI animations when calling this for frontend simulation.
  * @returns Rewards from the battle if it is completed (all enemies died or player died). or undefined if it remains in progress
  */
-export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, playerTargets: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
+export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedState, abilityTargets: number[], uiHooks?: CombatCallbacks): Promise<BattleRewards | undefined> {
     return new Promise(async (resolve) => {
-        logger.combat.debug(`combat_round_logic(${playerTargets}, ${uiHooks == undefined})`);
+        logger.combat.debug(`combat_round_logic(${abilityTargets}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
 
@@ -132,16 +132,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         };
 
-        // Use player-selected targets, validate they're alive
-        const targets = playerTargets.map((selectedTarget, spiritIndex) => {
-            if (aliveTargets.includes(selectedTarget)) {
-                return selectedTarget;
-            } else {
-                const fallback = aliveTargets[0];
-                return fallback;
-            }
-        });
-        
         // base effects
         const allEnemiesDead = () => {
             return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
@@ -154,7 +144,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (ability.generate_color.is_some) {
                 await uiHooks?.onEnergyTrigger(i, Number(ability.generate_color.value));
             }
-            await resolveEffect(ability.effect, i, targets[i]);
+            await resolveEffect(ability.effect, i, abilityTargets[i]);
             await uiHooks?.afterUseAbility(i);
             if (allEnemiesDead()) {
                 logger.combat.debug(`[${uiHooks == undefined}] prematurely ending`);
@@ -168,7 +158,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             for (let c = 0; c < 3; ++c) {
                 if (ability.on_energy[c].is_some && abilities.some((a2, j) => i != j && a2.generate_color.is_some && Number(a2.generate_color.value) == c)) {
                     await uiHooks?.onUseAbility(i, c);
-                    await resolveEffect(ability.on_energy[c], i, targets[i]); // Use same target as base effect
+                    await resolveEffect(ability.on_energy[c], i, abilityTargets[i]); // Use same target as base effect
                     await uiHooks?.afterUseAbility(i);
                     if (allEnemiesDead()) {
                         logger.combat.debug(`[${uiHooks == undefined}] prematurely ending`);
