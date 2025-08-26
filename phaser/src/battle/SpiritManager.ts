@@ -25,6 +25,9 @@ export class SpiritManager {
     // Mouse tracking for spirit leaning
     private mouseMoveHandler?: (pointer: Phaser.Input.Pointer) => void;
     
+    // Selection effects
+    private selectionGlow?: Phaser.GameObjects.Graphics;
+    
     // Callbacks
     private onAllSpiritsTargeted?: () => void;
     private onSpiritSelected?: (index: number) => void;
@@ -68,6 +71,13 @@ export class SpiritManager {
     public cleanupSpirits() {
         this.spirits.forEach((s) => s.destroy());
         this.spirits = [];
+        
+        // Clean up selection glow
+        if (this.selectionGlow) {
+            this.scene.tweens.killTweensOf(this.selectionGlow);
+            this.selectionGlow.destroy();
+            this.selectionGlow = undefined;
+        }
     }
 
     public refreshSpiritsForNextRound(state: Game2DerivedState, battle: BattleConfig): SpiritWidget[] {
@@ -125,6 +135,13 @@ export class SpiritManager {
 
     public setBattlePhase(phase: BattlePhase) {
         this.battlePhase = phase;
+        
+        // Clean up selection glow when transitioning to combat
+        if (phase === BattlePhase.COMBAT_ANIMATION && this.selectionGlow) {
+            this.scene.tweens.killTweensOf(this.selectionGlow);
+            this.selectionGlow.destroy();
+            this.selectionGlow = undefined;
+        }
     }
 
     public disableInteractions() {
@@ -286,11 +303,19 @@ export class SpiritManager {
         // Disable mouse tracking for the previous spirit
         this.disableMouseTracking();
         
+        // Clean up previous selection glow and stop its pulsing
+        if (this.selectionGlow) {
+            this.scene.tweens.killTweensOf(this.selectionGlow);
+            this.selectionGlow.destroy();
+            this.selectionGlow = undefined;
+        }
+        
         // Reset visual state for spirits that aren't current and don't have targets
         this.spirits.forEach((spirit, index) => {
             if (spirit.spirit) {
                 // Only reset spirits that aren't currently selected and don't have targets
                 if (index !== this.currentSpiritIndex && this.spiritTargets[index] === null) {
+                    this.scene.tweens.killTweensOf(spirit.spirit);
                     spirit.spirit.setScale(2);
                 }
             }
@@ -301,29 +326,48 @@ export class SpiritManager {
         if (currentSpirit && currentSpirit.spirit) {
             logger.combat.debug(`Found current spirit, enabling mouse tracking`);
             
-            // Smoothly transition to highlighted state
+            // Create glow/aura circle behind the spirit
+            this.selectionGlow = this.scene.add.graphics();
+            this.selectionGlow.fillStyle(colorToNumber(Color.Green), 0.3);
+            this.selectionGlow.fillCircle(0, 0, 50);
+            
+            // Add dashed outline
+            this.selectionGlow.lineStyle(3, colorToNumber(Color.Green), 0.8);
+            this.selectionGlow.strokeCircle(0, 0, 50);
+            
+            this.selectionGlow.setPosition(currentSpirit.x, currentSpirit.y);
+            this.selectionGlow.setDepth(-1);
+            
+            // Animate the glow with subtle pulsing effect
             this.scene.tweens.add({
-                targets: currentSpirit.spirit,
-                scale: 2.5,
-                duration: 400,
-                ease: 'Back.easeOut',
+                targets: this.selectionGlow,
+                alpha: 0.25,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 1500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
             });
             
-            // Smoothly apply yellow tint
-            this.scene.tweens.addCounter({
-                from: 0,
-                to: 1,
-                duration: 400,
-                ease: 'Power2.easeOut',
-            });
-            
-            // Move forward and up slightly
+            // Move forward and up slightly (both spirit and glow)
+            const targetY = this.layout.spiritY() - 30;
             this.scene.tweens.add({
                 targets: currentSpirit,
-                y: this.layout.spiritY() - 30,
+                y: targetY,
                 duration: 400,
                 ease: 'Back.easeOut'
             });
+            
+            // Make glow follow the initial positioning tween
+            if (this.selectionGlow) {
+                this.scene.tweens.add({
+                    targets: this.selectionGlow,
+                    y: targetY,
+                    duration: 400,
+                    ease: 'Back.easeOut'
+                });
+            }
             
             // Enable mouse tracking for the current spirit
             this.enableMouseTrackingForSpirit(currentSpirit);
@@ -367,13 +411,20 @@ export class SpiritManager {
             const leanY = deltaY * 0.04;
             
             // Apply position to the container - always relative to base position
+            const newX = baseX + leanX;
+            const newY = baseY + leanY;
             this.scene.tweens.add({
                 targets: spirit,
-                x: baseX + leanX,
-                y: baseY + leanY,
+                x: newX,
+                y: newY,
                 duration: 100,
                 ease: 'Power2.easeOut'
             });
+            
+            // Update glow position to follow the spirit immediately
+            if (this.selectionGlow) {
+                this.selectionGlow.setPosition(newX, newY);
+            }
         };
         
         // Add the handler
