@@ -80,7 +80,13 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 let abilityReward = { is_some: false, value: BigInt(0) };
                 for (let i = 0; i < battleConfig.enemy_count; ++i) {
                     if (battleConfig.stats[i].boss_type != BOSS_TYPE.normal) {
-                        // For UI, we don't generate random abilities - let the circuit handle rewards
+                        const ability = generateRandomAbility(BigInt(2));
+                        const abilityId = pureCircuits.derive_ability_id(ability);
+                        // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
+                        // if we don't return it, we need to match the logic here with the contract
+                        gameState.allAbilities.set(abilityId, ability);
+                        abilityReward.is_some = true;
+                        abilityReward.value = abilityId;
                         break;
                     }
                 }
