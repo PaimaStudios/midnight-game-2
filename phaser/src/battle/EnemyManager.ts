@@ -244,12 +244,12 @@ export class EnemyManager {
             [25, 0, 25]
         ];
 
-        for (let i = 0; i < battle.enemy_count; ++i) {
-            const stats = battle.stats[i];
+        for (let i = 0; i < battle.enemies.count; ++i) {
+            const stats = battle.enemies.stats[i];
             const actor = new Actor(
                 this.scene, 
                 this.layout.enemyX(battle, i), 
-                this.layout.enemyY() + enemyYOffsets[Number(battle.enemy_count) - 1][i], 
+                this.layout.enemyY() + enemyYOffsets[Number(battle.enemies.count) - 1][i],
                 stats
             );
             this.enemies.push(actor);
