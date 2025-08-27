@@ -91,6 +91,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-boss-dragon', 'enemy-boss-dragon-1.png', { frameWidth: 145, frameHeight: 97 });
 
         // Backgrounds
+        this.load.image('bg-hub1', 'bg-hub1.png');
         this.load.image('bg-grass', 'bg-grass.png');
         this.load.image('bg-desert', 'bg-desert.png');
         this.load.image('bg-tundra', 'bg-tundra.png');
@@ -144,7 +145,7 @@ export class TestMenu extends Phaser.Scene {
         this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
     }
 
     private initApi(api: DeployedGame2API) {
