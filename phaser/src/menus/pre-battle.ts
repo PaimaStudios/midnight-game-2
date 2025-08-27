@@ -177,6 +177,7 @@ export class StartBattleMenu extends Phaser.Scene {
                             this.loader.setText("Waiting on chain update");
                         }
                         this.events.on('stateChange', (state: Game2DerivedState) => {
+                            logger.combat.debug('stateChange event fired, creating ActiveBattle');
                             this.scene.stop('Loader');
                             this.scene.remove('ActiveBattle');
                             this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, state));
@@ -346,7 +347,6 @@ export const isStartingAbility = (ability: Ability) => {
 
 export function sortedAbilitiesById(state: Game2DerivedState): bigint[] {
     let abilities = [];
-    logger.gameState.debug(`player abilities: ${state.playerAbilities.entries().map((a, c) => `${c} x ${a}`).toArray().join(', ')}`);
     for (const [id, count] of state.playerAbilities) {
         for (let i = 0; i < count; ++i) {
             abilities.push(id);

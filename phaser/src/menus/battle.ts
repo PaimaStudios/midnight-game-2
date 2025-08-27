@@ -2,50 +2,45 @@
  * Active battle scene and relevant files.
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { Button } from "../widgets/button";
-import { Ability, BattleConfig, EFFECT_TYPE, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
-import { TestMenu } from "./main";
+import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
+import { BattleConfig, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
-import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
-import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
-import { combat_round_logic } from "../battle/logic";
+import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
-import { addScaledImage, BASE_SPRITE_SCALE, scale } from "../utils/scaleImage";
-import { colorToNumber } from "../constants/colors";
-import { HealthBar } from "../widgets/progressBar";
+import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
+import { BattleLayout } from "../battle/BattleLayout";
+import { CombatAnimationManager } from "../battle/CombatAnimationManager";
+import { EnemyManager, Actor } from "../battle/EnemyManager";
+import { SpiritManager, BattlePhase } from "../battle/SpiritManager";
+import { UIStateManager } from "../battle/UIStateManager";
+import { combat_round_logic } from "../battle/logic";
 
-const abilityInUseY = () => GAME_HEIGHT * 0.7;
-const abilityIdleY = () => GAME_HEIGHT * 0.75;
-
-const enemyX = (config: BattleConfig, enemyIndex: number): number => {
-    return GAME_WIDTH * (enemyIndex + 0.5) / Number(config.enemy_count);
-}
-const enemyY = () => GAME_HEIGHT * 0.23;
-
-// TODO: keep this? is it an invisible player? or show it somewhere?
+// Legacy layout functions - TODO: replace these with layout manager usage
 const playerX = () => GAME_WIDTH / 2;
 const playerY = () => GAME_HEIGHT * 0.95;
-
-const spiritX = (spiritIndex: number): number => {
-    return GAME_WIDTH * (spiritIndex + 0.5) / 3;
-}
-const spiritY = () => GAME_HEIGHT * 0.5;
 
 export class ActiveBattle extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
     battle: BattleConfig;
     state: Game2DerivedState;
-    player: Actor | undefined;
+    player!: Actor;
     enemies: Actor[];
     abilityIcons: AbilityWidget[];
     spirits: SpiritWidget[];
+    
+    // Managers
+    private layout: BattleLayout;
+    private combatAnimationManager!: CombatAnimationManager;
+    private enemyManager!: EnemyManager;
+    private spiritManager!: SpiritManager;
+    private uiStateManager!: UIStateManager;
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
-
+        
+        logger.combat.debug('ActiveBattle constructor called');
         this.api = api;
         this.battle = battle;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -53,312 +48,24 @@ export class ActiveBattle extends Phaser.Scene {
         this.abilityIcons = [];
         this.spirits = [];
         this.state = state;
+        
+        // Initialize managers
+        this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
+        this.enemyManager = new EnemyManager(this, this.layout);
+        this.spiritManager = new SpiritManager(this, this.layout);
+        this.uiStateManager = new UIStateManager(this, this.api);
     }
 
     create() {
-        const loader = this.scene.get('Loader') as Loader;
+        logger.combat.debug('ActiveBattle.create() called');
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
 
+        // Create player after scene is initialized
         this.player = new Actor(this, playerX(), playerY(), null);
-        logger.debugging.info(`Asserting enemy count <= 3: ${this.battle.enemy_count}`);
-        const enemyYOffsets = [
-            [0],
-            [0, 16],
-            [25, 0, 25]
-        ];
-        for (let i = 0; i < this.battle.enemy_count; ++i) {
-            const stats = this.battle.stats[i];
-            const actor = new Actor(this, enemyX(this.battle, i), enemyY() + enemyYOffsets[Number(this.battle.enemy_count) - 1][i], stats);
-            this.enemies.push(actor);
-        }
+        this.enemies = this.enemyManager.createEnemies(this.battle);
 
-        // attack button
-        const button = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.80, 250, 48, this.getAttackButtonString(this.battle), 10, async () => {
-            const id = pureCircuits.derive_battle_id(this.battle);
-            const clonedState = structuredClone(this.state!);
-            let apiDone = false;
-            let loaderStarted = false;
-
-            button.visible = false;
-            
-            const retryCombatRound = async (): Promise<any> => {
-                try {
-                    const result = await this.api.combat_round(id);
-                    apiDone = true;
-                    if (loaderStarted) {
-                        this.scene.resume().stop('Loader');
-                    }
-                    return result;
-                } catch (err) {
-                    if (loaderStarted) {
-                        loader.setText("Error connecting to network.. Retrying");
-                    }
-                    logger.network.error(`Network Error during combat_round: ${err}`);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    return retryCombatRound();
-                }
-            };
-            const apiPromise = retryCombatRound();
-            
-            const uiPromise = combat_round_logic(id, clonedState, {
-                onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
-                    logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
-                    this.enemies[enemy].addBlock(amount);
-                    this.add.existing(new BattleEffect(this, enemyX(this.battle, enemy), enemyY() - 32, EFFECT_TYPE.block, amount, resolve));
-                }),
-                onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                    // Play enemy attack animation
-                    this.enemies[enemy].performAttackAnimation().then(() => {
-                        const fist = addScaledImage(this, enemyX(this.battle, enemy), enemyY(), 'physical');
-                        this.tweens.add({
-                            targets: fist,
-                            x: playerX(),
-                            y: playerY(),
-                            duration: 100,
-                            onComplete: () => {
-                                fist.destroy();
-                                this.player?.damage(amount);
-                                this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, EFFECT_TYPE.attack_phys, amount, resolve));
-                            }
-                        });
-                    });
-                }),
-                onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
-                    logger.combat.debug(`onPlayerEffect(${targets}, ${effectType}, ${amounts})`);
-                    let damageType = undefined;
-                    switch (effectType) {
-                        case EFFECT_TYPE.attack_fire:
-                            damageType = 'fire';
-                            break;
-                        case EFFECT_TYPE.attack_ice:
-                            damageType = 'ice';
-                            break;
-                        case EFFECT_TYPE.attack_phys:
-                            damageType = 'physical';
-                            break;
-                        case EFFECT_TYPE.block:
-                            this.player?.addBlock(amounts[0]);
-                            break;
-                    }
-                    if (damageType != undefined) {
-                        for (let i = 0; i < targets.length; ++i) {
-                            const target = targets[i];
-                            const amount = amounts[i];
-                            const bullet = addScaledImage(this, spiritX(source), spiritY(), damageType);
-                            this.tweens.add({
-                                targets: bullet,
-                                x: enemyX(this.battle, target),
-                                y: enemyY(),
-                                duration: 150,
-                                onComplete: () => {
-                                    //logger.combat.debug(`enemy ${target} took ${effect.amount} damage`);
-                                    this.enemies[target].damage(amount);
-                                    // Play damage animation
-                                    this.enemies[target].takeDamageAnimation();
-                                    this.add.existing(new BattleEffect(this, bullet.x, bullet.y - 32, effectType, amount, resolve));
-                                    bullet.destroy();
-                                },
-                            });
-                        }
-                    } else {
-                        // TODO: why was this here? in case we forgot to code something???
-                        this.add.existing(new BattleEffect(this, playerX(), playerY() - 32, effectType, amounts[0], resolve));
-                    }
-                }),
-                onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
-                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability).setAlpha(0));
-                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this, GAME_WIDTH * (i + 0.5) / abilities.length, spiritY(), ability).setAlpha(0));
-                    this.tweens.add({
-                        targets: [...this.abilityIcons, ...this.spirits],
-                        alpha: 1,
-                        duration: 500,
-                        onComplete: () => {
-                            resolve();
-                        },
-                    });
-                }),
-                onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
-                    const abilityIcon = this.abilityIcons[abilityIndex];
-                    const spirit = this.spirits[abilityIndex];
-                    
-                    // Play spirit attack animation
-                    if (spirit && spirit.spirit) {
-                        const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
-                        const attackAnimKey = `spirit-${spiritType}-attack`;
-                        const idleAnimKey = `spirit-${spiritType}`;
-                        if (this.anims.exists(attackAnimKey)) {
-                            spirit.spirit.anims.play(attackAnimKey);
-                            // Return to idle animation after attack duration
-                            this.time.delayedCall(1000, () => {
-                                if (spirit.spirit && this.anims.exists(idleAnimKey)) {
-                                    spirit.spirit.anims.play(idleAnimKey);
-                                }
-                            });
-                        }
-                    }
-                    
-                    this.tweens.add({
-                        targets: [abilityIcon/*, spirit*/],
-                        y: abilityInUseY(),
-                        delay: 150,
-                        duration: 250,
-                        onComplete: () => {
-                            const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
-                            this.tweens.add({
-                                // TODO: do something to the spirit too
-                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
-                                scale: 1.5,
-                                yoyo: true,
-                                delay: 100,
-                                duration: 200,
-                                onComplete: () => resolve(),
-                            });
-                        },
-                    });
-                    // shrink orb after use
-                    if (energy != undefined) {
-                        const orb = this.spirits[abilityIndex].orbs[energy]!;
-                        this.tweens.add({
-                            targets: orb,
-                            scale: 1,
-                            duration: 250,
-                        });
-                    }
-                }),
-                afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
-                    this.tweens.add({
-                        targets: [this.abilityIcons[abilityIndex]/*, this.spirits[abilityIndex]*/],
-                        y: abilityIdleY(),
-                        delay: 150,
-                        duration: 250,
-                        onComplete: () => {
-                            resolve();
-                        },
-                    });
-                }),
-                onEnergyTrigger: (source: number, color: number) => new Promise((resolve) => {
-                    const aura = this.spirits[source].aura!;
-                    const targets = [0, 1, 2]
-                        .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
-                    logger.animation.debug(`[ENERGY-UI] onEnergyTrigger(${source}) -> ${targets}`);
-                    if (targets.length > 0) {
-                        logger.animation.debug(`[ENERGY-UI] charge!`);
-                        aura.anims.play(chargeAnimKey);
-                        this.tweens.add({
-                            targets: this,// ignored since it changes no properties, just to not crash
-                            delay: 250,
-                            duration: SPIRIT_ANIMATION_DURATIONS.charge,
-                            completeDelay: 350,
-                            onComplete: () => {
-                                logger.animation.debug(`[ENERGY-UI] ...charged...`);
-                                aura.anims.play(spiritAuraIdleKey);
-                                targets.forEach((a) => {
-                                    logger.animation.debug(`[ENERGY-UI] CREATING BULLET ${source} -> ${a}`);
-                                    const target = this.spirits[a];
-                                    const bullet = scale(this.add.sprite(spiritX(source), spiritY(), 'orb-aura'))
-                                        .setTint(colorToNumber(energyTypeToColor(color)));
-                                    bullet.anims.play(orbAuraIdleKey);
-                                    this.tweens.add({
-                                        targets: bullet,
-                                        delay: 100,
-                                        duration: 500, // TODO: vary based on distance?
-                                        // TODO; target orb instead and compute position it'll be in in 1100ms?
-                                        x: target.x,
-                                        onUpdate: (tween) => {
-                                            // sin-arcs over or below the other spirits (alternates so avoid overlap)
-                                            bullet.y = spiritY() + 32 * Math.sin((tween.progress + (source - a)) * Math.PI);
-                                        },
-                                        onComplete: () => {
-                                            logger.animation.debug(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
-                                            bullet.destroy();
-                                            resolve();
-                                            // grow orb to show it has been triggered
-                                            const orb = target.orbs[color]!;
-                                            this.tweens.add({
-                                                targets: orb,
-                                                scale: 1.5, // do we want 1.5 or 2x? 1.5 x base(2) is 3 so still whole-integer scalingi
-                                                duration: 500,
-                                            });
-                                        },
-                                    });
-                                });
-                            },
-                        });
-                    } else {
-                        resolve();
-                    }
-                }),
-                onEndOfRound: () => new Promise((resolve) => {
-                    this.enemies.forEach((enemy) => enemy.endOfRound());
-                    this.player?.endOfRound();
-                    // just resolve instantly, it's not a big deal if the game continues during the second or so the animations play
-                    resolve();
-                }),
-            }).then(result => {
-                if (!apiDone) {
-                    // Display the loading scene if the API call is not done yet
-                    loaderStarted = true;
-                    
-                    this.scene.pause().launch('Loader');
-                    loader.setText("Waiting on chain update");
-                }
-                return result;
-            });
-
-            // Wait for both API and UI to finish
-            const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
-
-            this.player?.setBlock(0);
-            for (const enemy of this.enemies) {
-                enemy.setBlock(0);
-            }
-            this.abilityIcons.forEach((a) => a.destroy());
-            this.abilityIcons = [];
-            this.spirits.forEach((s) => s.destroy());
-            this.spirits = [];
-            //logger.gameState.debug(`UI:      ui: ${this.state?.ui}, circuit: ${this.state?.circuit}`);
-            //logger.gameState.debug(`CIRCUIT: ui: ${(this.api as MockGame2API).mockState.ui}, circuit: ${(this.api as MockGame2API).mockState.circuit}`);
-            logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
-            // TODO: check consistency (either here or in onStateChange())
-            //
-            // TODO: move this out of here? it gets reset by onStateChange() and also results in an error:
-            //
-            //    Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'updatePenManager')
-            //       at BBCodeText.updateText (index-eba13966.js:322545:24)
-            //       at BBCodeText.setText (index-eba13966.js:322484:14)
-            //       at index-eba13966.js:393191:23
-            logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
-            logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
-            button.visible = true;
-            if (circuit != undefined) {
-                button.destroy();
-
-                const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!\nClick to Return.` : `You Died :(\nClick to Return.`;
-                new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.64, GAME_HEIGHT * 0.3, battleOverText, 16, () => {
-                    this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                    this.scene.start('TestMenu');
-                });
-                if (circuit.alive && circuit.ability.is_some) {
-                    new AbilityWidget(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, this.state?.allAbilities.get(circuit.ability.value)!);
-                    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
-                }
-            } else {
-                button.text.setText(this.getAttackButtonString(this.battle));
-            }
-        });
-    }
-
-    private getAttackButtonString(battle: BattleConfig): string {
-        const buttonDefaultText = `Click to Attack`;
-        if (this.state != undefined) {
-            logger.gameState.debug(`Trying to get ${pureCircuits.derive_battle_id(battle)} [${this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle)) != undefined}][${this.state?.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle)) != undefined}] there are ${this.state!.activeBattleConfigs.size} | ${this.state!.activeBattleStates.size}`);
-        } else {
-            logger.gameState.debug(`We dont have the state yet`);
-            return buttonDefaultText;
-        }
-        const state = this.state?.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        return state != undefined ? buttonDefaultText : '404';
+        // Initialize spirits and start targeting
+        this.initializeSpirits();
     }
 
     private onStateChange(state: Game2DerivedState) {
@@ -367,256 +74,148 @@ export class ActiveBattle extends Phaser.Scene {
         this.state = structuredClone(state);
     }
 
-}
-
-const ENEMY_TEXTURES = [
-    'enemy-goblin',
-    'enemy-fire-sprite',
-    'enemy-ice-golem',
-    'enemy-snowman'
-];
-
-const BOSS_TEXTURES = [
-    'enemy-boss-dragon',
-    'enemy-boss-enigma'
-];
-
-class Actor extends Phaser.GameObjects.Container {
-    hp: number;
-    maxHp: number;
-    hpBar: HealthBar;
-    block: number;
-    image: Phaser.GameObjects.Image | undefined;
-    sprite: Phaser.GameObjects.Sprite | undefined;
-    animationTick: number;
-    textureKey: string = '';
-
-    // TODO: ActorConfig or Stats or whatever
-    constructor(scene: Phaser.Scene, x: number, y: number, stats: EnemyStats | null) {
-        super(scene, x, y);
-
-        this.animationTick = Math.random() * 2 * Math.PI;
-
-        let healtBarYOffset = 0;
-        let healthbarWidth = 180;
-        if (stats != null) {
-            // TODO: replace this with other measures? how should we decide this? for now this works though
-            let texture = ENEMY_TEXTURES[Math.min(ENEMY_TEXTURES.length - 1, Number(stats.enemy_type))];
-            if (stats.boss_type == BOSS_TYPE.boss) {
-                texture = BOSS_TEXTURES[Math.min(BOSS_TEXTURES.length - 1, Number(stats.enemy_type))];
-
-                healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
-            }
-            
-            this.textureKey = texture;
-            
-            // Try to create animated sprite first, fallback to static image
-            if (scene.anims.exists(this.getAnimationKey('idle'))) {
-                this.sprite = scene.add.sprite(0, 0, texture);
-                this.sprite.setScale(BASE_SPRITE_SCALE);
-                this.sprite.anims.play(this.getAnimationKey('idle'));
-                this.add(this.sprite);
-                healtBarYOffset -= this.sprite.height * 1.5 + 22;
-            } else {
-                this.image = addScaledImage(scene, 0, 0, texture);
-                healtBarYOffset -= this.image.height * 1.5 + 22;
-                this.add(this.image);
-            }
-            switch (stats.boss_type) {
-                case BOSS_TYPE.miniboss:
-                    healthbarWidth = GAME_WIDTH * 0.5;
-                    break;
-                case BOSS_TYPE.boss:
-                    healthbarWidth = GAME_WIDTH * 0.75;
-                    break;
-            }
-            this.maxHp = Number(stats.hp);
-        } else {
-            // TOOD: do we need the ActorConfig/ActorStats struct or is this fine?
-            this.maxHp = 100;
-            healthbarWidth = GAME_WIDTH * 0.5;
+    private initializeSpirits() {
+        logger.combat.debug('initializeSpirits called');
+        if (!this.state || !this.battle) {
+            logger.combat.debug('No state or battle found');
+            return;
         }
-
-        this.hp = this.maxHp;
-        this.hpBar = new HealthBar({
-            scene,
-            x: 0,
-            y: healtBarYOffset,
-            width: healthbarWidth,
-            height: 32,
-            max: this.maxHp,
-            displayTotalCompleted: true,
-        });
-        this.block = 0;
-
-        this.add(this.hpBar);
-
-        this.setHp(this.hp);
-        this.setSize(64, 64);
-
-        scene.add.existing(this);
-    }
-
-    public addBlock(amount: number) {
-        this.setBlock(this.block + amount);
-    }
-
-    public damage(amount: number) {
-        if (amount > this.block) {
-            this.setHp(this.hp - amount + this.block);
-            this.setBlock(0);
-        } else {
-            this.setBlock(this.block - amount);
+        
+        const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
+        const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
+        
+        if (!battleConfig || !battleState) {
+            logger.combat.debug('No battleConfig or battleState found');
+            return;
         }
-    }
-
-    public endOfRound() {
-        this.hpBar.finalizeTempProgress(() => {
-            if (this.hp <= 0) {
-                this.hpBar.setLabel('DEAD');
-                // Play death animation when enemy dies
-                this.dieAnimation();
-            }
-        });
-    }
-
-    private setHp(hp: number) {
-        this.hp = Math.max(0, hp);
-        this.hpBar.setValue(this.hp);
-        if (this.hp <= 0) {
-            // do we do anything here?
-            this.image?.setAlpha(0.5);
-            this.sprite?.setAlpha(0.5);
-        }
-    }
-
-    public setBlock(block: number) {
-        this.block = block;
-        this.hpBar.setBlock(block);
-    }
-
-    preUpdate() {
-        // Add subtle breathing animation for living enemies
-        if (this.hp > 0 && this.sprite) {
-            this.animationTick += 0.005;
-            const breathe = Math.sin(this.animationTick) * 2;
-            this.sprite.setY(breathe);
-        }
-    }
-
-    private getAnimationKey(animationType: 'idle' | 'attack' | 'hurt' | 'death'): string {
-        const baseName = this.textureKey.replace('enemy-', '').replace(/-1$/, '');
-        return `${baseName}-${animationType}`;
-    }
-
-    public playAnimation(animationType: 'idle' | 'attack' | 'hurt' | 'death'): void {
-        if (this.sprite) {
-            const animKey = this.getAnimationKey(animationType);
-            if (this.scene.anims.exists(animKey)) {
-                this.sprite.anims.play(animKey);
-            }
-        }
-    }
-
-    public takeDamageAnimation(): Promise<void> {
-        return new Promise((resolve) => {
-            const target = this.sprite || this.image;
-            if (!target) {
-                resolve();
-                return;
-            }
-
-            // Flash red and play hurt animation
-            target.setTint(0xff0000);
-            this.playAnimation('hurt');
-
-            // Scale effect for impact
-            this.scene.tweens.add({
-                targets: target,
-                scaleX: target.scaleX * 1.1,
-                scaleY: target.scaleY * 0.9,
-                duration: 100,
-                yoyo: true,
-                onComplete: () => {
-                    target.clearTint();
-                    if (this.hp > 0) {
-                        this.playAnimation('idle');
-                    }
-                    resolve();
-                }
-            });
-        });
-    }
-
-    public performAttackAnimation(): Promise<void> {
-        return new Promise((resolve) => {
-            this.playAnimation('attack');
-
-            // Lunge forward slightly
-            this.scene.tweens.add({
-                targets: this,
-                x: this.x + 12,
-                duration: 200,
-                yoyo: true,
-                onComplete: () => {
-                    this.playAnimation('idle');
-                    resolve();
-                }
-            });
-        });
-    }
-
-    public dieAnimation(): Promise<void> {
-        return new Promise((resolve) => {
-            this.playAnimation('death');
-            const target = this.sprite || this.image;
-            
-            if (target) {
-                // Fade out and fall
-                this.scene.tweens.add({
-                    targets: [target, this.hpBar],
-                    alpha: 0,
-                    angle: 90,
-                    y: target.y + 50,
-                    duration: 1000,
-                    onComplete: () => resolve()
-                });
-            } else {
-                resolve();
-            }
-        });
-    }
-}
-
-export function effectTypeToIcon(effectType: EFFECT_TYPE): string {
-    switch (effectType) {
-        case EFFECT_TYPE.attack_fire:
-            return 'fire';
-        case EFFECT_TYPE.attack_ice:
-            return 'ice';
-        case EFFECT_TYPE.attack_phys:
-            return 'physical';
-        case EFFECT_TYPE.block:
-            return 'block';
-    }
-}
-
-export class BattleEffect extends Phaser.GameObjects.Container {
-    constructor(scene: Phaser.Scene, x: number, y: number, effectType: EFFECT_TYPE, amount: number, onComplete: () => void) {
-        super(scene, x, y);
-
-        this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
-        this.add(scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
-
-        this.setSize(48, 48);
-        scene.tweens.add({
-            targets: this,
-            alpha: 0,
-            delay: 250,
-            duration: 1500,
-            onComplete: () => {
-                onComplete();
+        
+        // Create spirits using SpiritManager
+        this.spirits = this.spiritManager.createSpirits(this.state, this.battle);
+        
+        // Create ability cards using UIStateManager
+        this.abilityIcons = this.uiStateManager.createAbilityIcons(this.state, this.battle);
+        
+        // Set up spirit manager for targeting
+        this.spiritManager.updateTargetingReferences(this.spirits, this.enemies);
+        this.spiritManager.setCallbacks({
+            onAllSpiritsTargeted: () => this.uiStateManager.createFightButton(() => this.executeCombat()),
+            onSpiritSelected: () => {
+                // We can add additional spirit selection logic here
             },
+            onTargetingStarted: () => this.uiStateManager.removeFightButton()
         });
+        
+        this.combatAnimationManager = new CombatAnimationManager(
+            this,
+            this.layout,
+            this.spirits,
+            this.uiStateManager.getAbilityIcons(),
+            this.enemies,
+            this.player,
+            this.battle
+        );
+        
+        // Start targeting phase
+        this.spiritManager.startTargeting();
+        
     }
+
+    private async executeCombat() {
+        if (this.spiritManager.getBattlePhase() !== BattlePhase.SPIRIT_TARGETING) return;
+        if (!this.spiritManager.getTargets().every(target => target !== null)) return;  
+        
+        // Immediately remove the fight button to prevent double-clicks
+        this.uiStateManager.removeFightButton();
+        
+        this.spiritManager.setBattlePhase(BattlePhase.COMBAT_ANIMATION);
+        this.spiritManager.disableInteractions();
+        
+        // Execute combat round with selected targets
+        await this.runCombat();
+    }
+
+
+    private resetSpirits() {
+        // Reset and start targeting for next round
+        this.spiritManager.reset();
+        this.spiritManager.startTargeting();
+    }
+
+    private async runCombat() {
+        const id = pureCircuits.derive_battle_id(this.battle);
+        const clonedState = structuredClone(this.state!);
+        let loaderStarted = false;
+        
+        const retryCombatRound = async (): Promise<any> => {
+            try {
+                const targets = this.spiritManager.getTargets().map(t => BigInt(t!)) as [bigint, bigint, bigint];
+                const result = await (this.api as any).combat_round(id, targets);
+                if (loaderStarted) {
+                    this.scene.resume().stop('Loader');
+                }
+                return result;
+            } catch (err) {
+                if (loaderStarted) {
+                    const loader = this.scene.get('Loader') as Loader;
+                    loader.setText("Error connecting to network.. Retrying");
+                }
+                logger.network.error(`Network Error during combat_round: ${err}`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return retryCombatRound();
+            }
+        };
+        const apiPromise = retryCombatRound();
+        
+        // Combat logic to use selected targets
+        const uiPromise = this.runCombatLogic(id, clonedState);
+        
+        // Wait for both API and UI to finish
+        const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
+        
+        // Reset for next round or end battle
+        this.handleCombatComplete(circuit, ui);
+    }
+
+    private runCombatLogic(id: bigint, clonedState: Game2DerivedState) {
+        const targetsCopy = this.spiritManager.getTargets().map(target => target!) as number[];
+        
+        // Update animation manager references and use its callbacks
+        this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
+        
+        // Use the imported combat logic with targets
+        return combat_round_logic(id, clonedState, targetsCopy, this.combatAnimationManager.createCombatCallbacks());
+    }
+
+    private handleCombatComplete(circuit: any, ui: any) {
+        // Synchronize visual actor HP with battle state HP
+        
+        this.player?.setBlock(0);
+        this.enemyManager.clearBlocks();
+        this.uiStateManager.destroyAbilityIcons();
+        
+        logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
+        logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
+        logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
+        
+        if (circuit != undefined) {
+            // Battle is over, show end-of-battle screen
+            this.spiritManager.cleanupSpirits();
+            this.uiStateManager.showBattleEndScreen(circuit, this.state);
+        } else {
+            // Battle continues, reset targeting state for next round
+            // First, refresh spirits for the new round (abilities might have changed)
+            this.spirits = this.spiritManager.refreshSpiritsForNextRound(this.state, this.battle);
+            this.abilityIcons = this.uiStateManager.refreshAbilityIconsForNextRound(this.state, this.battle);
+            
+            // Update manager references to the new spirits
+            this.spiritManager.updateTargetingReferences(this.spirits, this.enemies);
+            this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
+            
+            this.resetSpirits();
+        }
+    }
+
+
+
 }
+

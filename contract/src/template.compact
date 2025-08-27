@@ -433,11 +433,9 @@ pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
     return (start + add - (((start + add >= n) as Uint<1>) * n)) as Uint<32>;
 }
 
-export circuit combat_round(battle_id: Field): Maybe<BattleRewards> {
+export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
-    //assert derive_loadout_id(loadout) == active_battle_configs.lookup(battle_id).player_loadoutCommit "Loadout hash mismatch";
-    // TODO: how to cycle through abilities?
 
     const config = disclose(active_battle_configs.lookup(disclose(battle_id)));
     const loadout = config.loadout;
@@ -448,7 +446,8 @@ export circuit combat_round(battle_id: Field): Maybe<BattleRewards> {
         all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[2])),
     ];
     
-    const result = combat_round_impl(disclose(battle_id), round_abilities, mock_rand_target());
+    const result = combat_round_impl(disclose(battle_id), round_abilities, disclose(ability_targets));
+    
     active_battle_states.insert(disclose(battle_id), result);
     if (result.player_hp == 0) {
         active_battle_configs.remove(disclose(battle_id));
@@ -465,8 +464,7 @@ export circuit combat_round(battle_id: Field): Maybe<BattleRewards> {
         
         // TODO: properly determine rewards
         if (config.stats[0].boss_type != BOSS_TYPE.normal || (config.enemy_count >= 2 && config.stats[1].boss_type != BOSS_TYPE.normal) || (config.enemy_count >= 3 && config.stats[2].boss_type != BOSS_TYPE.normal)) {
-            const reward_ability = random_ability(2);//quest.difficulty);
-
+            const reward_ability = random_ability(2);
             player_abilities.lookup(player_pub_key).insert(reward_ability, (player_abilities.lookup(player_pub_key).lookup(reward_ability) + 1) as Uint<32>);
         }
 
@@ -487,13 +485,14 @@ export circuit combat_round(battle_id: Field): Maybe<BattleRewards> {
     return none<BattleRewards>();
 }
 
+
 pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
     return Player {
         (player.gold + reward.gold) as Uint<32>
     };
 }
 
-circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, target: Uint<32>): BattleState {
+circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..2>>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
 
@@ -502,7 +501,6 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, targe
     // CODE-GENERATION START
     
     INSERT_ENEMY_BLOCK_CODE_HERE
-
     
     INSERT_PLAYER_BLOCK_CODE_HERE
 
