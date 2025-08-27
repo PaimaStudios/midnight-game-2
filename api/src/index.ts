@@ -182,45 +182,51 @@ export class Game2API implements DeployedGame2API {
                 const playerId = pureCircuits.derive_player_pub_key(privateState.secretKey);
                 // we can't index by Level directly so we map by biome then difficulty and add an extra map (for both levels + bosses)
                 // levels
-                const levelsByBiomes = new Map();
-                // TODO: for some reason ledgerState.levels has no [Symbol.iterator]() and thus can't be converted or iterated
-                // so we're just going to manually index by biome id... we should have a better way to do this!
-                const BIOME_COUNT = 4;
-                const DIFFICULTY_COUNT = 1;
-                const iteratingLevels: [bigint, bigint, any][] = [];
-                for (let biome = 0; biome < BIOME_COUNT; ++biome) {
-                    for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
-                        const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
-                        if (ledgerState.levels.member(level)) {
-                            iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
+                const extractLevelsFromLedgerState = () => {
+                    const levelsByBiomes = new Map();
+                    // TODO: for some reason ledgerState.levels has no [Symbol.iterator]() and thus can't be converted or iterated
+                    // so we're just going to manually index by biome id... we should have a better way to do this!
+                    const BIOME_COUNT = 4;
+                    const DIFFICULTY_COUNT = 1;
+                    const iteratingLevels: [bigint, bigint, any][] = [];
+                    for (let biome = 0; biome < BIOME_COUNT; ++biome) {
+                        for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
+                            const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
+                            if (ledgerState.levels.member(level)) {
+                                iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
+                            }
                         }
                     }
-                }
-                for (let [biome, difficulty, configs] of iteratingLevels) {
-                    let byBiome = levelsByBiomes.get(biome);
-                    if (byBiome == undefined) {
-                        byBiome = new Map();
-                        levelsByBiomes.set(biome, byBiome);
+                    for (let [biome, difficulty, configs] of iteratingLevels) {
+                        let byBiome = levelsByBiomes.get(biome);
+                        if (byBiome == undefined) {
+                            byBiome = new Map();
+                            levelsByBiomes.set(biome, byBiome);
+                        }
+                        let byDifficulty = byBiome.get(difficulty);
+                        if (byDifficulty == undefined) {
+                            byDifficulty = new Map();
+                            byBiome.set(difficulty, byDifficulty)
+                        }
+                        for (let [index, config] of configs) {
+                            byDifficulty.set(index, config);
+                        }
                     }
-                    let byDifficulty = byBiome.get(difficulty);
-                    if (byDifficulty == undefined) {
-                        byDifficulty = new Map();
-                        byBiome.set(difficulty, byDifficulty)
-                    }
-                    for (let [index, config] of configs) {
-                        byDifficulty.set(index, config);
-                    }
-                }
+                    return levelsByBiomes;
+                };
                 // bosses
-                const bossesByBiomes = new Map();
-                for (let [level, boss] of ledgerState.bosses) {
-                    let byBiome = bossesByBiomes.get(level.biome);
-                    if (byBiome == undefined) {
-                        byBiome = new Map();
-                        bossesByBiomes.set(level.biome, byBiome);
+                const extractBossesFromLedgerState = () => {
+                    const bossesByBiomes = new Map();
+                    for (let [level, boss] of ledgerState.bosses) {
+                        let byBiome = bossesByBiomes.get(level.biome);
+                        if (byBiome == undefined) {
+                            byBiome = new Map();
+                            bossesByBiomes.set(level.biome, byBiome);
+                        }
+                        byBiome.set(level.difficulty, boss);
                     }
-                    byBiome.set(level.difficulty, boss);
-                }
+                    return bossesByBiomes;
+                };
                 return {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
@@ -228,8 +234,8 @@ export class Game2API implements DeployedGame2API {
                     player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
                     playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
                     allAbilities: new Map(ledgerState.all_abilities),
-                    levels: levelsByBiomes,
-                    bosses: bossesByBiomes,
+                    levels: extractLevelsFromLedgerState(),
+                    bosses: extractBossesFromLedgerState(),
                 };
             },
         );
