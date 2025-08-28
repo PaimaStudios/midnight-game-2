@@ -20,7 +20,7 @@ export class BattleLayout {
 
     // Enemy positioning
     enemyX(config: BattleConfig, enemyIndex: number): number {
-        return this.gameWidth * (enemyIndex + 0.5) / Number(config.enemy_count);
+        return this.gameWidth * (enemyIndex + 0.5) / Number(config.enemies.count);
     }
 
     enemyY(): number {

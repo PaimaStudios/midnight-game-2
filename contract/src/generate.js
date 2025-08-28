@@ -33,8 +33,8 @@ const decK_increments = [1, 2, 3, 4];
 
 const gen_player_dmg = () => max_enemies.map((enemy) => `const player_damage_${enemy} = (${gen_base_player_dmg(enemy)} + ${gen_energy_player_dmg(enemy)}) as Uint<32>;`).join('\n    ');
 
-const gen_base_player_dmg = (enemy) => abilities.map((a) => `((abilities[${a}].effect.is_some && (abilities[${a}].effect.value.is_aoe || ability_targets[${a}] == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].effect.value, battle.stats[${enemy}])`).join(' + ');
-const gen_energy_player_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && ${generates_color(a, c)} && (abilities[${a}].on_energy[${c}].value.is_aoe || ability_targets[${a}] == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, battle.stats[${enemy}])`).join(' + ')).join(' + ');
+const gen_base_player_dmg = (enemy) => abilities.map((a) => `((abilities[${a}].effect.is_some && (abilities[${a}].effect.value.is_aoe || ability_targets[${a}] == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].effect.value, battle.enemies.stats[${enemy}])`).join(' + ');
+const gen_energy_player_dmg = (enemy) => abilities.map((a) => colors.map((c) => `((abilities[${a}].on_energy[${c}].is_some && ${generates_color(a, c)} && (abilities[${a}].on_energy[${c}].value.is_aoe || ability_targets[${a}] == ${enemy})) as Uint<1>) * effect_damage(abilities[${a}].on_energy[${c}].value, battle.enemies.stats[${enemy}])`).join(' + ')).join(' + ');
 
 const gen_player_block = () => `const player_block = (${gen_base_player_block()} + ${gen_energy_player_block()}) as Uint<32>;`;
 
@@ -45,9 +45,9 @@ const generates_color = (a, c) => `(${abilities.filter((a2) => a != a2).map((a2)
 
 // enemy
 
-const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `(battle.stats[${enemy}].attack * ((new_enemy_dmg_${enemy} > 0) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
+const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `(battle.enemies.stats[${enemy}].attack * ((new_enemy_dmg_${enemy} > 0) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
 
-const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.stats[${enemy}].block as Uint<32>;`).join('\n    ');
+const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.enemies.stats[${enemy}].block as Uint<32>;`).join('\n    ');
 
 
 // deck indices

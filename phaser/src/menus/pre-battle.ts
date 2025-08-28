@@ -158,9 +158,10 @@ export class StartBattleMenu extends Phaser.Scene {
         this.startButton = new Button(this, GAME_WIDTH * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
+                // TODO: control difficulty https://github.com/PaimaStudios/midnight-game-2/issues/103
+                const level = { biome: BigInt(this.biome), difficulty: BigInt(1) };
                 if (this.isQuest) {
-                    // TODO: control difficulty
-                    this.api.start_new_quest(this.loadout, BigInt(this.biome), BigInt(1)).then((questId) => {
+                    this.api.start_new_quest(this.loadout, level).then((questId) => {
                         this.scene.remove('QuestsMenu');
                         this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
                         this.scene.start('QuestsMenu');
@@ -172,7 +173,7 @@ export class StartBattleMenu extends Phaser.Scene {
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
                     this.loader.setText("Submitting Proof");
-                    this.api.start_new_battle(this.loadout, BigInt(this.biome)).then((battle) => {
+                    this.api.start_new_battle(this.loadout, level).then((battle) => {
                         if (this.loader) {
                             this.loader.setText("Waiting on chain update");
                         }

@@ -42,18 +42,14 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         logger.combat.debug(`combat_round_logic(${abilityTargets}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
-
-        if (uiHooks != undefined) {
-            gameState.ui = true;
-        } else {
-            gameState.circuit = true;
-        }
+        const rng = pureCircuits.fakeTempRng(battleState, battleConfig);
 
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => gameState.allAbilities.get(id)!)
 
         let player_block = BigInt(0);
-        const enemy_count = Number(battleConfig.enemy_count);
+        const stats = battleConfig.enemies.stats;
+        const enemy_count = Number(battleConfig.enemies.count);
         let player_damage = new Array(enemy_count).fill(BigInt(0));
         let enemy_damage = BigInt(0);
 
@@ -62,24 +58,24 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (enemy_damage > player_block) {
                 battleState.player_hp -= enemy_damage - player_block;
             }
-            if (player_damage[0] > battleConfig.stats[0].block) {
-                battleState.enemy_hp_0 = BigInt(Math.max(0, Number(battleState.enemy_hp_0 + battleConfig.stats[0].block - player_damage[0])));
+            if (player_damage[0] > stats[0].block) {
+                battleState.enemy_hp_0 = BigInt(Math.max(0, Number(battleState.enemy_hp_0 + stats[0].block - player_damage[0])));
             }
-            if (player_damage[1] > battleConfig.stats[1].block) {
-                battleState.enemy_hp_1 = BigInt(Math.max(0, Number(battleState.enemy_hp_1 + battleConfig.stats[1].block - player_damage[1])));
+            if (player_damage[1] > stats[1].block) {
+                battleState.enemy_hp_1 = BigInt(Math.max(0, Number(battleState.enemy_hp_1 + stats[1].block - player_damage[1])));
             }
-            if (player_damage[2] > battleConfig.stats[2].block) {
-                battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + battleConfig.stats[2].block - player_damage[2])));
+            if (player_damage[2] > stats[2].block) {
+                battleState.enemy_hp_2 = BigInt(Math.max(0, Number(battleState.enemy_hp_2 + stats[2].block - player_damage[2])));
             }
             if (battleState.player_hp <= 0) {
                 logger.combat.info(`YOU DIED`);
                 resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
             }
-            else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || battleConfig.enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || battleConfig.enemy_count < 3)) {
+            else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || enemy_count < 3)) {
                 logger.combat.info(`YOU WON`);
                 let abilityReward = { is_some: false, value: BigInt(0) };
-                for (let i = 0; i < battleConfig.enemy_count; ++i) {
-                    if (battleConfig.stats[i].boss_type != BOSS_TYPE.normal) {
+                for (let i = 0; i < enemy_count; ++i) {
+                    if (stats[i].boss_type != BOSS_TYPE.normal) {
                         const ability = generateRandomAbility(BigInt(2));
                         const abilityId = pureCircuits.derive_ability_id(ability);
                         // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
@@ -101,16 +97,17 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         // Enemy block phase
         let enemy_hp = [battleState.enemy_hp_0, battleState.enemy_hp_1, battleState.enemy_hp_2];
-        for (let i = 0; i < battleConfig.enemy_count; ++i) {
+        for (let i = 0; i < enemy_count; ++i) {
             if (enemy_hp[i] > 0) {
-                const block = Number(battleConfig.stats[i].block);
+                // do not change vars for block since it's directly checked during player against enemy damage code
+                const block = Number(stats[i].block);
                 if (block != 0) {
                     await uiHooks?.onEnemyBlock(i, block);
                 }
             }
         }
 
-        const aliveTargets = new Array(Number(battleConfig.enemy_count))
+        const aliveTargets = new Array(enemy_count)
             .fill(0)
             .map((_, i) => i)
             .filter((i) => enemy_hp[i] > BigInt(0));
@@ -124,7 +121,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                     case EFFECT_TYPE.attack_ice:
                     case EFFECT_TYPE.attack_phys:
                         const amounts = targets.map((enemy) => {
-                            const dmg = pureCircuits.effect_damage(effect.value, battleConfig.stats[enemy]);
+                            const dmg = pureCircuits.effect_damage(effect.value, stats[enemy]);
                             player_damage[enemy] += dmg;
                             return Number(dmg)
                         });
@@ -140,9 +137,9 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         // base effects
         const allEnemiesDead = () => {
-            return (player_damage[0] > battleConfig.stats[0].block + battleState.enemy_hp_0)
-                                  && (player_damage[1] > battleConfig.stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
-                                  && (player_damage[2] > battleConfig.stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
+            return (player_damage[0] > stats[0].block + battleState.enemy_hp_0)
+                && (player_damage[1] > stats[1].block + battleState.enemy_hp_1 || enemy_count < 2)
+                && (player_damage[2] > stats[2].block + battleState.enemy_hp_2 || enemy_count < 3);
         };
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
@@ -174,11 +171,12 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         }
 
+      
         // Enemy damage phase
-        for (let i = 0; i < battleConfig.enemy_count; ++i) {
+        for (let i = 0; i < enemy_count; ++i) {
             if (enemy_hp[i] > 0) {
-                const damage = battleConfig.stats[i].attack;
-                enemy_damage += damage;
+                const damage = stats[i].attack;
+                 enemy_damage += damage;
                 if (Number(damage) != 0) {
                     await uiHooks?.onEnemyAttack(i, Number(damage));
                 }
