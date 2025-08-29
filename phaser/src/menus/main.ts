@@ -19,6 +19,7 @@ import { createEnemyAnimations } from "../animations/enemy";
 import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
+import { PollenParticleSystem } from "../particles/pollen";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -31,6 +32,7 @@ export class TestMenu extends Phaser.Scene {
     new_button: Button | undefined;
     buttons: Button[];
     firstRun: boolean;
+    pollenSystem: PollenParticleSystem | undefined;
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -146,6 +148,10 @@ export class TestMenu extends Phaser.Scene {
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
+        
+        // Initialize and start pollen particle system with 50px radius
+        this.pollenSystem = new PollenParticleSystem(this, GAME_WIDTH / 2, 0, 100, 100);
+        this.pollenSystem.start();
     }
 
     private initApi(api: DeployedGame2API) {
