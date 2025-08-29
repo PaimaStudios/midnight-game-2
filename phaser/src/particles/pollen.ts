@@ -21,7 +21,7 @@ export class PollenParticleSystem extends ParticleSystem {
         graphics.destroy();
     }
 
-    protected getParticleConfig(width: number, height: number): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+    protected getParticleConfig(): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
         return {
             // Movement properties for gentle drifting
             speedX: { min: -15, max: 15 },
@@ -29,7 +29,7 @@ export class PollenParticleSystem extends ParticleSystem {
             accelerationY: -5,
             
             // Gentle swaying motion
-            frequency: 800,
+            frequency: 1200,
             quantity: 1,
             
             // Long but finite lifespan (around 15-20 seconds)
