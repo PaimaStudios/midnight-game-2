@@ -16,17 +16,25 @@ function codegen_placeholders() {
         .replaceAll('INSERT_ENEMY_DAMAGE_CODE_HERE', gen_enemy_dmg())
         .replaceAll('INSERT_ENEMY_BLOCK_CODE_HERE', gen_enemy_block())
         .replaceAll('INSERT_DECK_INDEX_CALCULATION_CODE_HERE', gen_deck_index_calculation())
-        .replaceAll('INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE', gen_deck_index_eval());
+        .replaceAll('INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE', gen_deck_index_eval())
+        .replaceAll('INSERT_RNG_MOD_CIRCUIT_HERE', gen_rng_mod_circuits())
+        .replaceAll('INSERT_MAX_RNG_MOD_DEFS', MAX_RNG_MOD_DEFS.toString())
+        .replaceAll('INSERT_RNG_MOD_INPUT_TYPE', `Uint<0..${MAX_RNG_MOD_DEFS}>`);
     fs.writeFileSync('src/game2.compact', `// AUTO-GENERATED - **DO NOT MODIFY**\n// PLEASE CHANGE template.compact INSTEAD!\n\n${replaced}`);
 }
 
+
+
 const DECK_SIZE = 7;
 const HAND_SIZE = 3;
+// we don't generate all 256 because this bloats it too much. we can change this later if needed
+const MAX_RNG_MOD_DEFS = 16;
 
 const abilities = new Array(HAND_SIZE).fill(0).map((_, i) => i);
 const colors = [0, 1, 2];
 const max_enemies = [0, 1, 2];
 const decK_increments = [1, 2, 3, 4];
+
 
 
 // player
@@ -43,11 +51,14 @@ const gen_energy_player_block = () => abilities.map((a) => colors.map((c) => `((
 
 const generates_color = (a, c) => `(${abilities.filter((a2) => a != a2).map((a2) => `(abilities[${a2}].generate_color.is_some && abilities[${a2}].generate_color.value == ${c})`).join(' || ')})`;
 
+
+
 // enemy
 
 const gen_enemy_dmg = () => `const enemy_damage = (${max_enemies.map((enemy) => `(battle.enemies.stats[${enemy}].attack * ((new_enemy_dmg_${enemy} > 0) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
 
 const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.enemies.stats[${enemy}].block as Uint<32>;`).join('\n    ');
+
 
 
 // deck indices
@@ -84,6 +95,31 @@ const gen_deck_index_calculation = () => abilities.map((a) => {
 const gen_deck_index_eval = () => `[${abilities.map((a) => `new_deck_${a}`).join()}]`;
 
 
+
+// rng helpers
+// until we get foreign field arithmetic we're stuck with this
+const gen_rng_mod_circuit = (mod) => {
+    const subtract_amount = mod;
+
+    const repeated_subtract = `// repeated subtract\n    ${new Array(Math.floor(256 / subtract_amount)).fill(0).map((_, i) => `${i == 0 ? '' : 'else '}if (rng < ${subtract_amount * (i + 1)}) {\n        return rng${i == 0 ? `` : ` - ${subtract_amount * i}`};\n    }`).join(' ')}
+    return rng - ${256 - mod};`;
+
+    const buckets = `// buckets\n    ${new Array(mod - 1).fill(0).map((_, i) => `${i == 0 ? '' : 'else '}if (rng < ${Math.floor((i + 1) * (256 / mod))}) {\n        return ${i};\n    }`).join(' ')}
+    return ${mod - 1};`;
+
+    // see which approach generates the smaller circuit and use this
+    return `pure circuit rng_mod_${mod}(rng: Uint<8>): Uint<8> {
+    ${repeated_subtract.length < buckets.length ? repeated_subtract : buckets}
+}`};
+
+const gen_rng_mod_circuits = () => `pure circuit rng_mod(rng: Uint<8>, mod: Uint<0..${MAX_RNG_MOD_DEFS}>): Uint<8> {
+    if (mod == 1) {
+        return 0;
+    } ${new Array(MAX_RNG_MOD_DEFS - 2).fill(0).map((_, i) => `else if (mod == ${i + 2}) {\n        return rng_mod_${i + 2}(rng);\n    }`).join(' ')}
+    return rng_mod_${MAX_RNG_MOD_DEFS}(rng);
+}
+
+${new Array(MAX_RNG_MOD_DEFS - 1).fill(0).map((_, i) => gen_rng_mod_circuit(i + 2)).join('\n\n')}`;
 
 
 codegen_placeholders();
