@@ -85,13 +85,7 @@ export class MockGame2API implements DeployedGame2API {
             };
             const id = pureCircuits.derive_battle_id(battle);
             logger.gameState.info(`new battle: ${id}`);
-            this.mockState.activeBattleStates.set(id, {
-                deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
-                player_hp: BigInt(100),
-                enemy_hp_0: battle.enemies.stats[0].hp,
-                enemy_hp_1: battle.enemies.stats[1].hp,
-                enemy_hp_2: battle.enemies.stats[2].hp,
-            });
+            this.mockState.activeBattleStates.set(id, pureCircuits.init_battlestate(BigInt(rng[1]), battle));
             this.mockState.activeBattleConfigs.set(id, battle);
             return battle;
         });
