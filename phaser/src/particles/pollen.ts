@@ -1,19 +1,16 @@
-export class PollenParticleSystem {
-    private scene: Phaser.Scene;
-    private particleManager!: Phaser.GameObjects.Particles.ParticleEmitter;
-    private texture: string = 'pollen-texture';
+import { ParticleSystem } from './particle-system';
+import { Color, colorToNumber } from '../constants/colors';
 
+export class PollenParticleSystem extends ParticleSystem {
     constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number) {
-        this.scene = scene;
-        this.createPollenTexture();
-        this.createParticleSystem(x, y, width, height);
+        super(scene, x, y, width, height, 'pollen-texture');
     }
 
-    private createPollenTexture() {
+    protected createTexture() {
         const graphics = this.scene.add.graphics();
-        graphics.fillStyle(0xFFFF99);
+        graphics.fillStyle(colorToNumber(Color.Yellow));
         
-        // Create maltese cross pattern (5 pixels, each 2x2: center, top, bottom, left, right)
+        // Create maltese cross pollen pattern (5 pixels, each 2x2: center, top, bottom, left, right)
         graphics.fillRect(2, 0, 2, 2); // top
         graphics.fillRect(0, 2, 2, 2); // left
         graphics.fillRect(2, 2, 2, 2); // center
@@ -24,8 +21,8 @@ export class PollenParticleSystem {
         graphics.destroy();
     }
 
-    private createParticleSystem(x: number, y: number, width: number, height: number) {
-        this.particleManager = this.scene.add.particles(x, y, this.texture, {
+    protected getParticleConfig(width: number, height: number): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+        return {
             // Emission area
             x: { min: -width/2, max: width/2 },
             y: { min: -height/2, max: height/2 },
@@ -50,41 +47,7 @@ export class PollenParticleSystem {
             
             // Gentle rotation
             rotate: { min: 0, max: 360 }
-        });
-        
-        // Set particle depth
-        this.particleManager.setDepth(-5);
-
-        // Add subtle wind effect
-        this.scene.time.addEvent({
-            delay: 3000,
-            callback: () => {
-                const windStrength = Phaser.Math.Between(-10, 10);
-                this.particleManager.setConfig({
-                    speedX: { min: windStrength - 5, max: windStrength + 5 }
-                });
-            },
-            loop: true
-        });
+        };
     }
 
-    public start() {
-        this.particleManager.start();
-    }
-
-    public stop() {
-        this.particleManager.stop();
-    }
-
-    public destroy() {
-        this.particleManager.destroy();
-    }
-
-    public setPosition(x: number, y: number) {
-        this.particleManager.setPosition(x, y);
-    }
-
-    public setVisible(visible: boolean) {
-        this.particleManager.setVisible(visible);
-    }
 }
