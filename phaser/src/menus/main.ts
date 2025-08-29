@@ -20,6 +20,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { PollenParticleSystem } from "../particles/pollen";
+import { GlowEffect } from "../widgets/glow-effect";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -150,7 +151,7 @@ export class TestMenu extends Phaser.Scene {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
         
         // Add subtle glow around the portal
-        this.createPortalGlow(GAME_WIDTH / 1.9, GAME_HEIGHT / 2, GAME_WIDTH * 0.2, GAME_HEIGHT * 0.8);
+        new GlowEffect(this, GAME_WIDTH / 1.9, GAME_HEIGHT / 2, GAME_WIDTH * 0.2, GAME_HEIGHT * 0.8);
         
         // Initialize and start pollen particle system with 50px radius
         const pollenLocations = [
@@ -224,39 +225,4 @@ export class TestMenu extends Phaser.Scene {
         }
     }
 
-    private createPortalGlow(centerX: number, centerY: number, width: number, height: number) {
-
-        // Create a subtle glow effect using graphics
-        const glowGraphics = this.add.graphics();
-        
-        // Create multiple concentric ellipses for a smooth glow effect, centered at 0,0
-        // Use original fixed radii but keep parameterized structure
-        const glowRadii = [120, 100, 80, 60, 40];
-        const glowAlphas = [0.05, 0.08, 0.12, 0.18, 0.25];
-        const glowColor = Color.Yellow; // Golden color matching portal
-
-        for (let i = 0; i < glowRadii.length; i++) {
-            glowGraphics.fillStyle(colorToNumber(glowColor), glowAlphas[i]);
-            // Draw centered at 0,0 so scaling works from center
-            glowGraphics.fillEllipse(0, 0, glowRadii[i] * 2, glowRadii[i] * 1.6);
-        }
-        
-        // Position the graphics at the specified center
-        glowGraphics.setPosition(centerX, centerY);
-
-        // Set depth between background and UI elements
-        glowGraphics.setDepth(-8);
-
-        // Add subtle pulsing animation (alpha and scale)
-        this.tweens.add({
-            targets: glowGraphics,
-            alpha: 0.7,
-            scaleX: 1.15,
-            scaleY: 1.15,
-            duration: 3000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-    }
 }
