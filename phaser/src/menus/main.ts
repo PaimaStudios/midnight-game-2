@@ -150,7 +150,16 @@ export class TestMenu extends Phaser.Scene {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
         
         // Initialize and start pollen particle system with 50px radius
-        this.pollenSystem = new PollenParticleSystem(this, GAME_WIDTH / 2, 0, 100, 100);
+        const pollenLocations = [
+            { x: GAME_WIDTH / 8, y: GAME_HEIGHT / 2 }, // Bottom Left
+            { x: GAME_WIDTH / 1.25, y: GAME_HEIGHT / 1.9 }, // Bottom Right
+            { x: GAME_WIDTH / 1.25, y: GAME_HEIGHT / 10}, // Top Right          
+        ]
+        for (const loc of pollenLocations) {
+            const pollenSystem = new PollenParticleSystem(this, loc.x, loc.y, 80, 80);
+            pollenSystem.start();
+        }
+        this.pollenSystem = new PollenParticleSystem(this, GAME_WIDTH / 8, GAME_HEIGHT / 2, 100, 100);
         this.pollenSystem.start();
     }
 
