@@ -152,7 +152,7 @@ export class TestMenu extends Phaser.Scene {
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
         
         // Add subtle glow around the portal
-        new GlowEffect(this, GAME_WIDTH / 1.9, GAME_HEIGHT / 2, GAME_WIDTH * 0.2, GAME_HEIGHT * 0.8);
+        new GlowEffect(this, GAME_WIDTH / 1.9, GAME_HEIGHT / 2, 100);
         
         // Initialize and start pollen particle system with 50px radius
         const pollenLocations = [

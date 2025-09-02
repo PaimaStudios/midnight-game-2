@@ -8,23 +8,24 @@ export class GlowEffect {
     private scene: Phaser.Scene;
     private graphics: Phaser.GameObjects.Graphics;
 
-    constructor(scene: Phaser.Scene, centerX: number, centerY: number, width?: number, height?: number) {
+    constructor(scene: Phaser.Scene, centerX: number, centerY: number, radius: number = 100) {
         this.scene = scene;
         this.graphics = this.scene.add.graphics();
-        this.createGlow(centerX, centerY, width, height);
+        this.createGlow(centerX, centerY, radius);
     }
 
-    private createGlow(centerX: number, centerY: number, width?: number, height?: number) {
+    private createGlow(centerX: number, centerY: number, baseRadius: number) {
         // Create multiple concentric ellipses for a smooth glow effect, centered at 0,0
-        // Use original fixed radii but keep parameterized structure
-        const glowRadii = [120, 100, 80, 60, 40];
-        const glowAlphas = [0.05, 0.08, 0.12, 0.18, 0.25];
+        // Scale the glow layers based on the provided radius
+        const glowScales = [1.5, 1.25, 1.0, 0.75, 0.5]; // Largest to smallest
+        const glowAlphas = [0.05, 0.08, 0.12, 0.18, 0.25]; // Weakest to strongest
         const glowColor = Color.Yellow; // Golden color matching portal
 
-        for (let i = 0; i < glowRadii.length; i++) {
+        for (let i = 0; i < glowScales.length; i++) {
             this.graphics.fillStyle(colorToNumber(glowColor), glowAlphas[i]);
             // Draw centered at 0,0 so scaling works from center
-            this.graphics.fillEllipse(0, 0, glowRadii[i] * 2, glowRadii[i] * 1.6);
+            const layerRadius = baseRadius * glowScales[i];
+            this.graphics.fillEllipse(0, 0, layerRadius * 2, layerRadius * 1.6); // Slightly oval shape
         }
         
         // Position the graphics at the specified center
