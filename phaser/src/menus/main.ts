@@ -16,12 +16,10 @@ import { Color, colorToNumber } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
-import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
-import { PollenParticleSystem } from "../particles/pollen";
-import { GlowEffect } from "../widgets/glow-effect";
 import { registerStartingContent } from "../admin";
+import { DungeonScene } from "./dungeon-scene";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -34,7 +32,6 @@ export class TestMenu extends Phaser.Scene {
     new_button: Button | undefined;
     buttons: Button[];
     firstRun: boolean;
-    pollenSystem: PollenParticleSystem | undefined;
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -106,6 +103,12 @@ export class TestMenu extends Phaser.Scene {
     }
 
     create() {
+        // Add and launch dungeon background scene first
+        if (!this.scene.get('DungeonScene')) {
+            this.scene.add('DungeonScene', new DungeonScene());
+        }
+        this.scene.launch('DungeonScene');
+
         // should this be here or elsehwere? we did this for pvp-arena
         createSpiritAnimations(this);
         createEnemyAnimations(this);
@@ -148,22 +151,6 @@ export class TestMenu extends Phaser.Scene {
         this.goldLabel.setVisible(false);
         this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
-
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-hub1').setDepth(-10);
-        
-        // Add subtle glow around the portal
-        new GlowEffect(this, GAME_WIDTH / 1.9, GAME_HEIGHT / 2, 100);
-        
-        // Initialize and start pollen particle system with 50px radius
-        const pollenLocations = [
-            { x: GAME_WIDTH / 8, y: GAME_HEIGHT / 2 }, // Bottom Left
-            { x: GAME_WIDTH / 1.15, y: GAME_HEIGHT / 1.8 }, // Bottom Right
-            { x: GAME_WIDTH / 1.25, y: GAME_HEIGHT / 10}, // Top Right          
-        ]
-        for (const loc of pollenLocations) {
-            const pollenSystem = new PollenParticleSystem(this, loc.x, loc.y, 80, 80);
-            pollenSystem.start();
-        }
     }
 
     private initApi(api: DeployedGame2API) {
