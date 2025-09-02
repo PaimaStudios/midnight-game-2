@@ -14,12 +14,11 @@ export class GlowEffect {
         this.createGlow(centerX, centerY, radius);
     }
 
-    private createGlow(centerX: number, centerY: number, baseRadius: number) {
+    private createGlow(centerX: number, centerY: number, baseRadius: number, glowColor: Color = Color.Yellow) {
         // Create multiple concentric ellipses for a smooth glow effect, centered at 0,0
         // Scale the glow layers based on the provided radius
         const glowScales = [1.5, 1.25, 1.0, 0.75, 0.5]; // Largest to smallest
         const glowAlphas = [0.05, 0.08, 0.12, 0.18, 0.25]; // Weakest to strongest
-        const glowColor = Color.Yellow; // Golden color matching portal
 
         for (let i = 0; i < glowScales.length; i++) {
             this.graphics.fillStyle(colorToNumber(glowColor), glowAlphas[i]);
