@@ -21,6 +21,7 @@ import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { PollenParticleSystem } from "../particles/pollen";
 import { GlowEffect } from "../widgets/glow-effect";
+import { registerStartingContent } from "../admin";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -117,12 +118,12 @@ export class TestMenu extends Phaser.Scene {
                     logger.network.info('~deploying~');
                     this.deployProvider.create().then((api) => {
                         logger.network.info('==========GOT API========');
-                        this.initApi(api);
+                        this.createDefaultContent(api);
                     }).catch((e) => logger.network.error(`Error connecting: ${e}`));
                     break;
                 case 'mock':
                     logger.network.info('==========MOCK API========');
-                    this.initApi(new MockGame2API());
+                    this.createDefaultContent(new MockGame2API());
                     break;
                 default:
                     if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
@@ -132,12 +133,12 @@ export class TestMenu extends Phaser.Scene {
                         logger.network.info('~deploying~');
                         this.deployProvider.create().then((api) => {
                             logger.network.info('==========GOT API========');
-                            this.initApi(api);
+                            this.createDefaultContent(api);
                         }).catch((e) => logger.network.error(`Error connecting: ${e}`));
                     }));
                     this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
                         logger.network.info('==========MOCK API========');
-                        this.initApi(new MockGame2API());
+                        this.createDefaultContent(new MockGame2API());
                     }));
                     break;
             }
@@ -169,6 +170,12 @@ export class TestMenu extends Phaser.Scene {
         this.api = api;
         this.buttons.forEach((b) => b.destroy());
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+    }
+
+    // TODO: replace when adding admin tooling
+    // https://github.com/PaimaStudios/midnight-game-2/issues/77
+    private createDefaultContent(api: DeployedGame2API) {
+        registerStartingContent(api).then(() => this.initApi(api))
     }
 
 

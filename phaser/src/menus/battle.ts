@@ -57,8 +57,9 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     create() {
+        const loader = this.scene.get('Loader') as Loader;
         logger.combat.debug('ActiveBattle.create() called');
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.biome) as BIOME_ID)).setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.level.biome) as BIOME_ID)).setDepth(-10);
 
         // Create player after scene is initialized
         this.player = new Actor(this, playerX(), playerY(), null);
