@@ -5,6 +5,7 @@ import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { StartBattleMenu } from "./pre-battle";
+import { DungeonScene } from "./dungeon-scene";
 
 export class BiomeSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -33,6 +34,13 @@ export class BiomeSelectMenu extends Phaser.Scene {
         ];
         const buttonWidth = 320;
         const buttonHeight = 64;
+
+        // Add and launch dungeon background scene
+        if (!this.scene.get('DungeonScene')) {
+            this.scene.add('DungeonScene', new DungeonScene());
+        }
+        this.scene.launch('DungeonScene');
+
         biomes.forEach((biome, i) => new Button(
             this,
             GAME_WIDTH / 2,
