@@ -1,10 +1,11 @@
-import { Color, colorToNumber } from "../constants/colors";
-
 /**
  * Fade transition widget that creates a circular glow effect for scene transitions.
  * Starts with a small yellow glow in the center, grows to encompass the whole screen,
  * then shrinks back down.
+ * NOTE: THIS IS CURRENTLY NOT USED, but kept for potential future use.
  */
+import { Color, colorToNumber } from "../constants/colors";
+
 export class FadeTransition {
     private scene: Phaser.Scene;
     private graphics: Phaser.GameObjects.Graphics;
