@@ -8,23 +8,24 @@ export class GlowEffect {
     private scene: Phaser.Scene;
     private graphics: Phaser.GameObjects.Graphics;
 
-    constructor(scene: Phaser.Scene, centerX: number, centerY: number, radius: number = 100) {
+    constructor(scene: Phaser.Scene, centerX: number, centerY: number, radiusX: number = 100, radiusY: number = 80) {
         this.scene = scene;
         this.graphics = this.scene.add.graphics();
-        this.createGlow(centerX, centerY, radius);
+        this.createGlow(centerX, centerY, radiusX, radiusY);
     }
 
-    private createGlow(centerX: number, centerY: number, baseRadius: number, glowColor: Color = Color.Yellow) {
+    private createGlow(centerX: number, centerY: number, baseRadiusX: number, baseRadiusY: number, glowColor: Color = Color.Yellow) {
         // Create multiple concentric ellipses for a smooth glow effect, centered at 0,0
-        // Scale the glow layers based on the provided radius
+        // Scale the glow layers based on the provided radii
         const glowScales = [1.5, 1.25, 1.0, 0.75, 0.5]; // Largest to smallest
         const glowAlphas = [0.05, 0.08, 0.12, 0.18, 0.25]; // Weakest to strongest
 
         for (let i = 0; i < glowScales.length; i++) {
             this.graphics.fillStyle(colorToNumber(glowColor), glowAlphas[i]);
             // Draw centered at 0,0 so scaling works from center
-            const layerRadius = baseRadius * glowScales[i];
-            this.graphics.fillEllipse(0, 0, layerRadius * 2, layerRadius * 1.6); // Slightly oval shape
+            const layerRadiusX = baseRadiusX * glowScales[i];
+            const layerRadiusY = baseRadiusY * glowScales[i];
+            this.graphics.fillEllipse(0, 0, layerRadiusX * 2, layerRadiusY * 2);
         }
         
         // Position the graphics at the specified center
