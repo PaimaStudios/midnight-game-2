@@ -180,6 +180,11 @@ export class StartBattleMenu extends Phaser.Scene {
                         this.events.on('stateChange', (state: Game2DerivedState) => {
                             logger.combat.debug('stateChange event fired, creating ActiveBattle');
                             this.scene.stop('Loader');
+                            // Clean up shared dungeon scene when entering battle
+                            if (this.scene.get('DungeonScene')) {
+                                this.scene.stop('DungeonScene');
+                                this.scene.remove('DungeonScene');
+                            }
                             this.scene.remove('ActiveBattle');
                             this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, state));
                             this.scene.start('ActiveBattle');

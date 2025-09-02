@@ -35,11 +35,15 @@ export class BiomeSelectMenu extends Phaser.Scene {
         const buttonWidth = 320;
         const buttonHeight = 64;
 
-        // Add and launch dungeon background scene
+        // Add and launch dungeon background scene (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
         }
-        this.scene.launch('DungeonScene');
+        // Only launch if not already running
+        const dungeonScene = this.scene.get('DungeonScene');
+        if (dungeonScene && !dungeonScene.scene.isActive()) {
+            this.scene.launch('DungeonScene');
+        }
 
         biomes.forEach((biome, i) => new Button(
             this,

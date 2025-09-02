@@ -42,11 +42,15 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     create() {
-        // Add and launch dungeon background scene first
+        // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
         }
-        this.scene.launch('DungeonScene');
+        // Only launch if not already running
+        const dungeonScene = this.scene.get('DungeonScene');
+        if (dungeonScene && !dungeonScene.scene.isActive()) {
+            this.scene.launch('DungeonScene');
+        }
         
         this.refreshQuestDisplay();
     }
