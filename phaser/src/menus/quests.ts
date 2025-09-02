@@ -13,6 +13,7 @@ import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
 import { biomeToName } from "../biome";
 import { addScaledImage } from "../utils/scaleImage";
+import { DungeonScene } from "./dungeon-scene";
 
 export class QuestsMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -41,7 +42,15 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     create() {
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
+        // Add and launch dungeon background scene first (shared across hub scenes)
+        if (!this.scene.get('DungeonScene')) {
+            this.scene.add('DungeonScene', new DungeonScene());
+        }
+        // Only launch if not already running
+        const dungeonScene = this.scene.get('DungeonScene');
+        if (dungeonScene && !dungeonScene.scene.isActive()) {
+            this.scene.launch('DungeonScene');
+        }
         
         this.refreshQuestDisplay();
     }

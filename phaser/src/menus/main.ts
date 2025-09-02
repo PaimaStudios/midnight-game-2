@@ -12,14 +12,14 @@ import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, safeJSONString } from "../main";
-import { Color } from "../constants/colors";
+import { Color, colorToNumber } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
-import { addScaledImage } from "../utils/scaleImage";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { registerStartingContent } from "../admin";
+import { DungeonScene } from "./dungeon-scene";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -92,6 +92,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-boss-dragon', 'enemy-boss-dragon-1.png', { frameWidth: 145, frameHeight: 97 });
 
         // Backgrounds
+        this.load.image('bg-hub1', 'bg-hub1.png');
         this.load.image('bg-grass', 'bg-grass.png');
         this.load.image('bg-desert', 'bg-desert.png');
         this.load.image('bg-tundra', 'bg-tundra.png');
@@ -102,6 +103,16 @@ export class TestMenu extends Phaser.Scene {
     }
 
     create() {
+        // Add and launch dungeon background scene first (shared across hub scenes)
+        if (!this.scene.get('DungeonScene')) {
+            this.scene.add('DungeonScene', new DungeonScene());
+        }
+        // Only launch if not already running
+        const dungeonScene = this.scene.get('DungeonScene');
+        if (dungeonScene && !dungeonScene.scene.isActive()) {
+            this.scene.launch('DungeonScene');
+        }
+
         // should this be here or elsehwere? we did this for pvp-arena
         createSpiritAnimations(this);
         createEnemyAnimations(this);
@@ -144,8 +155,6 @@ export class TestMenu extends Phaser.Scene {
         this.goldLabel.setVisible(false);
         this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
-
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
     }
 
     private initApi(api: DeployedGame2API) {
@@ -213,4 +222,5 @@ export class TestMenu extends Phaser.Scene {
             }));
         }
     }
+
 }
