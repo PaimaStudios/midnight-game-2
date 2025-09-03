@@ -51,7 +51,7 @@ export struct EnemyStats {
 }
 
 // index by ability id
-export sealed ledger all_abilities: Map<Field, Ability>;
+export /*sealed*/ ledger all_abilities: Map<Field, Ability>;
 
 export pure circuit derive_ability_id(ability: Ability): Field {
     return transientCommit<Ability>(ability, 30);
@@ -69,16 +69,6 @@ export sealed ledger ability_base_phys_id: Field;
 export sealed ledger ability_base_block_id: Field;
 export sealed ledger ability_base_fire_aoe_id: Field;
 export sealed ledger ability_base_ice_id: Field;
-
-// used only by JS impl. TODO: remove or make JS and contract match once byte indexing works
-export pure circuit hashUtil(nonce1: Bytes<32>, nonce2: Field): Field {
-    return transientCommit<Bytes<32>>(nonce1, nonce2);
-}
-
-// used only by JS impl. TODO: remove or make JS and contract match once byte indexing works
-export pure circuit fakeTempRng(state: BattleState, config: BattleConfig): Bytes<32> {
-    return persistentCommit<BattleState>(state, persistentHash<BattleConfig>(config));
-}
 
 // ranks how "good" an ability is. higher is better. useful for ordering in the UI
 export pure circuit ability_score(ability: Ability): Uint<32> {
@@ -170,7 +160,7 @@ export ledger quests: Map<Field, QuestConfig>;
 
 export struct Player {
     gold: Uint<32>,
-    // TODO: more
+    rng: Bytes<32>,
 }
 
 // registered players. Key is Player ID
@@ -230,7 +220,8 @@ export struct PlayerLoadout {
 
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
-    players.insert(player_id, Player { 5 });
+    const initial_rng = persistentHash<Field>(player_id + players.size());
+    players.insert(player_id, Player { 5, initial_rng });
     player_abilities.insertDefault(player_id);
     player_abilities.lookup(player_id).insert(ability_base_phys_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
@@ -269,7 +260,8 @@ export circuit sell_ability(ability: Ability): [] {
     assert(ability_id != ability_base_block_id && ability_id != ability_base_phys_id, "Can't sell base abilities");
     player_abilities.lookup(player_id).insert(ability_id, available - 1);
     players.insert(player_id, Player {
-        (players.lookup(player_id).gold + ability_value(disclose(ability))) as Uint<32>
+        (players.lookup(player_id).gold + ability_value(disclose(ability))) as Uint<32>,
+        players.lookup(player_id).rng
     });
 }
 
@@ -292,10 +284,48 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     return quest_id;
 }
 
-circuit random_ability(difficulty: Field): Field {
-    //const rng = get_rng();
-    // TODO: write this next: https://github.com/PaimaStudios/midnight-game-2/issues/42
-    return ability_base_fire_aoe_id;
+export pure circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
+    const color = rng_mod_6(rng[0]);
+    const trigger1 = color != 0 && rng_mod_3(rng[1]) == 0;
+    const trigger2 = color != 1 && rng_mod_3(rng[2]) == 0;
+    const trigger3 = color != 2 && rng_mod_3(rng[3]) == 0;
+    const main_factor = difficulty * (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1);
+    const main_effect = random_effect(rng[4], main_factor as Uint<32>);
+    const trigger_factor = (2 * difficulty) as Uint<32>;
+    return Ability {
+        some<Effect>(main_effect),
+        [
+            trigger1 ? some<Effect>(random_effect(rng[5], trigger_factor)) : none<Effect>(),
+            trigger2 ? some<Effect>(random_effect(rng[6], trigger_factor)) : none<Effect>(),
+            trigger3 ? some<Effect>(random_effect(rng[7], trigger_factor)) : none<Effect>()
+        ],
+        color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>()
+    };
+}
+
+pure circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
+    const effect_type = cast_to_effect_type(rng_mod_4(rng) as Uint<0..4>);
+    const aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
+    const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 5;
+    const final_factor = factor * block_factor * (aoe ? 1 : 2);
+    const amount = final_factor + rng_mod(rng, final_factor as INSERT_RNG_MOD_INPUT_TYPE);
+    return Effect {
+        effect_type,
+        amount as Uint<32>,
+        aoe
+    };
+}
+
+// a workaround here would be nice...
+pure circuit cast_to_effect_type(x: Uint<0..4>): EFFECT_TYPE {
+    if (x == 0) {
+        return EFFECT_TYPE.attack_phys;
+    } else if (x == 1) {
+        return EFFECT_TYPE.attack_fire;
+    } else if (x == 2) {
+        return EFFECT_TYPE.attack_ice;
+    }
+    return EFFECT_TYPE.block;
 }
 
 /**
@@ -325,7 +355,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    const rng = (get_rng() as Vector<32, Uint<8>>);
+    const rng = (get_player_rng() as Vector<32, Uint<8>>);
     // TODO: check block height here
     const battle_config = BattleConfig {
         quest.level,
@@ -344,7 +374,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
 
 export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleConfig {
     verify_loadout(disclose(loadout));
-    const rng = (get_rng() as Vector<32, Uint<8>>);
+    const rng = (get_player_rng() as Vector<32, Uint<8>>);
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const battle = BattleConfig {
         disclose(level),
@@ -427,6 +457,15 @@ pure circuit add_mod(start: Uint<32>, add: Uint<32>, n: Uint<32>): Uint<32> {
     return (start + add - (((start + add >= n) as Uint<1>) * n)) as Uint<32>;
 }
 
+export pure circuit boss_type_reward_factor(boss_type: BOSS_TYPE): Uint<8> {
+    if (boss_type == BOSS_TYPE.miniboss) {
+        return 1;
+    } else if (boss_type == BOSS_TYPE.boss) {
+        return 3;
+    }
+    return 0;
+}
+
 export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
@@ -456,17 +495,23 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
-        // TODO: properly determine rewards
-        if (config.enemies.stats[0].boss_type != BOSS_TYPE.normal || (config.enemies.count >= 2 && config.enemies.stats[1].boss_type != BOSS_TYPE.normal) || (config.enemies.count >= 3 && config.enemies.stats[2].boss_type != BOSS_TYPE.normal)) {
-            const reward_ability = random_ability(config.level.difficulty);
-            player_abilities.lookup(player_pub_key).insert(reward_ability, (player_abilities.lookup(player_pub_key).lookup(reward_ability) + 1) as Uint<32>);
+        const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
+                            + boss_type_reward_factor(config.enemies.count >= 2 ? config.enemies.stats[1].boss_type : BOSS_TYPE.normal)
+                            + boss_type_reward_factor(config.enemies.count >= 3 ? config.enemies.stats[2].boss_type : BOSS_TYPE.normal);
+        const reward_ability = random_ability(get_player_rng() as Vector<32, Uint<8>>, (config.level.difficulty * reward_factor) as Uint<8>);
+        const reward_ability_id = derive_ability_id(reward_ability);
+        if (reward_factor > 0) {
+            if (!all_abilities.member(reward_ability_id)) {
+                all_abilities.insert(reward_ability_id, reward_ability);
+            }
+            player_abilities.lookup(player_pub_key).insert(reward_ability_id, (player_abilities.lookup(player_pub_key).lookup(reward_ability_id) + 1) as Uint<32>);
         }
 
-        // TODO: when and how to generate?
         const reward = BattleRewards {
             true,
+            // TODO: how much gold to give?
             100,
-            none<Field>()
+            reward_factor > 0 ? some<Field>(reward_ability_id) : none<Field>()
         };
         const player_stats = players.lookup(derive_player_pub_key(disclose(player_secret_key())));
 
@@ -482,7 +527,8 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
 
 pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
     return Player {
-        (player.gold + reward.gold) as Uint<32>
+        (player.gold + reward.gold) as Uint<32>,
+        player.rng
     };
 }
 
@@ -527,15 +573,24 @@ export pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
 }
 
 
+// TODO: do we want to get rid of this entirely? is there non-per-player RNG?
 // mock RNG functionality using an incrementing global nonce
-ledger mock_nonce: Uint<32>;
-struct MockHasher {
-    nonce: Uint<32>,
-    sk: Bytes<32>,
-}
-circuit get_rng(): Bytes<32> {
-    mock_nonce = (mock_nonce + 1 as Uint<32>);
-    return persistentHash<MockHasher>(MockHasher { mock_nonce, disclose(player_secret_key()) });
+// ledger mock_nonce: Uint<32>;
+// struct MockHasher {
+//     nonce: Uint<32>,
+//     sk: Bytes<32>,
+// }
+// circuit get_rng(): Bytes<32> {
+//     mock_nonce = (mock_nonce + 1 as Uint<32>);
+//     return persistentHash<MockHasher>(MockHasher { mock_nonce, disclose(player_secret_key()) });
+// }
+
+circuit get_player_rng(): Bytes<32> {
+    const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    const old_player = players.lookup(player_id);
+    const new_rng = persistentHash<Bytes<32>>(old_player.rng);
+    players.insert(player_id, Player { old_player.gold, new_rng });
+    return old_player.rng;
 }
 
 circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {

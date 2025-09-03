@@ -22,13 +22,6 @@ export type CombatCallbacks = {
     onEndOfRound: () => Promise<void>;
 };
 
-// we need to sync this with the contract's RNG indexing once that's possible (i.e. next release with hblock height/byte indexing)
-export function randIntBetween(nonce: Uint8Array, index: number, min: number, max: number): number {
-    const range = BigInt(max - min + 1);
-    const rng = pureCircuits.hashUtil(nonce, BigInt(index));
-    return min + Number(rng % range);
-}
-
 /**
  * Combat round logic that accepts specific player targets
  * @param battle_id Battle to be simulated. This is looked up int gameState so the battle must have been created first
@@ -42,7 +35,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         logger.combat.debug(`combat_round_logic(${abilityTargets}, ${uiHooks == undefined})`);
         const battleConfig = gameState.activeBattleConfigs.get(battle_id)!;
         const battleState = gameState.activeBattleStates.get(battle_id)!;
-        const rng = pureCircuits.fakeTempRng(battleState, battleConfig);
 
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => gameState.allAbilities.get(id)!)
@@ -74,17 +66,18 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             else if (battleState.enemy_hp_0 <= 0 && (battleState.enemy_hp_1 <= 0 || enemy_count < 2) && (battleState.enemy_hp_2 <= 0 || enemy_count < 3)) {
                 logger.combat.info(`YOU WON`);
                 let abilityReward = { is_some: false, value: BigInt(0) };
+                let reward_factor = BigInt(0);
                 for (let i = 0; i < enemy_count; ++i) {
-                    if (stats[i].boss_type != BOSS_TYPE.normal) {
-                        const ability = generateRandomAbility(BigInt(2));
-                        const abilityId = pureCircuits.derive_ability_id(ability);
-                        // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
-                        // if we don't return it, we need to match the logic here with the contract
-                        gameState.allAbilities.set(abilityId, ability);
-                        abilityReward.is_some = true;
-                        abilityReward.value = abilityId;
-                        break;
-                    }
+                    reward_factor += pureCircuits.boss_type_reward_factor(stats[i].boss_type);
+                }
+                if (reward_factor > 0) {
+                    const ability = pureCircuits.random_ability(Array.from(gameState.player!.rng).map(BigInt), battleConfig.level.difficulty * reward_factor);
+                    const abilityId = pureCircuits.derive_ability_id(ability);
+                    // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
+                    // if we don't return it, we need to match the logic here with the contract
+                    gameState.allAbilities.set(abilityId, ability);
+                    abilityReward.is_some = true;
+                    abilityReward.value = abilityId;
                 }
                 resolve({ alive: true, gold: BigInt(100), ability: abilityReward });
             } else {
@@ -185,54 +178,4 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         handleEndOfRound();
     });
-}
-
-export function generateRandomAbility(difficulty: bigint): Ability {
-    const nullEffect = { is_some: false, value: { effect_type: EFFECT_TYPE.attack_phys, amount: BigInt(1), is_aoe: false } };
-    const randomEffect = (factor: number) => {
-        const effectType = Phaser.Math.Between(0, 3) as EFFECT_TYPE;
-        const aoe = effectType != EFFECT_TYPE.block ? Math.random() > 0.7 : false;
-        let amount = -1;
-        switch (effectType) {
-            case EFFECT_TYPE.attack_fire:
-            case EFFECT_TYPE.attack_ice:
-            case EFFECT_TYPE.attack_phys:
-                amount = Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
-                break;
-            case EFFECT_TYPE.block:
-                amount = 5 * Phaser.Math.Between(factor * Number(difficulty), 2 * factor * Number(difficulty));
-                break;
-        }
-        return {
-            is_some: true,
-            value: {
-                effect_type: effectType,
-                amount: BigInt(amount),
-                is_aoe: aoe
-            }
-        };
-    };
-    const triggers = [nullEffect, nullEffect, nullEffect];
-    const generateColor = Math.random() > 0.7 ? Phaser.Math.Between(0, 2) : null;
-    const triggerColor = Phaser.Math.Between(0, 5);
-    const baseEffect = randomEffect(triggerColor < triggers.length ? 1 : 2);
-    if (triggerColor < triggers.length) {
-        if (Math.random() > 0.7 || (generateColor === triggerColor)) {
-            for (let i = 0; i < 3; ++i) {
-                if (i != triggerColor) {
-                    triggers[i] = randomEffect(1);
-                }
-            }
-        } else {
-            triggers[triggerColor] = randomEffect(2);
-        }
-    }
-    return {
-        effect: baseEffect,
-        on_energy: triggers,
-        generate_color: {
-            is_some: generateColor != null,
-            value: BigInt(generateColor ?? 0),
-        },
-    };
 }
