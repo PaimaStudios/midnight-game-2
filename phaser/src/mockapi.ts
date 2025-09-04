@@ -8,9 +8,10 @@ import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
-import { combat_round_logic, generateRandomAbility, randIntBetween } from "./battle/logic";
+import { combat_round_logic } from "./battle/logic";
 import { safeJSONString, logger } from "./main";
 import { BIOME_ID } from "./biome";
+import { randomBytes } from "game2-api/dist/utils";
 
 
 const MOCK_DELAY = 500;  // How many milliseconds to wait before responding to API requests and between state refreshes.
@@ -57,6 +58,7 @@ export class MockGame2API implements DeployedGame2API {
         return this.response(() => {
             this.mockState.player = {
                 gold: BigInt(0),
+                rng: randomBytes(32)
             };
             this.mockState.playerAbilities = new Map([
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_phys()), BigInt(4)],
@@ -74,9 +76,8 @@ export class MockGame2API implements DeployedGame2API {
     public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
         return this.response(() => {
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
-            const rng = utils.randomBytes(32);
             const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
-            const battleConfig = configs.get(BigInt(randIntBetween(rng, 0, 0, configs.size - 1)));
+            const battleConfig = configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
             const battle = {
                 level,
                 enemies: battleConfig!,
@@ -85,7 +86,7 @@ export class MockGame2API implements DeployedGame2API {
             };
             const id = pureCircuits.derive_battle_id(battle);
             logger.gameState.info(`new battle: ${id}`);
-            this.mockState.activeBattleStates.set(id, pureCircuits.init_battlestate(BigInt(rng[1]), battle));
+            this.mockState.activeBattleStates.set(id, pureCircuits.init_battlestate(BigInt(Phaser.Math.Between(0, 255)), battle));
             this.mockState.activeBattleConfigs.set(id, battle);
             return battle;
         });
@@ -242,7 +243,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     private givePlayerRandomAbility(difficulty: bigint): bigint {
-        const ability = generateRandomAbility(difficulty);
+        const ability = pureCircuits.random_ability(Array.from(randomBytes(32)).map(BigInt), difficulty);
         const abilityId = pureCircuits.derive_ability_id(ability);
         this.mockState.allAbilities.set(abilityId, ability);
         this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
