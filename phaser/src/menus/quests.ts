@@ -14,6 +14,7 @@ import { QuestConfig } from "game2-contract";
 import { biomeToName } from "../biome";
 import { addScaledImage } from "../utils/scaleImage";
 import { DungeonScene } from "./dungeon-scene";
+import { TopBar } from "../widgets/top-bar";
 
 export class QuestsMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -51,6 +52,13 @@ export class QuestsMenu extends Phaser.Scene {
         if (dungeonScene && !dungeonScene.scene.isActive()) {
             this.scene.launch('DungeonScene');
         }
+
+        new TopBar(this, true, this.api, this.state)
+            .back(() => {
+                this.scene.remove('TestMenu');
+                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
+                this.scene.start('TestMenu');
+            }, 'Back to Hub');
         
         this.refreshQuestDisplay();
     }
@@ -108,23 +116,6 @@ export class QuestsMenu extends Phaser.Scene {
             this.buttons.push(questButton);
             offset += 1;
         }
-
-        // Back button
-        const backButton = new Button(
-            this, 
-            GAME_WIDTH / 2, 
-            GAME_HEIGHT * 0.85, 
-            200, 
-            50, 
-            'Back to Hub', 
-            12, 
-            () => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                this.scene.start('TestMenu');
-            }
-        );
-        this.buttons.push(backButton);
     }
 
     shutdown() {

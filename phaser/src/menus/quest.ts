@@ -18,6 +18,7 @@ import { QuestsMenu } from "./quests";
 import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
 import { QuestConfig } from "game2-contract";
+import { TopBar } from "../widgets/top-bar";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -33,7 +34,7 @@ export class QuestMenu extends Phaser.Scene {
     summoningTablets: Phaser.GameObjects.Image[];
     statusText: Phaser.GameObjects.Text | undefined;
     initiateButton: Button | undefined;
-    backButton: Button | undefined;
+    topBar: TopBar | undefined;
 
     constructor(api: DeployedGame2API, questId: bigint, state: Game2DerivedState) {
         super('QuestMenu');
@@ -135,21 +136,13 @@ export class QuestMenu extends Phaser.Scene {
             .setOrigin(0.5, 0.5)
             .setStroke(Color.Licorice, 10); // Black border, 10px width
 
-        // Back button
-        this.backButton = new Button(
-            this,
-            GAME_WIDTH * 0.3,
-            GAME_HEIGHT * 0.9,
-            200,
-            50,
-            'Back',
-            14,
-            () => {
+        // Top Bar (back)
+        this.topBar = new TopBar(this, true, this.api, this.state)
+            .back(() => {
                 this.scene.remove('QuestsMenu');
                 this.scene.add('QuestsMenu', new QuestsMenu(this.api, state));
                 this.scene.start('QuestsMenu');
-            }
-        );
+            }, 'Back to Quests');
 
         // Initiate quest/boss button
         this.initiateButton = new Button(
