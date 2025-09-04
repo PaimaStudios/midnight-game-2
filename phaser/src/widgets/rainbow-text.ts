@@ -6,14 +6,13 @@ import { fontStyle } from "../main";
  */
 export class RainbowText extends Phaser.GameObjects.Container {
     // 3D Effect Configuration Constants
-    private static readonly DEPTH_OFFSET_X = 4;  // Horizontal depth offset for bottom side
-    private static readonly DEPTH_OFFSET_Y = 4;  // Vertical depth offset for bottom side
-    private static readonly SIDE_OFFSET_X = 2;   // Horizontal offset for right side
-    private static readonly SIDE_OFFSET_Y = 2;   // Vertical offset for right side
     private static readonly RIGHT_SIDE_DARKEN = 0.3;  // How much to darken right side (0-1)
     private static readonly BOTTOM_SIDE_DARKEN = 0.5; // How much to darken bottom side (0-1)
 
     private textObjects: Phaser.GameObjects.Text[] = [];
+    private letterGroups: Phaser.GameObjects.Container[] = []; // Groups of 3 text objects per letter
+    private animationTweens: Phaser.Tweens.Tween[] = [];
+    private baseDepth: number = 0;
     private rainbowColors: Color[] = [
         Color.Red,
         Color.Orange, 
@@ -24,17 +23,32 @@ export class RainbowText extends Phaser.GameObjects.Container {
         Color.Violet
     ];
 
-    constructor(scene: Phaser.Scene, x: number, y: number, text: string, style?: Phaser.Types.GameObjects.Text.TextStyle, depth: number = 8) {
+    constructor(
+        scene: Phaser.Scene,
+        x: number,
+        y: number,
+        text: string,
+        depth: number = 8,
+        autoAnimate: boolean = true,
+        style?: Phaser.Types.GameObjects.Text.TextStyle,
+    ) {
         super(scene, x, y);
         
+        this.baseDepth = depth;
         this.createRainbowText(text, style, depth);
         scene.add.existing(this);
+        
+        if (autoAnimate && depth > 0) {
+            this.startDepthAnimation();
+        }
     }
 
     private createRainbowText(text: string, style?: Phaser.Types.GameObjects.Text.TextStyle, depth: number = 0) {
-        // Clear existing text objects
+        // Clear existing text objects and letter groups
         this.textObjects.forEach(textObj => textObj.destroy());
+        this.letterGroups.forEach(group => group.destroy());
         this.textObjects = [];
+        this.letterGroups = [];
 
         const defaultStyle: Phaser.Types.GameObjects.Text.TextStyle = {
             ...fontStyle(24),
@@ -49,6 +63,11 @@ export class RainbowText extends Phaser.GameObjects.Container {
             const faceColor = this.rainbowColors[colorIndex];
             
             if (depth > 0) {
+                // Create a container for this letter's 3D layers
+                const letterContainer = new Phaser.GameObjects.Container(this.scene, 0, 0);
+                this.add(letterContainer);
+                this.letterGroups.push(letterContainer);
+                
                 // Calculate darker colors for the 3D sides
                 const rightSideColor = this.darkenColor(faceColor, RainbowText.RIGHT_SIDE_DARKEN);
                 const bottomSideColor = this.darkenColor(faceColor, RainbowText.BOTTOM_SIDE_DARKEN);
@@ -58,32 +77,35 @@ export class RainbowText extends Phaser.GameObjects.Container {
                 const bottomSideStyle = { ...defaultStyle, color: bottomSideColor };
                 const bottomSideObj = new Phaser.GameObjects.Text(this.scene, currentX + depth, depth, char, bottomSideStyle);
                 bottomSideObj.setOrigin(0, 0);
-                this.add(bottomSideObj);
+                letterContainer.add(bottomSideObj);
                 this.textObjects.push(bottomSideObj);
                 
                 // Right side (medium dark, offset by half depth)
                 const rightSideStyle = { ...defaultStyle, color: rightSideColor };
                 const rightSideObj = new Phaser.GameObjects.Text(this.scene, currentX + depth/2, depth/2, char, rightSideStyle);
                 rightSideObj.setOrigin(0, 0);
-                this.add(rightSideObj);
+                letterContainer.add(rightSideObj);
                 this.textObjects.push(rightSideObj);
                 
                 // Face (brightest, on top)
                 const faceStyle = { ...defaultStyle, color: faceColor };
                 const faceObj = new Phaser.GameObjects.Text(this.scene, currentX, 0, char, faceStyle);
                 faceObj.setOrigin(0, 0);
-                this.add(faceObj);
+                letterContainer.add(faceObj);
                 this.textObjects.push(faceObj);
                 
                 // Move X position for next character based on the width of the face character
                 currentX += faceObj.width;
             } else {
-                // Simple 2D text with colored shadow
+                // Simple 2D text
                 const charStyle = { ...defaultStyle, color: faceColor };
                 const textObj = new Phaser.GameObjects.Text(this.scene, currentX, 0, char, charStyle);
                 textObj.setOrigin(0, 0);
                 
-                this.add(textObj);
+                const letterContainer = new Phaser.GameObjects.Container(this.scene, 0, 0);
+                letterContainer.add(textObj);
+                this.add(letterContainer);
+                this.letterGroups.push(letterContainer);
                 this.textObjects.push(textObj);
                 
                 // Move X position for next character based on the width of current character
@@ -109,10 +131,76 @@ export class RainbowText extends Phaser.GameObjects.Container {
     }
 
     /**
+     * Start the depth animation with staggered timing for each letter
+     */
+    public startDepthAnimation(duration: number = 1000, staggerDelay: number = 100) {
+        this.stopDepthAnimation(); // Stop any existing animation
+        
+        this.letterGroups.forEach((letterGroup, index) => {
+            // Only animate letters that have 3D depth (3 children = bottom, right, face)
+            if (letterGroup.list.length === 3) {
+                const [bottomSide, rightSide] = letterGroup.list as Phaser.GameObjects.Text[];
+                
+                // Get the face position to keep it static
+                const faceText = letterGroup.list[2] as Phaser.GameObjects.Text;
+                const faceX = faceText.x;
+                const faceY = faceText.y;
+                
+                // Animate the depth offset multiplier from 0.25 to 1
+                const depthData = { depthMultiplier: 1 };
+                const tween = this.scene.tweens.add({
+                    targets: depthData,
+                    depthMultiplier: { from: 1, to: 0.25 },
+                    duration: duration,
+                    delay: index * staggerDelay,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: -1,
+                    onUpdate: () => {
+                        const currentDepth = this.baseDepth * depthData.depthMultiplier;
+                        // Update bottom side position
+                        bottomSide.setPosition(faceX + currentDepth, faceY + currentDepth);
+                        // Update right side position  
+                        rightSide.setPosition(faceX + currentDepth/2, faceY + currentDepth/2);
+                    }
+                });
+                this.animationTweens.push(tween);
+            }
+        });
+    }
+
+    /**
+     * Stop the depth animation
+     */
+    public stopDepthAnimation() {
+        this.animationTweens.forEach(tween => tween.destroy());
+        this.animationTweens = [];
+        
+        // Reset all 3D layers to their original depth positions
+        this.letterGroups.forEach(letterGroup => {
+            if (letterGroup.list.length === 3) {
+                const [bottomSide, rightSide, faceText] = letterGroup.list as Phaser.GameObjects.Text[];
+                const faceX = faceText.x;
+                const faceY = faceText.y;
+                
+                // Reset to full depth
+                bottomSide.setPosition(faceX + this.baseDepth, faceY + this.baseDepth);
+                rightSide.setPosition(faceX + this.baseDepth/2, faceY + this.baseDepth/2);
+            }
+        });
+    }
+
+    /**
      * Update the text content while maintaining rainbow effect
      */
-    setText(newText: string) {
-        this.createRainbowText(newText);
+    public setText(newText: string) {
+        const wasAnimating = this.animationTweens.length > 0;
+        this.stopDepthAnimation();
+        this.createRainbowText(newText, undefined, this.baseDepth);
+        
+        if (wasAnimating && this.baseDepth > 0) {
+            this.startDepthAnimation();
+        }
     }
 
     /**
