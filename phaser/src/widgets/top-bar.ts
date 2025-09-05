@@ -28,10 +28,10 @@ export class TopBar extends Phaser.GameObjects.Container {
         this.api = api;
 
         if (showGold) {
-            this.goldLabel = scene.add.text(TOP_BAR_WIDTH + 24, TOP_BAR_OFFSET, 'Gold: ', fontStyle(12, { align: 'left' }))
+            this.goldLabel = scene.add.text(8, TOP_BAR_OFFSET, 'Gold: ', fontStyle(12, { align: 'left' }))
                 .setOrigin(0, 0.65)
                 .setVisible(false);
-            this.goldText = scene.add.text(TOP_BAR_WIDTH + 96, TOP_BAR_OFFSET, '', fontStyle(12, { color: Color.Yellow, align: 'left' }))
+            this.goldText = scene.add.text(80, TOP_BAR_OFFSET, '', fontStyle(12, { color: Color.Yellow, align: 'left' }))
                 .setOrigin(0, 0.65)
                 .setVisible(false);
             if (initialState != undefined) {
@@ -44,6 +44,12 @@ export class TopBar extends Phaser.GameObjects.Container {
     /// Enable the back button for the top bar
     public back(onBack: () => void, backDescription?: string): TopBar {
         new Button(this.scene, TOP_BAR_OFFSET, TOP_BAR_OFFSET, TOP_BAR_WIDTH, TOP_BAR_WIDTH, '<', 12, onBack, backDescription ?? 'Back');
+        if (this.goldLabel != undefined) {
+            this.goldLabel.x += TOP_BAR_WIDTH + 8;
+        }
+        if (this.goldText != undefined) {
+            this.goldText.x += TOP_BAR_WIDTH + 8;
+        }
         return this;
     }
 
