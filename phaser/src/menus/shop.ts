@@ -11,6 +11,7 @@ import { isStartingAbility, sortedAbilities } from "./pre-battle";
 import { TestMenu } from "./main";
 import { addScaledImage } from "../utils/scaleImage";
 import { ScrollablePanel } from "../widgets/scrollable";
+import { TopBar } from "../widgets/top-bar";
 
 export class ShopMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -18,7 +19,7 @@ export class ShopMenu extends Phaser.Scene {
     state: Game2DerivedState;
     ui: Phaser.GameObjects.GameObject[];
     loader: Loader | undefined;
-    goldText: Phaser.GameObjects.Text | undefined;
+    topBar: TopBar | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
@@ -31,12 +32,17 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(32, 8, 'Gold: ', fontStyle(12));
-        this.goldText = this.add.text(100, 8, '', fontStyle(12, { color: Color.Yellow }));
         this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
         // this is just here to show some contrast since we won't have a black background. TOOD: replace with a specific background
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
         createSpiritAnimations(this);
+
+        this.topBar = new TopBar(this, true, this.api, this.state)
+            .back(() => {
+                this.scene.remove('TestMenu');
+                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
+                this.scene.start('TestMenu');
+            }, 'Return to Hub');
 
         this.onStateChange(this.state);
     }
@@ -83,14 +89,5 @@ export class ShopMenu extends Phaser.Scene {
             // Add new child to scrollable panel
             scrollablePanel.addChild(abilityContainer);
         }
-
-        this.goldText?.setText(`${state.player!.gold}`);
-        this.ui.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 256, 64, 'Back', 14, () => {
-            // TODO: this does NOT address https://github.com/PaimaStudios/midnight-game-2/issues/45
-            //this.tweens.killAll();
-            this.scene.remove('TestMenu');
-            this.scene.add('TestMenu', new TestMenu(this.api, state));
-            this.scene.start('TestMenu');
-        }));
     }
 }
