@@ -28,11 +28,11 @@ export class TopBar extends Phaser.GameObjects.Container {
         this.api = api;
 
         if (showGold) {
-            this.goldLabel = scene.add.text(96, TOP_BAR_OFFSET, 'Gold: ', fontStyle(12, { align: 'left' }))
-                .setOrigin(0.5, 0.65)
+            this.goldLabel = scene.add.text(TOP_BAR_WIDTH + 24, TOP_BAR_OFFSET, 'Gold: ', fontStyle(12, { align: 'left' }))
+                .setOrigin(0, 0.65)
                 .setVisible(false);
-            this.goldText = scene.add.text(192, TOP_BAR_OFFSET, '', fontStyle(12, { color: Color.Yellow, align: 'right' }))
-                .setOrigin(0.5, 0.65)
+            this.goldText = scene.add.text(TOP_BAR_WIDTH + 96, TOP_BAR_OFFSET, '', fontStyle(12, { color: Color.Yellow, align: 'left' }))
+                .setOrigin(0, 0.65)
                 .setVisible(false);
             if (initialState != undefined) {
                 this.onStateChange(initialState);

@@ -28,7 +28,7 @@ function codegen_placeholders() {
 const DECK_SIZE = 7;
 const HAND_SIZE = 3;
 // we don't generate all 256 because this bloats it too much. we can change this later if needed
-const MAX_RNG_MOD_DEFS = 16;
+const MAX_RNG_MOD_DEFS = 64; // TODO: try and reduce this as much as you can because it bloats circuit sizes to a ridiculous size
 
 const abilities = new Array(HAND_SIZE).fill(0).map((_, i) => i);
 const colors = [0, 1, 2];
