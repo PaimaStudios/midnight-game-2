@@ -104,8 +104,6 @@ export class TestMenu extends Phaser.Scene {
     }
 
     create() {
-        const text = new RainbowText(this, 50, 50, "SUPER EFFECTIVE", )
-
         // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
