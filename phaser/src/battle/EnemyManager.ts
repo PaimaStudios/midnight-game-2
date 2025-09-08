@@ -1,9 +1,7 @@
-import { BattleConfig, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
-import { Game2DerivedState } from "game2-api";
-import { logger } from "../main";
+import { BattleConfig, BOSS_TYPE, EnemyStats } from "game2-contract";
 import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { HealthBar } from "../widgets/progressBar";
-import { GAME_WIDTH, GAME_HEIGHT, fontStyle } from "../main";
+import { GAME_WIDTH, GAME_HEIGHT } from "../main";
 import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 

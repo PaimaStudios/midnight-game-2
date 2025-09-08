@@ -569,7 +569,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
 
 // total damage (after resistances) done by an effect to an enemy
 export pure circuit effect_damage(effect: Effect, stats: EnemyStats): Uint<32> {
-    return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (10 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (10 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (10 - stats.ice_def) * effect.amount) as Uint<32>;
+    return ((((effect.effect_type == EFFECT_TYPE.attack_phys) as Uint<1>) * (4 - stats.physical_def) * effect.amount + ((effect.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>) * (4 - stats.fire_def) * (effect.amount)) + ((effect.effect_type == EFFECT_TYPE.attack_ice) as Uint<1>) * (4 - stats.ice_def) * effect.amount) as Uint<32>;
 }
 
 

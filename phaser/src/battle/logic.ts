@@ -9,7 +9,7 @@ export type CombatCallbacks = {
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
     // triggered when a player's ability causes an effect (directly or via trigger)
     // reminder: `amount` is the color for EFFECT_TYPE.generate (range [0, 2])
-    onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => Promise<void>;
+    onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[], baseAmounts?: number[]) => Promise<void>;
     // triggered at the start of a round to show which abilities are being played this round
     onDrawAbilities: (abilities: Ability[]) => Promise<void>;
     // triggered when an ability is used. energy == undefined means base effect applying, otherwise it specifies which trigger is being applied
@@ -118,7 +118,8 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                             player_damage[enemy] += dmg;
                             return Number(dmg)
                         });
-                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts);
+                        const baseAmounts = targets.map(() => Number(effect.value.amount));
+                        await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, amounts, baseAmounts);
                         break;
                     case EFFECT_TYPE.block:
                         await uiHooks?.onPlayerEffect(source, targets, effect.value.effect_type, [Number(effect.value.amount)]);

@@ -11,7 +11,7 @@ import { TestMenu } from "./main";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
-import { biomeToName } from "../biome";
+import { biomeToName } from "../constants/biome";
 import { addScaledImage } from "../utils/scaleImage";
 import { DungeonScene } from "./dungeon-scene";
 

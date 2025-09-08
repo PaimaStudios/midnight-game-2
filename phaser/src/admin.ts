@@ -1,17 +1,17 @@
 /// TODO: this needs to be moved into its own tool as part of https://github.com/PaimaStudios/midnight-game-2/issues/77
 
 import { DeployedGame2API } from "game2-api";
-import { BIOME_ID } from "./biome";
+import { BIOME_ID } from "./constants/biome";
 import { BOSS_TYPE, EnemiesConfig, EnemyStats, pureCircuits } from "game2-contract";
 
 export async function registerStartingContent(api: DeployedGame2API): Promise<void> {
-    const dragon: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(5), fire_def: BigInt(7), ice_def: BigInt(3) };
-    const enigma: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(8), fire_def: BigInt(5), ice_def: BigInt(5) };
+    const dragon: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(2), fire_def: BigInt(3), ice_def: BigInt(1) };
+    const enigma: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(42), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(3), fire_def: BigInt(2), ice_def: BigInt(2) };
 
-    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(10), block: BigInt(5), physical_def: BigInt(5), fire_def: BigInt(5), ice_def: BigInt(5) };
-    const fireSprite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(25), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(5), fire_def: BigInt(8), ice_def: BigInt(3) };
-    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(6), fire_def: BigInt(3), ice_def: BigInt(8) };
-    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(25), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(4), fire_def: BigInt(3), ice_def: BigInt(8) };
+    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(10), block: BigInt(5), physical_def: BigInt(3), fire_def: BigInt(2), ice_def: BigInt(2) };
+    const fireSprite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(25), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(2), fire_def: BigInt(4), ice_def: BigInt(1) };
+    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(3), fire_def: BigInt(1), ice_def: BigInt(3) };
+    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(25), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(2), fire_def: BigInt(1), ice_def: BigInt(3) };
     
 
     // Grasslands 1

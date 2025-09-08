@@ -2,12 +2,13 @@ import { EFFECT_TYPE, Ability, BattleConfig } from "game2-contract";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
 import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { addScaledImage, scale } from "../utils/scaleImage";
-import { colorToNumber } from "../constants/colors";
+import { colorToNumber, Color } from "../constants/colors";
 import { BattleLayout } from "./BattleLayout";
 import { CombatCallbacks } from "../battle/logic";
-import { logger } from "../main";
+import { logger, fontStyle } from "../main";
 import { BattleEffect } from "../widgets/BattleEffect";
 import { Actor } from "./EnemyManager";
+import { RainbowText } from "../widgets/rainbow-text";
 
 export class CombatAnimationManager {
     private scene: Phaser.Scene;
@@ -46,6 +47,50 @@ export class CombatAnimationManager {
         this.abilityIcons = abilityIcons;
         this.enemies = enemies;
         this.player = player;
+    }
+
+    private showEffectivenessText(x: number, y: number, baseAmount: number, actualAmount: number) {
+        // Calculate effectiveness based on damage multiplier
+        // damage * (4 - def) where def: 4=immune, 3=weak, 2=neutral, 1=strong, 0=very strong
+        const multiplier = actualAmount / baseAmount;
+        
+        let text = "";
+        let color = Color.White;
+        let useRainbow = false;
+        
+        if (multiplier === 0) {
+            text = "IMMUNE";
+            color = Color.Blue;
+        } else if (multiplier == 1) {
+            text = "INNEFECTIVE";
+            color = Color.Red;
+        } else if (multiplier > 2) {
+            text = "SUPER\nEFFECTIVE";
+            useRainbow = true;
+        }
+        // No special text for neutral (multiplier === 2)
+        
+        if (text) {
+            const effectivenessText = useRainbow 
+                ? new RainbowText(this.scene, x, y - 40, text, 6, fontStyle(16), true)
+                : new Phaser.GameObjects.Text(this.scene, x, y - 40, text, {
+                    ...fontStyle(16),
+                    color: color,
+                    align: 'center'
+                }).setOrigin(0.5);
+            
+            this.scene.add.existing(effectivenessText);
+            
+            // Animate the text
+            this.scene.tweens.add({
+                targets: effectivenessText,
+                alpha: 0,
+                y: y - 80,
+                duration: 2000,
+                ease: 'Power2',
+                onComplete: () => effectivenessText.destroy()
+            });
+        }
     }
 
     public createCombatCallbacks(): CombatCallbacks {
@@ -93,7 +138,7 @@ export class CombatAnimationManager {
                 });
             }),
 
-            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
+            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[], baseAmounts?: number[]) => new Promise((resolve) => {
                 let damageType = undefined;
                 switch (effectType) {
                     case EFFECT_TYPE.attack_fire:
@@ -123,6 +168,7 @@ export class CombatAnimationManager {
                     for (let i = 0; i < targets.length; ++i) {
                         const target = targets[i];
                         const amount = amounts[i];
+                        const baseAmount = baseAmounts ? baseAmounts[i] : amount;
                         const bullet = addScaledImage(this.scene, this.layout.spiritX(source), this.layout.spiritY(), damageType);
                         this.scene.tweens.add({
                             targets: bullet,
@@ -133,6 +179,16 @@ export class CombatAnimationManager {
                                 this.enemies[target].damage(amount);
                                 this.enemies[target].takeDamageAnimation();
                                 bullet.destroy();
+                                
+                                // Show effectiveness text
+                                if (baseAmounts && baseAmount > 0) {
+                                    this.showEffectivenessText(
+                                        this.layout.enemyX(this.battle, target),
+                                        this.layout.enemyY(),
+                                        baseAmount,
+                                        amount
+                                    );
+                                }
                                 
                                 // Show damage number effect
                                 new BattleEffect(
