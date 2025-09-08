@@ -6,12 +6,15 @@ import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
 import { StartBattleMenu } from "./pre-battle";
 import { DungeonScene } from "./dungeon-scene";
+import { TopBar } from "../widgets/top-bar";
+import { QuestsMenu } from "./quests";
 
 export class BiomeSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
     state: Game2DerivedState;
     isQuest: boolean;
     subscription: Subscription;
+    topBar: TopBar | undefined;
 
     constructor(api: DeployedGame2API, isQuest: boolean, state: Game2DerivedState) {
         super('BiomeSelectMenu');
@@ -59,10 +62,17 @@ export class BiomeSelectMenu extends Phaser.Scene {
                 this.scene.start('StartBattleMenu');
             }
         ));
-        new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * ((biomes.length + 1) / (biomes.length + 2)), buttonWidth, buttonHeight, 'Back', 12, () => {
-            this.scene.remove('TestMenu');
-            this.scene.add('TestMenu', new TestMenu(this.api!, this.state));
-            this.scene.start('TestMenu');
-        }, 'Return to Hub');
+        new TopBar(this, true, this.api, this.state)
+            .back(() => {
+                if (this.isQuest) {
+                    this.scene.remove('QuestsMenu');
+                    this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
+                    this.scene.start('QuestsMenu');
+                } else {
+                    this.scene.remove('TestMenu');
+                    this.scene.add('TestMenu', new TestMenu(this.api!, this.state));
+                    this.scene.start('TestMenu');
+                }
+            }, 'Return to Hub');
     }
 }
