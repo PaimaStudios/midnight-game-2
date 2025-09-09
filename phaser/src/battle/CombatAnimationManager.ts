@@ -168,6 +168,9 @@ export class CombatAnimationManager {
                             // Shake screen when player is attacked
                             this.shakeScreen(4, 200);
                             
+                            // Play neutral attack sound when player is hit
+                            this.scene.sound.play('attack-neutral', { volume: 0.5 });
+                            
                             // Show damage effect on player
                             new BattleEffect(
                                 this.scene, 
