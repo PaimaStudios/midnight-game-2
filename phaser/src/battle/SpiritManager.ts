@@ -1,5 +1,5 @@
 import { Game2DerivedState } from "game2-api";
-import { BattleConfig, pureCircuits } from "game2-contract";
+import { BattleConfig, pureCircuits, EFFECT_TYPE } from "game2-contract";
 import { SpiritWidget } from "../widgets/ability";
 import { Actor } from "../battle/EnemyManager";
 import { BattleLayout } from "./BattleLayout";
@@ -121,8 +121,8 @@ export class SpiritManager {
         this.setupSpiritInteractions();
         this.setupEnemyInteractions();
         
-        // Highlight the first spirit
-        this.highlightCurrentSpirit();
+        // Check if first spirit is defense-only and auto-target it
+        this.handleCurrentSpirit();
     }
 
     public getTargets(): (number | null)[] {
@@ -173,6 +173,37 @@ export class SpiritManager {
         this.enemies = enemies;
     }
 
+    private isDefenseOnlySpirit(spiritIndex: number): boolean {
+        if (spiritIndex < 0 || spiritIndex >= this.spirits.length) return false;
+        
+        const spirit = this.spirits[spiritIndex];
+        const ability = spirit.ability;
+        
+        // Spirit is defense-only if main effect is block
+        return ability.effect.is_some && ability.effect.value.effect_type === EFFECT_TYPE.block;
+    }
+
+    private handleCurrentSpirit() {
+        // If current spirit is defense-only, auto-target and move to next
+        if (this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
+            const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
+            if (firstAliveEnemy !== -1) {
+                this.spiritTargets[this.currentSpiritIndex] = firstAliveEnemy;
+                this.moveToNextUntagetedSpirit();
+                this.checkAllSpiritsTargeted();
+                
+                // If there are more spirits to target, handle the next one
+                if (this.currentSpiritIndex !== -1) {
+                    this.handleCurrentSpirit();
+                }
+                return;
+            }
+        }
+        
+        // Normal highlighting for attack spirits
+        this.highlightCurrentSpirit();
+    }
+
     private setupSpiritInteractions() {
         this.spirits.forEach((spirit, index) => {
             // Check if spirit is still valid and has a scene
@@ -201,9 +232,14 @@ export class SpiritManager {
             // Only make alive enemies interactive
             if (enemy.hp > 0) {
                 enemy.setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => this.targetEnemy(index))
+                    .on('pointerdown', () => {
+                        // Check if current spirit can attack
+                        if (!this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
+                            this.targetEnemy(index);
+                        }
+                    })
                     .on('pointerover', () => {
-                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING) {
+                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && !this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
                             if (enemy.sprite) {
                                 enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
@@ -257,6 +293,17 @@ export class SpiritManager {
             this.resetSpiritToDefault(previousIndex);
         }
         
+        // If this is a defense-only spirit, auto-target the first alive enemy and move on
+        if (this.isDefenseOnlySpirit(index)) {
+            const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
+            if (firstAliveEnemy !== -1) {
+                this.spiritTargets[index] = firstAliveEnemy;
+                this.moveToNextUntagetedSpirit();
+                this.checkAllSpiritsTargeted();
+                return;
+            }
+        }
+        
         this.highlightCurrentSpirit();
         this.onSpiritSelected?.(index);
     }
@@ -296,7 +343,10 @@ export class SpiritManager {
         // Reset the previously selected spirit to default position
         this.resetSpiritToDefault(previousIndex);
 
-        this.highlightCurrentSpirit();
+        // Handle the current spirit (could be defense-only)
+        if (this.currentSpiritIndex !== -1) {
+            this.handleCurrentSpirit();
+        }
     }
 
     private highlightCurrentSpirit() {

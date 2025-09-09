@@ -99,6 +99,13 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('bg-tundra', 'bg-tundra.png');
         this.load.image('bg-cave', 'bg-cave.png');
 
+        // Sound Effects
+        this.load.audio('attack-immune', 'sfx/attack-immune.wav');
+        this.load.audio('attack-weak', 'sfx/attack-weak.wav');
+        this.load.audio('attack-neutral', 'sfx/attack-neutral.wav');
+        this.load.audio('attack-effective', 'sfx/attack-effective.wav');
+        this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
+
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);
     }

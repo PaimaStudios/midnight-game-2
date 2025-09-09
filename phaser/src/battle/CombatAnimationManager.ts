@@ -103,10 +103,10 @@ export class CombatAnimationManager {
         } else if (multiplier === 1) {
             text = "WEAK";
             color = Color.Red;
-        } else if (multiplier === 2) {
+        } else if (multiplier === 3) {
             text = "EFFECTIVE";
             useRainbow = true;
-        } else if (multiplier === 3) {
+        } else if (multiplier === 4) {
             text = "SUPER\nEFFECTIVE";
             useRainbow = true;
         }
@@ -228,10 +228,25 @@ export class CombatAnimationManager {
                                 // Show effectiveness text and shake for super effective
                                 if (baseAmounts && baseAmount > 0) {
                                     const multiplier = amount / baseAmount;
+                                    
+                                    // Play appropriate sound based on effectiveness
+                                    if (multiplier === 0) {
+                                        this.scene.sound.play('attack-immune', { volume: 0.5 });
+                                    } else if (multiplier === 1) {
+                                        this.scene.sound.play('attack-weak', { volume: 0.5 });
+                                    } else if (multiplier === 2) {
+                                        this.scene.sound.play('attack-neutral', { volume: 0.5 });
+                                    } else if (multiplier === 3) {
+                                        this.scene.sound.play('attack-effective', { volume: 0.5 });
+                                    } else if (multiplier === 4) {
+                                        this.scene.sound.play('attack-supereffective', { volume: 0.5 });
+                                    }
+                                    
+                                    // Shake screen for super effective attacks
                                     if (multiplier > 2) {
-                                        // Shake screen for super effective attacks
                                         this.shakeScreen(4, 300);
                                     }
+                                    
                                     this.showEffectivenessText(
                                         this.layout.enemyX(this.battle, target),
                                         this.layout.enemyY(),
