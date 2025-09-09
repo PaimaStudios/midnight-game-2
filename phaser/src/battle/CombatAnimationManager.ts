@@ -37,6 +37,45 @@ export class CombatAnimationManager {
         this.battle = battle;
     }
 
+    private shakeScreen(intensity: number = 5, duration: number = 500) {
+        // Get all game objects except background (assuming background is first child or has specific name)
+        const objectsToShake = this.scene.children.list.filter((_, index) => {
+            // Skip the first object(should be background)
+            return index > 0;
+        }).filter(child => 'x' in child && 'y' in child) as Array<Phaser.GameObjects.GameObject & { x: number, y: number }>;
+        
+        if (objectsToShake.length === 0) return;
+        
+        // Store original positions
+        const originalPositions = objectsToShake.map(obj => ({ x: obj.x, y: obj.y }));
+        
+        // Create shake effect with easing out
+        const shakeData = { intensity: intensity, progress: 0 };
+        this.scene.tweens.add({
+            targets: shakeData,
+            intensity: 0,
+            progress: 1,
+            duration: duration,
+            ease: 'Power2.easeOut',
+            onUpdate: () => {
+                objectsToShake.forEach((obj, i) => {
+                    const original = originalPositions[i];
+                    const currentIntensity = shakeData.intensity;
+                    obj.x = original.x + Phaser.Math.Between(-currentIntensity, currentIntensity);
+                    obj.y = original.y + Phaser.Math.Between(-currentIntensity, currentIntensity);
+                });
+            },
+            onComplete: () => {
+                // Reset all objects to original positions
+                objectsToShake.forEach((obj, i) => {
+                    const original = originalPositions[i];
+                    obj.x = original.x;
+                    obj.y = original.y;
+                });
+            }
+        });
+    }
+
     public updateReferences(
         spirits: SpiritWidget[],
         abilityIcons: AbilityWidget[],
@@ -123,6 +162,9 @@ export class CombatAnimationManager {
                             fist.destroy();
                             this.player?.damage(amount);
                             
+                            // Shake screen when player is attacked
+                            this.shakeScreen(4, 200);
+                            
                             // Show damage effect on player
                             new BattleEffect(
                                 this.scene, 
@@ -180,8 +222,13 @@ export class CombatAnimationManager {
                                 this.enemies[target].takeDamageAnimation();
                                 bullet.destroy();
                                 
-                                // Show effectiveness text
+                                // Show effectiveness text and shake for super effective
                                 if (baseAmounts && baseAmount > 0) {
+                                    const multiplier = amount / baseAmount;
+                                    if (multiplier > 2) {
+                                        // Shake screen for super effective attacks
+                                        this.shakeScreen(4, 300);
+                                    }
                                     this.showEffectivenessText(
                                         this.layout.enemyX(this.battle, target),
                                         this.layout.enemyY(),
