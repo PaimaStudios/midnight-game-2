@@ -90,7 +90,7 @@ export class CombatAnimationManager {
 
     private showEffectivenessText(x: number, y: number, baseAmount: number, actualAmount: number) {
         // Calculate effectiveness based on damage multiplier
-        // damage * (4 - def) where def: 4=immune, 3=weak, 2=neutral, 1=strong, 0=very strong
+        // damage * (4 - def) where def: 4=immune, 3=weak, 2=neutral, 1=effective, 0=very effective
         const multiplier = actualAmount / baseAmount;
         
         let text = "";
@@ -100,10 +100,13 @@ export class CombatAnimationManager {
         if (multiplier === 0) {
             text = "IMMUNE";
             color = Color.Blue;
-        } else if (multiplier == 1) {
-            text = "INNEFECTIVE";
+        } else if (multiplier === 1) {
+            text = "WEAK";
             color = Color.Red;
-        } else if (multiplier > 2) {
+        } else if (multiplier === 2) {
+            text = "EFFECTIVE";
+            useRainbow = true;
+        } else if (multiplier === 3) {
             text = "SUPER\nEFFECTIVE";
             useRainbow = true;
         }
