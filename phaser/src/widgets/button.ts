@@ -44,7 +44,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
             if (this.enabled) {
                 if (this.soundOnClick) {
-                    this.scene.sound.play('button-press-1', { volume: 0.6 });
+                    this.scene.sound.play('button-press-1', { volume: 0.5 });
                 }   
             }
         });
