@@ -93,6 +93,7 @@ export class UIStateManager {
     }
 
     public showBattleEndScreen(circuit: BattleRewards, state: Game2DerivedState) {
+        this.scene.sound.play('battle-win', { volume: 0.9 });
         const returnButtonText = 'Return to Hub';
         const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!` : `You Died :(`;
         this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.52, battleOverText, fontStyle(16)).setOrigin(0.5, 0.5);

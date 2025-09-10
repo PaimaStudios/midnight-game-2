@@ -59,6 +59,14 @@ export class ActiveBattle extends Phaser.Scene {
     create() {
         const loader = this.scene.get('Loader') as Loader;
         logger.combat.debug('ActiveBattle.create() called');
+        
+        // Stop menu music when entering battle
+        const menuMusic = this.sound.get('menu-music');
+        if (menuMusic) {
+            menuMusic.stop();
+            menuMusic.destroy();
+        }
+        
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, biomeToBackground(Number(this.battle.level.biome) as BIOME_ID)).setDepth(-10);
 
         // Create player after scene is initialized

@@ -33,6 +33,7 @@ export class TestMenu extends Phaser.Scene {
     new_button: Button | undefined;
     buttons: Button[];
     firstRun: boolean;
+    menuMusic: Phaser.Sound.BaseSound | undefined;
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -106,6 +107,9 @@ export class TestMenu extends Phaser.Scene {
         this.load.audio('attack-effective', 'sfx/attack-effective.wav');
         this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
         this.load.audio('button-press-1', 'sfx/button-press-1.wav');
+        this.load.audio('battle-select-enemy', 'sfx/battle-select-enemy.wav');
+        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
+        this.load.audio('battle-win', 'sfx/battle-win.wav');
         
         // Music
         this.load.audio('menu-music', 'music/menu.wav');
@@ -167,6 +171,14 @@ export class TestMenu extends Phaser.Scene {
         this.goldLabel.setVisible(false);
         this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
+        
+        // Start menu music (check if already playing globally)
+        if (!this.sound.get('menu-music')) {
+            this.menuMusic = this.sound.add('menu-music', { volume: 0.6, loop: true });
+            this.menuMusic.play();
+        } else {
+            this.menuMusic = this.sound.get('menu-music');
+        }
     }
 
     private initApi(api: DeployedGame2API) {
