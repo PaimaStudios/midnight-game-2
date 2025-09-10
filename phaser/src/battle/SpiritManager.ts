@@ -173,19 +173,52 @@ export class SpiritManager {
         this.enemies = enemies;
     }
 
-    private isDefenseOnlySpirit(spiritIndex: number): boolean {
+    private shouldSkipTargeting(spiritIndex: number): boolean {
         if (spiritIndex < 0 || spiritIndex >= this.spirits.length) return false;
         
         const spirit = this.spirits[spiritIndex];
         const ability = spirit.ability;
         
-        // Spirit is defense-only if main effect is block
-        return ability.effect.is_some && ability.effect.value.effect_type === EFFECT_TYPE.block;
+        // Check main effect
+        const hasMainAttack = ability.effect.is_some && 
+            (ability.effect.value.effect_type === EFFECT_TYPE.attack_fire ||
+             ability.effect.value.effect_type === EFFECT_TYPE.attack_ice ||
+             ability.effect.value.effect_type === EFFECT_TYPE.attack_phys);
+        
+        const hasMainBlock = ability.effect.is_some && ability.effect.value.effect_type === EFFECT_TYPE.block;
+        const isMainAoE = ability.effect.is_some && ability.effect.value.is_aoe;
+        
+        // Check energy effects for non-AoE attacks
+        let hasNonAoEEnergyAttack = false;
+        if (ability.energy_effects.is_some) {
+            for (const energyEffect of ability.energy_effects.value) {
+                const isAttack = energyEffect.effect_type === EFFECT_TYPE.attack_fire ||
+                               energyEffect.effect_type === EFFECT_TYPE.attack_ice ||
+                               energyEffect.effect_type === EFFECT_TYPE.attack_phys;
+                if (isAttack && !energyEffect.is_aoe) {
+                    hasNonAoEEnergyAttack = true;
+                    break;
+                }
+            }
+        }
+        
+        // Skip if:
+        // 1. Defense spirit without non-AoE energy attacks
+        // 2. AoE-only main attack without non-AoE energy attacks
+        if (hasMainBlock && !hasNonAoEEnergyAttack) {
+            return true; // Defense spirit without non-AoE energy attacks
+        }
+        
+        if (hasMainAttack && isMainAoE && !hasNonAoEEnergyAttack) {
+            return true; // AoE-only attack without non-AoE energy attacks
+        }
+        
+        return false;
     }
 
     private handleCurrentSpirit() {
-        // If current spirit is defense-only, auto-target and move to next
-        if (this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
+        // If current spirit should skip targeting, auto-target and move to next
+        if (this.shouldSkipTargeting(this.currentSpiritIndex)) {
             const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
             if (firstAliveEnemy !== -1) {
                 this.spiritTargets[this.currentSpiritIndex] = firstAliveEnemy;
@@ -234,12 +267,12 @@ export class SpiritManager {
                 enemy.setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => {
                         // Check if current spirit can attack
-                        if (!this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
+                        if (!this.shouldSkipTargeting(this.currentSpiritIndex)) {
                             this.targetEnemy(index);
                         }
                     })
                     .on('pointerover', () => {
-                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && !this.isDefenseOnlySpirit(this.currentSpiritIndex)) {
+                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
                             if (enemy.sprite) {
                                 enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
@@ -293,8 +326,8 @@ export class SpiritManager {
             this.resetSpiritToDefault(previousIndex);
         }
         
-        // If this is a defense-only spirit, auto-target the first alive enemy and move on
-        if (this.isDefenseOnlySpirit(index)) {
+        // If this spirit should skip targeting, auto-target the first alive enemy and move on
+        if (this.shouldSkipTargeting(index)) {
             const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
             if (firstAliveEnemy !== -1) {
                 this.spiritTargets[index] = firstAliveEnemy;
