@@ -105,6 +105,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.audio('attack-neutral', 'sfx/attack-neutral.wav');
         this.load.audio('attack-effective', 'sfx/attack-effective.wav');
         this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
+        this.load.audio('button-press-1', 'sfx/button-press-1.wav');
+        
+        // Music
+        this.load.audio('menu-music', 'music/menu.wav');
 
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);

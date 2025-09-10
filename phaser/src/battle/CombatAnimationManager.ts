@@ -234,15 +234,15 @@ export class CombatAnimationManager {
                                     
                                     // Play appropriate sound based on effectiveness
                                     if (multiplier === 0) {
-                                        this.scene.sound.play('attack-immune', { volume: 0.5 });
+                                        this.scene.sound.play('attack-immune', { volume: 0.8 });
                                     } else if (multiplier === 1) {
-                                        this.scene.sound.play('attack-weak', { volume: 0.5 });
+                                        this.scene.sound.play('attack-weak', { volume: 0.8 });
                                     } else if (multiplier === 2) {
-                                        this.scene.sound.play('attack-neutral', { volume: 0.5 });
+                                        this.scene.sound.play('attack-neutral', { volume: 0.8 });
                                     } else if (multiplier === 3) {
-                                        this.scene.sound.play('attack-effective', { volume: 0.5 });
+                                        this.scene.sound.play('attack-effective', { volume: 1.0 });
                                     } else if (multiplier === 4) {
-                                        this.scene.sound.play('attack-supereffective', { volume: 0.5 });
+                                        this.scene.sound.play('attack-supereffective', { volume: 1.0 });
                                     }
                                     
                                     // Shake screen for super effective attacks
