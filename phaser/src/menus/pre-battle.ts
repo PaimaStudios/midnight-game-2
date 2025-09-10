@@ -16,6 +16,8 @@ import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
+import { TOP_BAR_OFFSET, TOP_BAR_WIDTH, TopBar } from "../widgets/top-bar";
+import { BiomeSelectMenu } from "./biome-select";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -150,14 +152,22 @@ export class StartBattleMenu extends Phaser.Scene {
         const buttonWidth = 128;
         const buttonHeight = 40;
         const buttonFontSize = 10;
-        this.loadLastButton = new Button(this, GAME_WIDTH * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
+        const topBarOffset = TOP_BAR_OFFSET + 2 * (TOP_BAR_OFFSET - TOP_BAR_WIDTH / 2) + 8;
+        const remainingWidth = GAME_WIDTH - topBarOffset;
+        new TopBar(this, false, this.api, this.state)
+            .back(() => {
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, this.isQuest, this.state));
+                this.scene.start('BiomeSelectMenu');
+            }, 'Back to Level Select');
+        this.loadLastButton = new Button(this, topBarOffset + remainingWidth * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
             this.loadCurrentLoadout(LAST_LOADOUT_KEY);
         });
-        new Button(this, GAME_WIDTH * (7.25 / 24), topButtonY, buttonWidth, buttonHeight, 'Clear', buttonFontSize, () => {
+        new Button(this, topBarOffset + remainingWidth * (7.25 / 24), topButtonY, buttonWidth, buttonHeight, 'Clear', buttonFontSize, () => {
             this.clearSelectedAbilities();
         });
 
-        this.startButton = new Button(this, GAME_WIDTH * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
+        this.startButton = new Button(this, topBarOffset + remainingWidth * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
                 // TODO: control difficulty https://github.com/PaimaStudios/midnight-game-2/issues/103
@@ -202,10 +212,10 @@ export class StartBattleMenu extends Phaser.Scene {
             }
         }).setEnabled(false);
 
-        this.loadButton = new Button(this, GAME_WIDTH * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
+        this.loadButton = new Button(this, topBarOffset + remainingWidth * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
             this.loadCurrentLoadout(SAVED_CONFIG_KEY);
         });
-        new Button(this, GAME_WIDTH * (21.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Save', buttonFontSize, () => {
+        new Button(this, topBarOffset + remainingWidth * (21.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Save', buttonFontSize, () => {
             this.saveCurrentLoadout(SAVED_CONFIG_KEY);
         });
         this.enableLoadButtons();

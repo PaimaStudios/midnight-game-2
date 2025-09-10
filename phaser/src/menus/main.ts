@@ -21,14 +21,14 @@ import { QuestsMenu } from "./quests";
 import { registerStartingContent } from "../admin";
 import { DungeonScene } from "./dungeon-scene";
 import { RainbowText } from "../widgets/rainbow-text";
+import { TopBar } from "../widgets/top-bar";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
     api: DeployedGame2API | undefined;
     subscription: Subscription | undefined;
     state: Game2DerivedState | undefined;
-    goldText: Phaser.GameObjects.Text | undefined;
-    goldLabel: Phaser.GameObjects.Text | undefined;
+    topBar: TopBar | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
@@ -39,6 +39,7 @@ export class TestMenu extends Phaser.Scene {
         super('TestMenu');
         this.buttons = [];
         this.firstRun = api == undefined;
+        this.state = state;
         if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
@@ -166,10 +167,6 @@ export class TestMenu extends Phaser.Scene {
                     break;
             }
         }
-        this.goldLabel = this.add.text(32, GAME_HEIGHT - 64, 'Gold: ', fontStyle(12));
-        this.goldText = this.add.text(100, GAME_HEIGHT - 64, '', fontStyle(12, { color: Color.Yellow }));
-        this.goldLabel.setVisible(false);
-        this.goldText.setVisible(false);
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
         
         // Start menu music (check if already playing globally)
@@ -184,6 +181,7 @@ export class TestMenu extends Phaser.Scene {
     private initApi(api: DeployedGame2API) {
         this.api = api;
         this.buttons.forEach((b) => b.destroy());
+        this.topBar = new TopBar(this, true, api, this.state);
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
@@ -220,9 +218,6 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
             }));
-            this.goldLabel?.setVisible(true);
-            this.goldText?.setVisible(true);
-            this.goldText?.setText(`${state.player.gold}`);
         } else {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
