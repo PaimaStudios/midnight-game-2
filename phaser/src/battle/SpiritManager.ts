@@ -190,14 +190,17 @@ export class SpiritManager {
         
         // Check energy effects for non-AoE attacks
         let hasNonAoEEnergyAttack = false;
-        if (ability.energy_effects.is_some) {
-            for (const energyEffect of ability.energy_effects.value) {
-                const isAttack = energyEffect.effect_type === EFFECT_TYPE.attack_fire ||
-                               energyEffect.effect_type === EFFECT_TYPE.attack_ice ||
-                               energyEffect.effect_type === EFFECT_TYPE.attack_phys;
-                if (isAttack && !energyEffect.is_aoe) {
-                    hasNonAoEEnergyAttack = true;
-                    break;
+        if (ability.on_energy) {
+            for (const energyEffect of ability.on_energy) {
+                if (energyEffect.is_some) {
+                    const effect = energyEffect.value;
+                    const isAttack = effect.effect_type === EFFECT_TYPE.attack_fire ||
+                                   effect.effect_type === EFFECT_TYPE.attack_ice ||
+                                   effect.effect_type === EFFECT_TYPE.attack_phys;
+                    if (isAttack && !effect.is_aoe) {
+                        hasNonAoEEnergyAttack = true;
+                        break;
+                    }
                 }
             }
         }
@@ -344,6 +347,9 @@ export class SpiritManager {
     private targetEnemy(enemyIndex: number) {
         if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
         if (this.enemies[enemyIndex].hp <= 0) return; // Can't target dead enemies
+        
+        // Play enemy selection sound
+        this.scene.sound.play('battle-select-enemy-attack', { volume: 0.7 });
         
         // Set target for current spirit
         this.spiritTargets[this.currentSpiritIndex] = enemyIndex;

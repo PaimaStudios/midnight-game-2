@@ -105,13 +105,13 @@ export class CombatAnimationManager {
             color = Color.Red;
         } else if (multiplier === 3) {
             text = "EFFECTIVE";
-            useRainbow = true;
+            color = Color.Green;
         } else if (multiplier === 4) {
             text = "SUPER\nEFFECTIVE";
             useRainbow = true;
         }
-        // No special text for neutral (multiplier === 2)
-        
+
+        // No special text for neutral defense attacks
         if (text) {
             const effectivenessText = useRainbow 
                 ? new RainbowText(this.scene, x, y - 40, text, 6, fontStyle(16), true)
@@ -119,7 +119,7 @@ export class CombatAnimationManager {
                     ...fontStyle(16),
                     color: color,
                     align: 'center'
-                }).setOrigin(0.5);
+                }).setOrigin(0.5).setStroke(Color.Licorice, 10);
             
             this.scene.add.existing(effectivenessText);
             
@@ -232,22 +232,30 @@ export class CombatAnimationManager {
                                 if (baseAmounts && baseAmount > 0) {
                                     const multiplier = amount / baseAmount;
                                     
-                                    // Play appropriate sound based on effectiveness
+                                    // Play appropriate sound and shake screen based on effectiveness
+                                    let shakeIntensity = 0;
+                                    let shakeDuration = 0;
                                     if (multiplier === 0) {
                                         this.scene.sound.play('attack-immune', { volume: 0.8 });
                                     } else if (multiplier === 1) {
                                         this.scene.sound.play('attack-weak', { volume: 0.8 });
                                     } else if (multiplier === 2) {
                                         this.scene.sound.play('attack-neutral', { volume: 0.8 });
+                                        shakeIntensity = 2;
+                                        shakeDuration = 100;
                                     } else if (multiplier === 3) {
                                         this.scene.sound.play('attack-effective', { volume: 1.0 });
+                                        shakeIntensity = 3;
+                                        shakeDuration = 300;
                                     } else if (multiplier === 4) {
                                         this.scene.sound.play('attack-supereffective', { volume: 1.0 });
+                                        shakeIntensity = 5;
+                                        shakeDuration = 400;
                                     }
                                     
-                                    // Shake screen for super effective attacks
-                                    if (multiplier > 2) {
-                                        this.shakeScreen(4, 300);
+                                    // Shake screen for stronger attacks
+                                    if (shakeIntensity && shakeDuration) {
+                                        this.shakeScreen(shakeIntensity, shakeDuration);
                                     }
                                     
                                     this.showEffectivenessText(

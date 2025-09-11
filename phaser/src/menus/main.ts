@@ -107,10 +107,12 @@ export class TestMenu extends Phaser.Scene {
         this.load.audio('attack-neutral', 'sfx/attack-neutral.wav');
         this.load.audio('attack-effective', 'sfx/attack-effective.wav');
         this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
-        this.load.audio('button-press-1', 'sfx/button-press-1.wav');
         this.load.audio('battle-select-enemy', 'sfx/battle-select-enemy.wav');
-        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
+        this.load.audio('battle-select-enemy-attack', 'sfx/battle-select-enemy-attack.wav');
         this.load.audio('battle-win', 'sfx/battle-win.wav');
+        this.load.audio('battle-lose', 'sfx/battle-lose.wav');
+        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
+        this.load.audio('button-press-1', 'sfx/button-press-1.wav');
         
         // Music
         this.load.audio('menu-music', 'music/menu.wav');
