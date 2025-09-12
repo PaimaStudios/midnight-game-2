@@ -9,6 +9,7 @@ import { logger, fontStyle } from "../main";
 import { BattleEffect } from "../widgets/BattleEffect";
 import { Actor } from "./EnemyManager";
 import { RainbowText } from "../widgets/rainbow-text";
+import { Def } from "../constants/def";
 
 export class CombatAnimationManager {
     private scene: Phaser.Scene;
@@ -17,7 +18,8 @@ export class CombatAnimationManager {
     private abilityIcons: AbilityWidget[];
     private enemies: Actor[];
     private player: Actor;
-    private battle: BattleConfig
+    private battle: BattleConfig;
+    private background: Phaser.GameObjects.GameObject | null = null;
 
     constructor(
         scene: Phaser.Scene,
@@ -26,7 +28,8 @@ export class CombatAnimationManager {
         abilityIcons: AbilityWidget[],
         enemies: Actor[],
         player: Actor,
-        battle: BattleConfig
+        battle: BattleConfig,
+        background?: Phaser.GameObjects.GameObject
     ) {
         this.scene = scene;
         this.layout = layout;
@@ -35,13 +38,14 @@ export class CombatAnimationManager {
         this.enemies = enemies;
         this.player = player;
         this.battle = battle;
+        this.background = background || null;
     }
 
     private shakeScreen(intensity: number = 5, duration: number = 500) {
-        // Get all game objects except background (assuming background is first child or has specific name)
-        const objectsToShake = this.scene.children.list.filter((_, index) => {
-            // Skip the first object(should be background)
-            return index > 0;
+        // Get all game objects except background (properly exclude the background object)
+        const objectsToShake = this.scene.children.list.filter((child) => {
+            // Skip the background object if we have a reference to it
+            return child !== this.background;
         }).filter(child => 'x' in child && 'y' in child) as Array<Phaser.GameObjects.GameObject & { x: number, y: number }>;
         
         if (objectsToShake.length === 0) return;
@@ -88,30 +92,27 @@ export class CombatAnimationManager {
         this.player = player;
     }
 
-    private showEffectivenessText(x: number, y: number, baseAmount: number, actualAmount: number) {
-        // Calculate effectiveness based on damage multiplier
-        // damage * (4 - def) where def: 4=immune, 3=weak, 2=neutral, 1=effective, 0=very effective
-        const multiplier = actualAmount / baseAmount;
-        
-        let text = "";
-        let color = Color.White;
-        let useRainbow = false;
-        
-        if (multiplier === 0) {
-            text = "IMMUNE";
-            color = Color.Blue;
-        } else if (multiplier === 1) {
-            text = "WEAK";
-            color = Color.Red;
-        } else if (multiplier === 3) {
-            text = "EFFECTIVE";
-            color = Color.Green;
-        } else if (multiplier === 4) {
-            text = "SUPER\nEFFECTIVE";
-            useRainbow = true;
-        }
+    private static readonly EFFECTIVENESS_DISPLAY = {
+        [Def.IMMUNE]: { text: "IMMUNE", color: Color.Blue, useRainbow: false, sound: 'attack-immune', shake: { intensity: 0, duration: 0 } },
+        [Def.WEAK]: { text: "WEAK", color: Color.Red, useRainbow: false, sound: 'attack-weak', shake: { intensity: 0, duration: 0 } },
+        [Def.NEUTRAL]: { text: "", color: Color.White, useRainbow: false, sound: 'attack-neutral', shake: { intensity: 2, duration: 100 } },
+        [Def.EFFECTIVE]: { text: "EFFECTIVE", color: Color.Green, useRainbow: false, sound: 'attack-effective', shake: { intensity: 3, duration: 300 } },
+        [Def.SUPEREFFECTIVE]: { text: "SUPER\nEFFECTIVE", color: Color.White, useRainbow: true, sound: 'attack-supereffective', shake: { intensity: 5, duration: 400 } }
+    };
 
-        // No special text for neutral defense attacks
+    private showEffectivenessText(x: number, y: number, defenseLevel: Def) {
+        const display = CombatAnimationManager.EFFECTIVENESS_DISPLAY[defenseLevel];
+        if (!display) return;
+        
+        const { text, color, useRainbow, sound, shake } = display;
+        
+        // Play sound effect
+        this.scene.sound.play(sound, { volume: defenseLevel >= Def.EFFECTIVE ? 1.0 : 0.8 });
+        
+        // Shake screen for stronger attacks
+        if (shake.intensity > 0) {
+            this.shakeScreen(shake.intensity, shake.duration);
+        }
         if (text) {
             const effectivenessText = useRainbow 
                 ? new RainbowText(this.scene, x, y - 40, text, 6, fontStyle(16), true)
@@ -186,7 +187,7 @@ export class CombatAnimationManager {
                 });
             }),
 
-            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[], baseAmounts?: number[]) => new Promise((resolve) => {
+            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
                 let damageType = undefined;
                 switch (effectType) {
                     case EFFECT_TYPE.attack_fire:
@@ -216,7 +217,6 @@ export class CombatAnimationManager {
                     for (let i = 0; i < targets.length; ++i) {
                         const target = targets[i];
                         const amount = amounts[i];
-                        const baseAmount = baseAmounts ? baseAmounts[i] : amount;
                         const bullet = addScaledImage(this.scene, this.layout.spiritX(source), this.layout.spiritY(), damageType);
                         this.scene.tweens.add({
                             targets: bullet,
@@ -228,43 +228,13 @@ export class CombatAnimationManager {
                                 this.enemies[target].takeDamageAnimation();
                                 bullet.destroy();
                                 
-                                // Show effectiveness text and shake for super effective
-                                if (baseAmounts && baseAmount > 0) {
-                                    const multiplier = amount / baseAmount;
-                                    
-                                    // Play appropriate sound and shake screen based on effectiveness
-                                    let shakeIntensity = 0;
-                                    let shakeDuration = 0;
-                                    if (multiplier === 0) {
-                                        this.scene.sound.play('attack-immune', { volume: 0.8 });
-                                    } else if (multiplier === 1) {
-                                        this.scene.sound.play('attack-weak', { volume: 0.8 });
-                                    } else if (multiplier === 2) {
-                                        this.scene.sound.play('attack-neutral', { volume: 0.8 });
-                                        shakeIntensity = 2;
-                                        shakeDuration = 100;
-                                    } else if (multiplier === 3) {
-                                        this.scene.sound.play('attack-effective', { volume: 1.0 });
-                                        shakeIntensity = 3;
-                                        shakeDuration = 300;
-                                    } else if (multiplier === 4) {
-                                        this.scene.sound.play('attack-supereffective', { volume: 1.0 });
-                                        shakeIntensity = 5;
-                                        shakeDuration = 400;
-                                    }
-                                    
-                                    // Shake screen for stronger attacks
-                                    if (shakeIntensity && shakeDuration) {
-                                        this.shakeScreen(shakeIntensity, shakeDuration);
-                                    }
-                                    
-                                    this.showEffectivenessText(
-                                        this.layout.enemyX(this.battle, target),
-                                        this.layout.enemyY(),
-                                        baseAmount,
-                                        amount
-                                    );
-                                }
+                                // Get defense level from enemy and show all effectiveness feedback
+                                const defenseLevel = this.enemies[target].getDefenseAgainst(effectType);
+                                this.showEffectivenessText(
+                                    this.layout.enemyX(this.battle, target),
+                                    this.layout.enemyY(),
+                                    defenseLevel
+                                );
                                 
                                 // Show damage number effect
                                 new BattleEffect(

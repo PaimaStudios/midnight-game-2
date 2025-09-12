@@ -121,7 +121,7 @@ export class SpiritManager {
         this.setupSpiritInteractions();
         this.setupEnemyInteractions();
         
-        // Check if first spirit is defense-only and auto-target it
+        // Select the first spirit to start targetting
         this.handleCurrentSpirit();
     }
 

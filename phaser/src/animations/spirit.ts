@@ -17,6 +17,11 @@ export const chargeAnimKey = 'charge';
 export const orbAuraIdleKey = 'orb-aura';
 
 export function createSpiritAnimations(scene: Phaser.Scene): void {
+    // Check if animations already exist to avoid duplicate warnings
+    if (scene.anims.exists(spiritAuraIdleKey)) {
+        return; // Animations already created
+    }
+    
     scene.anims.create({
         key: spiritAuraIdleKey,
         frames: [0, 1, 2, 1, 2, 1, 0, 1, 0, 1].map((i) => { return { frame: i, key: 'spirit-aura' }; }),

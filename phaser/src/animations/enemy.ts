@@ -32,6 +32,11 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: num
 const defaultFameConfig = { idleFrames: 2 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
+    // Check if animations already exist to avoid duplicate warnings
+    if (scene.anims.exists('goblin-idle')) {
+        return; // Animations already created
+    }
+    
     // Enemies with 2-frame sprite sheets
     const spriteSheetEnemies = Object.values(SPRITE_SHEET_ENEMIES);
     
