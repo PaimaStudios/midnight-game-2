@@ -250,7 +250,10 @@ export class SpiritManager {
             
             spirit.removeAllListeners();
             
-            spirit.setInteractive({ useHandCursor: true })
+            // Only show hand cursor if spirit can be manually selected (not auto-skipped)
+            const canManuallySelect = !this.shouldSkipTargeting(index);
+            
+            spirit.setInteractive({ useHandCursor: canManuallySelect })
                 .on('pointerdown', () => this.selectSpirit(index));
         });
     }
@@ -267,7 +270,7 @@ export class SpiritManager {
             
             // Only make alive enemies interactive
             if (enemy.hp > 0) {
-                enemy.setInteractive({ useHandCursor: true })
+                enemy.setInteractive()
                     .on('pointerdown', () => {
                         // Check if current spirit can attack and we have a selected spirit
                         if (this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
@@ -276,6 +279,8 @@ export class SpiritManager {
                     })
                     .on('pointerover', () => {
                         if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
+                            // Set hand cursor when hovering over targetable enemy
+                            this.scene.input.setDefaultCursor('pointer');
                             if (enemy.sprite) {
                                 enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
@@ -284,6 +289,8 @@ export class SpiritManager {
                         }
                     })
                     .on('pointerout', () => {
+                        // Always reset cursor when leaving enemy
+                        this.scene.input.setDefaultCursor('default');
                         if (enemy.sprite) {
                             enemy.sprite.clearTint();
                         } else if (enemy.image) {
