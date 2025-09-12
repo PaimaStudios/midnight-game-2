@@ -2,12 +2,14 @@ import { EFFECT_TYPE, Ability, BattleConfig } from "game2-contract";
 import { AbilityWidget, energyTypeToColor, SpiritWidget, effectTypeFileAffix } from "../widgets/ability";
 import { SPIRIT_ANIMATION_DURATIONS, chargeAnimKey, orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 import { addScaledImage, scale } from "../utils/scaleImage";
-import { colorToNumber } from "../constants/colors";
+import { colorToNumber, Color } from "../constants/colors";
 import { BattleLayout } from "./BattleLayout";
 import { CombatCallbacks } from "../battle/logic";
-import { logger } from "../main";
+import { logger, fontStyle } from "../main";
 import { BattleEffect } from "../widgets/BattleEffect";
 import { Actor } from "./EnemyManager";
+import { RainbowText } from "../widgets/rainbow-text";
+import { Def } from "../constants/def";
 
 export class CombatAnimationManager {
     private scene: Phaser.Scene;
@@ -16,7 +18,8 @@ export class CombatAnimationManager {
     private abilityIcons: AbilityWidget[];
     private enemies: Actor[];
     private player: Actor;
-    private battle: BattleConfig
+    private battle: BattleConfig;
+    private background: Phaser.GameObjects.GameObject | null = null;
 
     constructor(
         scene: Phaser.Scene,
@@ -25,7 +28,8 @@ export class CombatAnimationManager {
         abilityIcons: AbilityWidget[],
         enemies: Actor[],
         player: Actor,
-        battle: BattleConfig
+        battle: BattleConfig,
+        background?: Phaser.GameObjects.GameObject
     ) {
         this.scene = scene;
         this.layout = layout;
@@ -34,6 +38,46 @@ export class CombatAnimationManager {
         this.enemies = enemies;
         this.player = player;
         this.battle = battle;
+        this.background = background || null;
+    }
+
+    private shakeScreen(intensity: number = 5, duration: number = 500) {
+        // Get all game objects except background (properly exclude the background object)
+        const objectsToShake = this.scene.children.list.filter((child) => {
+            // Skip the background object if we have a reference to it
+            return child !== this.background;
+        }).filter(child => 'x' in child && 'y' in child) as Array<Phaser.GameObjects.GameObject & { x: number, y: number }>;
+        
+        if (objectsToShake.length === 0) return;
+        
+        // Store original positions
+        const originalPositions = objectsToShake.map(obj => ({ x: obj.x, y: obj.y }));
+        
+        // Create shake effect with easing out
+        const shakeData = { intensity: intensity, progress: 0 };
+        this.scene.tweens.add({
+            targets: shakeData,
+            intensity: 0,
+            progress: 1,
+            duration: duration,
+            ease: 'Power2.easeOut',
+            onUpdate: () => {
+                objectsToShake.forEach((obj, i) => {
+                    const original = originalPositions[i];
+                    const currentIntensity = shakeData.intensity;
+                    obj.x = original.x + Phaser.Math.Between(-currentIntensity, currentIntensity);
+                    obj.y = original.y + Phaser.Math.Between(-currentIntensity, currentIntensity);
+                });
+            },
+            onComplete: () => {
+                // Reset all objects to original positions
+                objectsToShake.forEach((obj, i) => {
+                    const original = originalPositions[i];
+                    obj.x = original.x;
+                    obj.y = original.y;
+                });
+            }
+        });
     }
 
     public updateReferences(
@@ -46,6 +90,50 @@ export class CombatAnimationManager {
         this.abilityIcons = abilityIcons;
         this.enemies = enemies;
         this.player = player;
+    }
+
+    private static readonly EFFECTIVENESS_DISPLAY = {
+        [Def.IMMUNE]: { text: "IMMUNE", color: Color.Blue, useRainbow: false, sound: 'attack-immune', shake: { intensity: 0, duration: 0 } },
+        [Def.WEAK]: { text: "WEAK", color: Color.Red, useRainbow: false, sound: 'attack-weak', shake: { intensity: 0, duration: 0 } },
+        [Def.NEUTRAL]: { text: "", color: Color.White, useRainbow: false, sound: 'attack-neutral', shake: { intensity: 2, duration: 100 } },
+        [Def.EFFECTIVE]: { text: "EFFECTIVE", color: Color.Green, useRainbow: false, sound: 'attack-effective', shake: { intensity: 3, duration: 300 } },
+        [Def.SUPEREFFECTIVE]: { text: "SUPER\nEFFECTIVE", color: Color.White, useRainbow: true, sound: 'attack-supereffective', shake: { intensity: 5, duration: 400 } }
+    };
+
+    private showEffectivenessText(x: number, y: number, defenseLevel: Def) {
+        const display = CombatAnimationManager.EFFECTIVENESS_DISPLAY[defenseLevel];
+        if (!display) return;
+        
+        const { text, color, useRainbow, sound, shake } = display;
+        
+        // Play sound effect
+        this.scene.sound.play(sound, { volume: defenseLevel >= Def.EFFECTIVE ? 1.0 : 0.8 });
+        
+        // Shake screen for stronger attacks
+        if (shake.intensity > 0) {
+            this.shakeScreen(shake.intensity, shake.duration);
+        }
+        if (text) {
+            const effectivenessText = useRainbow 
+                ? new RainbowText(this.scene, x, y - 40, text, 6, fontStyle(16), true)
+                : new Phaser.GameObjects.Text(this.scene, x, y - 40, text, {
+                    ...fontStyle(16),
+                    color: color,
+                    align: 'center'
+                }).setOrigin(0.5).setStroke(Color.Licorice, 10);
+            
+            this.scene.add.existing(effectivenessText);
+            
+            // Animate the text
+            this.scene.tweens.add({
+                targets: effectivenessText,
+                alpha: 0,
+                y: y - 80,
+                duration: 2000,
+                ease: 'Power2',
+                onComplete: () => effectivenessText.destroy()
+            });
+        }
     }
 
     public createCombatCallbacks(): CombatCallbacks {
@@ -77,6 +165,12 @@ export class CombatAnimationManager {
                         onComplete: () => {
                             fist.destroy();
                             this.player?.damage(amount);
+                            
+                            // Shake screen when player is attacked
+                            this.shakeScreen(4, 200);
+                            
+                            // Play neutral attack sound when player is hit
+                            this.scene.sound.play('attack-neutral', { volume: 0.5 });
                             
                             // Show damage effect on player
                             new BattleEffect(
@@ -133,6 +227,14 @@ export class CombatAnimationManager {
                                 this.enemies[target].damage(amount);
                                 this.enemies[target].takeDamageAnimation();
                                 bullet.destroy();
+                                
+                                // Get defense level from enemy and show all effectiveness feedback
+                                const defenseLevel = this.enemies[target].getDefenseAgainst(effectType);
+                                this.showEffectivenessText(
+                                    this.layout.enemyX(this.battle, target),
+                                    this.layout.enemyY(),
+                                    defenseLevel
+                                );
                                 
                                 // Show damage number effect
                                 new BattleEffect(
@@ -196,6 +298,21 @@ export class CombatAnimationManager {
                     const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
                     const attackAnimKey = `spirit-${spiritType}-attack`;
                     const idleAnimKey = `spirit-${spiritType}`;
+                    
+                    // Play attack sound when spirit animation starts
+                    if (spiritType === 'atk-phys') {
+                        this.scene.sound.play('battle-phys-attack', { volume: 0.8 });
+                    }
+                    else if (spiritType === 'atk-ice') {
+                        this.scene.sound.play('battle-ice-attack', { volume: 0.8 });
+                    } 
+                    else if (spiritType === 'atk-fire') {
+                        this.scene.sound.play('battle-fire-attack', { volume: 0.8 });
+                    }
+                    else if (spiritType === 'def') {
+                        this.scene.sound.play('battle-def', { volume: 0.8 });
+                    }
+
                     if (this.scene.anims.exists(attackAnimKey)) {
                         spirit.spirit.anims.play(attackAnimKey);
                         this.scene.time.delayedCall(1000, () => {

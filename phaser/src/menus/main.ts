@@ -20,6 +20,7 @@ import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { registerStartingContent } from "../admin";
 import { DungeonScene } from "./dungeon-scene";
+import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
 
 export class TestMenu extends Phaser.Scene {
@@ -32,6 +33,7 @@ export class TestMenu extends Phaser.Scene {
     new_button: Button | undefined;
     buttons: Button[];
     firstRun: boolean;
+    menuMusic: Phaser.Sound.BaseSound | undefined;
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -99,6 +101,26 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('bg-tundra', 'bg-tundra.png');
         this.load.image('bg-cave', 'bg-cave.png');
 
+        // Sound Effects
+        this.load.audio('attack-immune', 'sfx/attack-immune.wav');
+        this.load.audio('attack-weak', 'sfx/attack-weak.wav');
+        this.load.audio('attack-neutral', 'sfx/attack-neutral.wav');
+        this.load.audio('attack-effective', 'sfx/attack-effective.wav');
+        this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
+        this.load.audio('battle-select-enemy', 'sfx/battle-select-enemy.wav');
+        this.load.audio('battle-select-enemy-attack', 'sfx/battle-select-enemy-attack.wav');
+        this.load.audio('battle-win', 'sfx/battle-win.wav');
+        this.load.audio('battle-lose', 'sfx/battle-lose.wav');
+        this.load.audio('battle-ice-attack', 'sfx/battle-ice-attack.wav');
+        this.load.audio('battle-phys-attack', 'sfx/battle-phys-attack.wav');
+        this.load.audio('battle-fire-attack', 'sfx/battle-fire-attack.wav');
+        this.load.audio('battle-def', 'sfx/battle-def.wav');
+        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
+        this.load.audio('button-press-1', 'sfx/button-press-1.wav');
+        
+        // Music
+        this.load.audio('menu-music', 'music/menu.wav');
+
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);
     }
@@ -152,6 +174,14 @@ export class TestMenu extends Phaser.Scene {
             }
         }
         this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
+        
+        // Start menu music (check if already playing globally)
+        if (!this.sound.get('menu-music')) {
+            this.menuMusic = this.sound.add('menu-music', { volume: 0.6, loop: true });
+            this.menuMusic.play();
+        } else {
+            this.menuMusic = this.sound.get('menu-music');
+        }
     }
 
     private initApi(api: DeployedGame2API) {

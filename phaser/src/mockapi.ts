@@ -5,12 +5,11 @@
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
-import { DeployedGame2API, Game2DerivedState, utils } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
+import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
-import { safeJSONString, logger } from "./main";
-import { BIOME_ID } from "./biome";
+import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
 
 

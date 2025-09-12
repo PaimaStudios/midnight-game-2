@@ -1,5 +1,5 @@
 import { Game2DerivedState } from "game2-api";
-import { BattleConfig, pureCircuits } from "game2-contract";
+import { BattleConfig, pureCircuits, EFFECT_TYPE, Effect } from "game2-contract";
 import { SpiritWidget } from "../widgets/ability";
 import { Actor } from "../battle/EnemyManager";
 import { BattleLayout } from "./BattleLayout";
@@ -121,8 +121,8 @@ export class SpiritManager {
         this.setupSpiritInteractions();
         this.setupEnemyInteractions();
         
-        // Highlight the first spirit
-        this.highlightCurrentSpirit();
+        // Select the first spirit to start targetting
+        this.handleCurrentSpirit();
     }
 
     public getTargets(): (number | null)[] {
@@ -173,6 +173,76 @@ export class SpiritManager {
         this.enemies = enemies;
     }
 
+    private effectNeedsTargeting(effect: Effect): boolean {
+        // Block effects don't need targeting
+        if (effect.effect_type === EFFECT_TYPE.block) {
+            return false;
+        }
+        
+        // Attack effects need targeting only if they're not AoE
+        const isAttack = effect.effect_type === EFFECT_TYPE.attack_fire ||
+                        effect.effect_type === EFFECT_TYPE.attack_ice ||
+                        effect.effect_type === EFFECT_TYPE.attack_phys;
+        
+        return isAttack && !effect.is_aoe;
+    }
+
+    private shouldSkipTargeting(spiritIndex: number): boolean {
+        if (spiritIndex < 0 || spiritIndex >= this.spirits.length) return false;
+        
+        const spirit = this.spirits[spiritIndex];
+        const ability = spirit.ability;
+        
+        // Check if main effect needs targeting
+        const mainNeedsTargeting = ability.effect.is_some && this.effectNeedsTargeting(ability.effect.value);
+        
+        // Check energy effects that need targeting and would actually be triggered
+        let energyNeedsTargeting = false;
+        if (ability.on_energy) {
+            for (let colorIndex = 0; colorIndex < ability.on_energy.length; colorIndex++) {
+                const energyEffect = ability.on_energy[colorIndex];
+                if (energyEffect.is_some && this.effectNeedsTargeting(energyEffect.value)) {
+                    // Check if any OTHER spirit in this combat round would generate this color
+                    const wouldBeTriggered = this.spirits.some((otherSpirit, otherIndex) => 
+                        otherIndex !== spiritIndex && 
+                        otherSpirit.ability.generate_color.is_some && 
+                        Number(otherSpirit.ability.generate_color.value) === colorIndex
+                    );
+                    
+                    // If this energy effect would be triggered, then this spirit needs targeting
+                    if (wouldBeTriggered) {
+                        energyNeedsTargeting = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Skip targeting if neither main nor energy effects need it
+        return !mainNeedsTargeting && !energyNeedsTargeting;
+    }
+
+    private handleCurrentSpirit() {
+        // If current spirit should skip targeting, auto-target and move to next
+        if (this.shouldSkipTargeting(this.currentSpiritIndex)) {
+            const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
+            if (firstAliveEnemy !== -1) {
+                this.spiritTargets[this.currentSpiritIndex] = firstAliveEnemy;
+                this.moveToNextUntagetedSpirit();
+                this.checkAllSpiritsTargeted();
+                
+                // If there are more spirits to target, handle the next one
+                if (this.currentSpiritIndex !== -1) {
+                    this.handleCurrentSpirit();
+                }
+                return;
+            }
+        }
+        
+        // Normal highlighting for attack spirits
+        this.highlightCurrentSpirit();
+    }
+
     private setupSpiritInteractions() {
         this.spirits.forEach((spirit, index) => {
             // Check if spirit is still valid and has a scene
@@ -183,7 +253,10 @@ export class SpiritManager {
             
             spirit.removeAllListeners();
             
-            spirit.setInteractive({ useHandCursor: true })
+            // Only show hand cursor if spirit can be manually selected (not auto-skipped)
+            const canManuallySelect = !this.shouldSkipTargeting(index);
+            
+            spirit.setInteractive({ useHandCursor: canManuallySelect })
                 .on('pointerdown', () => this.selectSpirit(index));
         });
     }
@@ -200,10 +273,17 @@ export class SpiritManager {
             
             // Only make alive enemies interactive
             if (enemy.hp > 0) {
-                enemy.setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => this.targetEnemy(index))
+                enemy.setInteractive()
+                    .on('pointerdown', () => {
+                        // Check if current spirit can attack and we have a selected spirit
+                        if (this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
+                            this.targetEnemy(index);
+                        }
+                    })
                     .on('pointerover', () => {
-                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING) {
+                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
+                            // Set hand cursor when hovering over targetable enemy
+                            this.scene.input.setDefaultCursor('pointer');
                             if (enemy.sprite) {
                                 enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
@@ -212,6 +292,8 @@ export class SpiritManager {
                         }
                     })
                     .on('pointerout', () => {
+                        // Always reset cursor when leaving enemy
+                        this.scene.input.setDefaultCursor('default');
                         if (enemy.sprite) {
                             enemy.sprite.clearTint();
                         } else if (enemy.image) {
@@ -257,6 +339,17 @@ export class SpiritManager {
             this.resetSpiritToDefault(previousIndex);
         }
         
+        // If this spirit should skip targeting, auto-target the first alive enemy and move on
+        if (this.shouldSkipTargeting(index)) {
+            const firstAliveEnemy = this.enemies.findIndex(enemy => enemy.hp > 0);
+            if (firstAliveEnemy !== -1) {
+                this.spiritTargets[index] = firstAliveEnemy;
+                this.moveToNextUntagetedSpirit();
+                this.checkAllSpiritsTargeted();
+                return;
+            }
+        }
+        
         this.highlightCurrentSpirit();
         this.onSpiritSelected?.(index);
     }
@@ -264,6 +357,9 @@ export class SpiritManager {
     private targetEnemy(enemyIndex: number) {
         if (this.battlePhase !== BattlePhase.SPIRIT_TARGETING) return;
         if (this.enemies[enemyIndex].hp <= 0) return; // Can't target dead enemies
+        
+        // Play enemy selection sound
+        this.scene.sound.play('battle-select-enemy-attack', { volume: 0.5 });
         
         // Set target for current spirit
         this.spiritTargets[this.currentSpiritIndex] = enemyIndex;
@@ -296,7 +392,10 @@ export class SpiritManager {
         // Reset the previously selected spirit to default position
         this.resetSpiritToDefault(previousIndex);
 
-        this.highlightCurrentSpirit();
+        // Handle the current spirit (could be defense-only)
+        if (this.currentSpiritIndex !== -1) {
+            this.handleCurrentSpirit();
+        }
     }
 
     private highlightCurrentSpirit() {
@@ -382,6 +481,16 @@ export class SpiritManager {
         const allTargeted = this.spiritTargets.every(target => target !== null);
         
         if (allTargeted) {
+            // Clean up selection glow when all spirits are targeted
+            if (this.selectionGlow) {
+                this.scene.tweens.killTweensOf(this.selectionGlow);
+                this.selectionGlow.destroy();
+                this.selectionGlow = undefined;
+            }
+            
+            // Update enemy interactions to remove pointer cursor
+            this.setupEnemyInteractions();
+            
             this.onAllSpiritsTargeted?.();
         }
     }

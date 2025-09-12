@@ -1,11 +1,10 @@
-import { BattleConfig, BOSS_TYPE, EnemyStats, pureCircuits } from "game2-contract";
-import { Game2DerivedState } from "game2-api";
-import { logger } from "../main";
+import { BattleConfig, BOSS_TYPE, EnemyStats, EFFECT_TYPE } from "game2-contract";
 import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { HealthBar } from "../widgets/progressBar";
-import { GAME_WIDTH, GAME_HEIGHT, fontStyle } from "../main";
+import { GAME_WIDTH } from "../main";
 import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
+import { Def } from "../constants/def";
 
 const ENEMY_TEXTURES = [
     'enemy-goblin',
@@ -30,10 +29,12 @@ export class Actor extends Phaser.GameObjects.Container {
     sprite: Phaser.GameObjects.Sprite | undefined;
     animationTick: number;
     textureKey: string = '';
+    stats: EnemyStats | null;
 
     constructor(scene: Phaser.Scene, x: number, y: number, stats: EnemyStats | null) {
         super(scene, x, y);
 
+        this.stats = stats;
         this.animationTick = Math.random() * 2 * Math.PI;
 
         let healtBarYOffset = 0;
@@ -128,6 +129,24 @@ export class Actor extends Phaser.GameObjects.Container {
     public setBlock(block: number) {
         this.block = block;
         this.hpBar.setBlock(block);
+    }
+
+    public getDefenseAgainst(effectType: EFFECT_TYPE): Def {
+        if (!this.stats) {
+            return Def.NEUTRAL; // Default for player or enemies without stats
+        }
+
+        switch (effectType) {
+            case EFFECT_TYPE.attack_fire:
+                return Number(this.stats.fire_def) as Def;
+            case EFFECT_TYPE.attack_ice:
+                return Number(this.stats.ice_def) as Def;
+            case EFFECT_TYPE.attack_phys:
+                return Number(this.stats.physical_def) as Def;
+            case EFFECT_TYPE.block:
+            default:
+                return Def.NEUTRAL;
+        }
     }
 
     preUpdate() {

@@ -80,6 +80,8 @@ export class StartBattleMenu extends Phaser.Scene {
             const activeAbilities = this.getOrderedActiveAbilities();
             this.loadout.abilities = activeAbilities.map((a) => pureCircuits.derive_ability_id(a.ability));
 
+            this.sound.play('prebattle-move-spirit', { volume: 0.6 });
+
             this.refreshPreviews();
 
             // Enable the start button if we have enough abilities selected
@@ -330,11 +332,13 @@ export class StartBattleMenu extends Phaser.Scene {
         if (this.activeAbilityPanel?.hasChild(abilityContainer)) {
             // Move from active to inactive panel
             logger.ui.info('Moving from active to inactive');
+            this.sound.play('prebattle-move-spirit', { volume: 0.6 });
             this.activeAbilityPanel.moveChildTo(abilityContainer, this.inactiveAbilityPanel!);
         } else if (this.inactiveAbilityPanel?.hasChild(abilityContainer)) {
             // Move from inactive to active panel (if there's room)
             if (this.activeAbilityPanel!.getChildCount() < MAX_ABILITIES) {
                 logger.ui.info('Moving from inactive to active');
+                this.sound.play('prebattle-move-spirit', { volume: 0.6 });
                 this.inactiveAbilityPanel.moveChildTo(abilityContainer, this.activeAbilityPanel!);
             } else {
                 logger.ui.warn('Cannot move to active panel - at max capacity');

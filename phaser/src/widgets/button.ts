@@ -12,12 +12,14 @@ export class Button extends Phaser.GameObjects.Container {
     text: BBCodeText;
     helpText: Phaser.GameObjects.Text | null;
     helpTween: Phaser.Tweens.Tween | null;
+    soundOnClick: boolean;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, text: string, fontSize: number, onClick: () => void, helpText?: string) {
+    constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, text: string, fontSize: number, onClick: () => void, helpText?: string, soundOnClick = true) {
         super(scene, x, y);
         
         this.helpText = null;
         this.helpTween = null;
+        this.soundOnClick = soundOnClick;
 
         this.bg = makeWidgetBackground(scene, 0, 0, w, h, BG_TYPE.Stone);
         this.add(this.bg);
@@ -39,9 +41,14 @@ export class Button extends Phaser.GameObjects.Container {
                 .setOrigin(0.5, 0.5);
             this.add(this.helpText);
         }
+        this.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            if (this.enabled) {
+                if (this.soundOnClick) {
+                    this.scene.sound.play('button-press-1', { volume: 0.5 });
+                }   
+            }
+        });
         this.on('pointerup', () => {
-            // TODO: this does NOT address https://github.com/PaimaStudios/midnight-game-2/issues/45
-            //this.scroll.tween?.destroy();
             if (this.enabled) {
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
                 onClick();
