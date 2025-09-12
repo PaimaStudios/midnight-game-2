@@ -349,7 +349,7 @@ export class SpiritManager {
         if (this.enemies[enemyIndex].hp <= 0) return; // Can't target dead enemies
         
         // Play enemy selection sound
-        this.scene.sound.play('battle-select-enemy-attack', { volume: 0.7 });
+        this.scene.sound.play('battle-select-enemy-attack', { volume: 0.5 });
         
         // Set target for current spirit
         this.spiritTargets[this.currentSpiritIndex] = enemyIndex;

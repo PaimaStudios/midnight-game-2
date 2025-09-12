@@ -328,6 +328,21 @@ export class CombatAnimationManager {
                     const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
                     const attackAnimKey = `spirit-${spiritType}-attack`;
                     const idleAnimKey = `spirit-${spiritType}`;
+                    
+                    // Play attack sound when spirit animation starts
+                    if (spiritType === 'atk-phys') {
+                        this.scene.sound.play('battle-phys-attack', { volume: 0.8 });
+                    }
+                    else if (spiritType === 'atk-ice') {
+                        this.scene.sound.play('battle-ice-attack', { volume: 0.8 });
+                    } 
+                    else if (spiritType === 'atk-fire') {
+                        this.scene.sound.play('battle-fire-attack', { volume: 0.8 });
+                    }
+                    else if (spiritType === 'def') {
+                        this.scene.sound.play('battle-def', { volume: 0.8 });
+                    }
+
                     if (this.scene.anims.exists(attackAnimKey)) {
                         spirit.spirit.anims.play(attackAnimKey);
                         this.scene.time.delayedCall(1000, () => {
