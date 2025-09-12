@@ -1,5 +1,5 @@
 import { Game2DerivedState } from "game2-api";
-import { BattleConfig, pureCircuits, EFFECT_TYPE } from "game2-contract";
+import { BattleConfig, pureCircuits, EFFECT_TYPE, Effect } from "game2-contract";
 import { SpiritWidget } from "../widgets/ability";
 import { Actor } from "../battle/EnemyManager";
 import { BattleLayout } from "./BattleLayout";
@@ -173,50 +173,42 @@ export class SpiritManager {
         this.enemies = enemies;
     }
 
+    private effectNeedsTargeting(effect: Effect): boolean {
+        // Block effects don't need targeting
+        if (effect.effect_type === EFFECT_TYPE.block) {
+            return false;
+        }
+        
+        // Attack effects need targeting only if they're not AoE
+        const isAttack = effect.effect_type === EFFECT_TYPE.attack_fire ||
+                        effect.effect_type === EFFECT_TYPE.attack_ice ||
+                        effect.effect_type === EFFECT_TYPE.attack_phys;
+        
+        return isAttack && !effect.is_aoe;
+    }
+
     private shouldSkipTargeting(spiritIndex: number): boolean {
         if (spiritIndex < 0 || spiritIndex >= this.spirits.length) return false;
         
         const spirit = this.spirits[spiritIndex];
         const ability = spirit.ability;
         
-        // Check main effect
-        const hasMainAttack = ability.effect.is_some && 
-            (ability.effect.value.effect_type === EFFECT_TYPE.attack_fire ||
-             ability.effect.value.effect_type === EFFECT_TYPE.attack_ice ||
-             ability.effect.value.effect_type === EFFECT_TYPE.attack_phys);
+        // Check if main effect needs targeting
+        const mainNeedsTargeting = ability.effect.is_some && this.effectNeedsTargeting(ability.effect.value);
         
-        const hasMainBlock = ability.effect.is_some && ability.effect.value.effect_type === EFFECT_TYPE.block;
-        const isMainAoE = ability.effect.is_some && ability.effect.value.is_aoe;
-        
-        // Check energy effects for non-AoE attacks
-        let hasNonAoEEnergyAttack = false;
+        // Check energy effects for any that need targeting
+        let energyNeedsTargeting = false;
         if (ability.on_energy) {
             for (const energyEffect of ability.on_energy) {
-                if (energyEffect.is_some) {
-                    const effect = energyEffect.value;
-                    const isAttack = effect.effect_type === EFFECT_TYPE.attack_fire ||
-                                   effect.effect_type === EFFECT_TYPE.attack_ice ||
-                                   effect.effect_type === EFFECT_TYPE.attack_phys;
-                    if (isAttack && !effect.is_aoe) {
-                        hasNonAoEEnergyAttack = true;
-                        break;
-                    }
+                if (energyEffect.is_some && this.effectNeedsTargeting(energyEffect.value)) {
+                    energyNeedsTargeting = true;
+                    break;
                 }
             }
         }
         
-        // Skip if:
-        // 1. Defense spirit without non-AoE energy attacks
-        // 2. AoE-only main attack without non-AoE energy attacks
-        if (hasMainBlock && !hasNonAoEEnergyAttack) {
-            return true; // Defense spirit without non-AoE energy attacks
-        }
-        
-        if (hasMainAttack && isMainAoE && !hasNonAoEEnergyAttack) {
-            return true; // AoE-only attack without non-AoE energy attacks
-        }
-        
-        return false;
+        // Skip targeting if neither main nor energy effects need it
+        return !mainNeedsTargeting && !energyNeedsTargeting;
     }
 
     private handleCurrentSpirit() {
