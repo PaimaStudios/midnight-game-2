@@ -196,13 +196,24 @@ export class SpiritManager {
         // Check if main effect needs targeting
         const mainNeedsTargeting = ability.effect.is_some && this.effectNeedsTargeting(ability.effect.value);
         
-        // Check energy effects for any that need targeting
+        // Check energy effects that need targeting and would actually be triggered
         let energyNeedsTargeting = false;
         if (ability.on_energy) {
-            for (const energyEffect of ability.on_energy) {
+            for (let colorIndex = 0; colorIndex < ability.on_energy.length; colorIndex++) {
+                const energyEffect = ability.on_energy[colorIndex];
                 if (energyEffect.is_some && this.effectNeedsTargeting(energyEffect.value)) {
-                    energyNeedsTargeting = true;
-                    break;
+                    // Check if any OTHER spirit in this combat round would generate this color
+                    const wouldBeTriggered = this.spirits.some((otherSpirit, otherIndex) => 
+                        otherIndex !== spiritIndex && 
+                        otherSpirit.ability.generate_color.is_some && 
+                        Number(otherSpirit.ability.generate_color.value) === colorIndex
+                    );
+                    
+                    // If this energy effect would be triggered, then this spirit needs targeting
+                    if (wouldBeTriggered) {
+                        energyNeedsTargeting = true;
+                        break;
+                    }
                 }
             }
         }
