@@ -269,13 +269,13 @@ export class SpiritManager {
             if (enemy.hp > 0) {
                 enemy.setInteractive({ useHandCursor: true })
                     .on('pointerdown', () => {
-                        // Check if current spirit can attack
-                        if (!this.shouldSkipTargeting(this.currentSpiritIndex)) {
+                        // Check if current spirit can attack and we have a selected spirit
+                        if (this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
                             this.targetEnemy(index);
                         }
                     })
                     .on('pointerover', () => {
-                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
+                        if (this.battlePhase === BattlePhase.SPIRIT_TARGETING && this.currentSpiritIndex !== -1 && !this.shouldSkipTargeting(this.currentSpiritIndex)) {
                             if (enemy.sprite) {
                                 enemy.sprite.setTint(colorToNumber(Color.Green));
                             } else if (enemy.image) {
@@ -471,6 +471,16 @@ export class SpiritManager {
         const allTargeted = this.spiritTargets.every(target => target !== null);
         
         if (allTargeted) {
+            // Clean up selection glow when all spirits are targeted
+            if (this.selectionGlow) {
+                this.scene.tweens.killTweensOf(this.selectionGlow);
+                this.selectionGlow.destroy();
+                this.selectionGlow = undefined;
+            }
+            
+            // Update enemy interactions to remove pointer cursor
+            this.setupEnemyInteractions();
+            
             this.onAllSpiritsTargeted?.();
         }
     }
