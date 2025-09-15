@@ -31,17 +31,8 @@ import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 /** @internal */
 const game2ContractInstance: Game2Contract = new Contract(witnesses);
 
+// only converts bigint, but this is the only problem we have with printing ledger types
 export function safeJSONString(obj: object): string {
-    // hacky but just doing it manually since otherwise: 'string' can't be used to index type '{}'
-    // let newObj = {}
-    // for (let [key, val] of Object.entries(obj)) {
-    //     if (typeof val == 'bigint') {
-    //         newObj[key] = Number(val);
-    //     } else {
-    //         newObj[key] = val;
-    //     }
-    // }
-    // return JSON.stringify(newObj);
     if (typeof obj == 'bigint') {
         return Number(obj).toString();
     } else if (Array.isArray(obj)) {
@@ -57,9 +48,15 @@ export function safeJSONString(obj: object): string {
         str += ']';
         return str;
     } else if (typeof obj == 'object') {
-        let str = '{';
+        let entries = Object.entries(obj);
+        // this allows us to print Map properly
+        let len = ('length' in obj ? obj.length : undefined) ?? ('size' in obj ? obj.size : undefined) ?? entries.length;;
+        if ('entries' in obj && typeof obj.entries === "function") {
+            entries = obj.entries();
+        }
+        let str = `[${len}]{`;
         let first = true;
-        for (let [key, val] of Object.entries(obj)) {
+        for (let [key, val] of entries) {
             if (!first) {
                 str += ', ';
             }
@@ -179,6 +176,7 @@ export class Game2API implements DeployedGame2API {
             ],
             // ...and combine them to produce the required derived state.
             (ledgerState, privateState) => {
+                console.log(`========= NEW STATE RECEIVED ${ledgerState.players.size()} - ${ledgerState.player_abilities.size()} ==========`);
                 const playerId = pureCircuits.derive_player_pub_key(privateState.secretKey);
                 // we can't index by Level directly so we map by biome then difficulty and add an extra map (for both levels + bosses)
                 // levels

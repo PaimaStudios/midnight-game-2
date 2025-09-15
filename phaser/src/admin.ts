@@ -16,28 +16,40 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     
 
     // Grasslands 1
+    console.log('ADMIN: registering Grasslands 1');
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
     await api.admin_level_new(grass1, makeEnemiesConfig([dragon]));
+    console.log('ADMIN: registering Grasslands enemy 1/2');
     await api.admin_level_add_config(grass1, makeEnemiesConfig([goblin, goblin, goblin]));
-    await api.admin_level_add_config(grass1, makeEnemiesConfig([snowman, fireSprite]));
+    // console.log('ADMIN: registering Grasslands enemy 2/2');
+    // await api.admin_level_add_config(grass1, makeEnemiesConfig([snowman, fireSprite]));
 
-    // Desert 1
-    const desert1 = { biome: BigInt(BIOME_ID.desert), difficulty: BigInt(1) };
-    await api.admin_level_new(desert1, makeEnemiesConfig([enigma]));
-    await api.admin_level_add_config(desert1, makeEnemiesConfig([fireSprite, fireSprite]));
-    await api.admin_level_add_config(desert1, makeEnemiesConfig([goblin, fireSprite]));
+    // // Desert 1
+    // console.log('ADMIN: registering Desert 1');
+    // const desert1 = { biome: BigInt(BIOME_ID.desert), difficulty: BigInt(1) };
+    // await api.admin_level_new(desert1, makeEnemiesConfig([enigma]));
+    // console.log('ADMIN: registering Desert enemy 1/2');
+    // await api.admin_level_add_config(desert1, makeEnemiesConfig([fireSprite, fireSprite]));
+    // console.log('ADMIN: registering Desert enemy 2/2');
+    // await api.admin_level_add_config(desert1, makeEnemiesConfig([goblin, fireSprite]));
 
-    // Tundra 1
-    const tundra1 = { biome: BigInt(BIOME_ID.tundra), difficulty: BigInt(1) };
-    await api.admin_level_new(tundra1, makeEnemiesConfig([enigma]));
-    await api.admin_level_add_config(tundra1, makeEnemiesConfig([snowman, snowman, snowman]));
-    await api.admin_level_add_config(tundra1, makeEnemiesConfig([iceGolem, snowman]));
+    // // Tundra 1
+    // console.log('ADMIN: registering Tundra 1');
+    // const tundra1 = { biome: BigInt(BIOME_ID.tundra), difficulty: BigInt(1) };
+    // await api.admin_level_new(tundra1, makeEnemiesConfig([enigma]));
+    // console.log('ADMIN: registering Tundra enemy 1/2');
+    // await api.admin_level_add_config(tundra1, makeEnemiesConfig([snowman, snowman, snowman]));
+    // console.log('ADMIN: registering Tundra enemy 2/2');
+    // await api.admin_level_add_config(tundra1, makeEnemiesConfig([iceGolem, snowman]));
 
-    // Cave 1
-    const cave1 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(1) };
-    await api.admin_level_new(cave1, makeEnemiesConfig([dragon]));
-    await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, fireSprite, goblin]));
-    await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, goblin, goblin]));
+    // // Cave 1
+    // console.log('ADMIN: registering Cave 1');
+    // const cave1 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(1) };
+    // await api.admin_level_new(cave1, makeEnemiesConfig([dragon]));
+    // console.log('ADMIN: registering Cave enemy 1/2');
+    // await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, fireSprite, goblin]));
+    // console.log('ADMIN: registering Cave enemy 2/2');
+    // await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, goblin, goblin]));
 }
 
 function makeEnemiesConfig(stats: EnemyStats[]): EnemiesConfig {

@@ -2,7 +2,7 @@
  * Pre-Battle and Pre-Quest ability selection screen
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { Ability, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
@@ -48,6 +48,8 @@ export class StartBattleMenu extends Phaser.Scene {
     summoningTablets: Phaser.GameObjects.Image[];
     activeAbilityPanel: ScrollablePanel | undefined;
     inactiveAbilityPanel: ScrollablePanel | undefined;
+    battleConfig: BattleConfig | undefined;
+    waitingOnState: boolean;
 
     constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState) {
         super('StartBattleMenu');
@@ -62,6 +64,7 @@ export class StartBattleMenu extends Phaser.Scene {
         this.isQuest = isQuest;
         this.biome = biome;
         this.state = state;
+        this.waitingOnState = true;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
@@ -185,22 +188,17 @@ export class StartBattleMenu extends Phaser.Scene {
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
                     this.loader.setText("Submitting Proof");
+                    this.events.on('stateChange', (state: Game2DerivedState) => {
+                        this.state = state;
+                        this.waitingOnState = false;
+                        this.tryStartBattle();
+                    });
                     this.api.start_new_battle(this.loadout, level).then((battle) => {
                         if (this.loader) {
                             this.loader.setText("Waiting on chain update");
                         }
-                        this.events.on('stateChange', (state: Game2DerivedState) => {
-                            logger.combat.debug('stateChange event fired, creating ActiveBattle');
-                            this.scene.stop('Loader');
-                            // Clean up shared dungeon scene when entering battle
-                            if (this.scene.get('DungeonScene')) {
-                                this.scene.stop('DungeonScene');
-                                this.scene.remove('DungeonScene');
-                            }
-                            this.scene.remove('ActiveBattle');
-                            this.scene.add('ActiveBattle', new ActiveBattle(this.api, battle, state));
-                            this.scene.start('ActiveBattle');
-                        });
+                        this.battleConfig = battle;
+                        this.tryStartBattle();
                     }).catch((e) => {
                         this.errorText?.setText('Error Talking to the network. Try again...');
                         logger.network.error(`Error starting battle: ${e}`);
@@ -219,6 +217,21 @@ export class StartBattleMenu extends Phaser.Scene {
             this.saveCurrentLoadout(SAVED_CONFIG_KEY);
         });
         this.enableLoadButtons();
+    }
+
+    private tryStartBattle() {
+        if (this.battleConfig != undefined && !this.waitingOnState) {
+            logger.combat.debug('stateChange event fired, creating ActiveBattle');
+            this.scene.stop('Loader');
+            // Clean up shared dungeon scene when entering battle
+            if (this.scene.get('DungeonScene')) {
+                this.scene.stop('DungeonScene');
+                this.scene.remove('DungeonScene');
+            }
+            this.scene.remove('ActiveBattle');
+            this.scene.add('ActiveBattle', new ActiveBattle(this.api, this.battleConfig, this.state));
+            this.scene.start('ActiveBattle');
+        }
     }
 
     private clearSelectedAbilities() {

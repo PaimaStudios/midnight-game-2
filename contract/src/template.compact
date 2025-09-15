@@ -221,7 +221,7 @@ export struct PlayerLoadout {
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     const initial_rng = persistentHash<Field>(player_id + players.size());
-    players.insert(player_id, Player { 5, initial_rng });
+    players.insert(player_id, Player { 3, initial_rng });
     player_abilities.insertDefault(player_id);
     player_abilities.lookup(player_id).insert(ability_base_phys_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
@@ -371,19 +371,20 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
 
     return some<Field>(battle_id);
 }
-
+ledger testing: Vector<32, Uint<8>>;
 export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleConfig {
     verify_loadout(disclose(loadout));
-    const rng = (get_player_rng() as Vector<32, Uint<8>>);
+    //const rng = (get_player_rng() as Vector<32, Uint<8>>);
+    //testing = rng;
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const battle = BattleConfig {
         disclose(level),
-        get_random_enemy_config(rng[0], level),
+        get_random_enemy_config(0/*rng[0]*/, level),
         player_pub_key,
         disclose(loadout)
     };
     const battle_id = derive_battle_id(disclose(battle));
-    active_battle_states.insert(disclose(battle_id), init_battlestate(rng[1], disclose(battle)));
+    active_battle_states.insert(disclose(battle_id), init_battlestate(2/*rng[1]*/, disclose(battle)));
     active_battle_configs.insert(disclose(battle_id), disclose(battle));
 
     return battle;
@@ -491,7 +492,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             0,
             none<Field>()
         });
-    } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+    }/* else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
@@ -520,7 +521,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         active_battle_states.remove(disclose(battle_id));
 
         return some<BattleRewards>(reward);
-    }
+    }*/
     return none<BattleRewards>();
 }
 
@@ -594,7 +595,7 @@ circuit get_player_rng(): Bytes<32> {
 }
 
 circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {
-    const index = rng_mod(rng, levels.lookup(level).size() as INSERT_RNG_MOD_INPUT_TYPE);
+    const index = 0;//rng_mod(rng, levels.lookup(level).size() as INSERT_RNG_MOD_INPUT_TYPE);
     return levels.lookup(level).lookup(index);
 }
 
