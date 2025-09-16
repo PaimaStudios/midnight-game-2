@@ -2,14 +2,13 @@
  * Generic tooltip widget that can be applied to any game object
  * Provides hover-based tooltip functionality with fade-in animation and cursor tracking
  */
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
 
 export class Tooltip {
     private scene: Phaser.Scene;
     private target: Phaser.GameObjects.GameObject;
     private helpText: Phaser.GameObjects.Text;
     private helpTween: Phaser.Tweens.Tween | null;
-    private tooltipText: string;
     private delay: number;
     private duration: number;
 
@@ -30,7 +29,6 @@ export class Tooltip {
     ) {
         this.scene = scene;
         this.target = target;
-        this.tooltipText = tooltipText;
         this.delay = delay;
         this.duration = duration;
         this.helpTween = null;
@@ -105,7 +103,6 @@ export class Tooltip {
      * Update the tooltip text
      */
     public setText(text: string): void {
-        this.tooltipText = text;
         this.helpText.setText(text);
     }
 

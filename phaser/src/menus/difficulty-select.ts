@@ -78,6 +78,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
         for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
             const isUnlocked = this.isDifficultyUnlocked(this.biome, difficulty);
             const difficultyName = this.getDifficultyName(difficulty);
+            const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
 
             const button = new Button(
                 this,
@@ -94,7 +95,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
                         this.scene.start('StartBattleMenu');
                     }
                 },
-                !isUnlocked && difficulty > 1 ? `Complete Level ${difficulty - 1} Boss` : undefined
+                helpText,
             );
 
             // Disable button if difficulty is locked
@@ -110,8 +111,8 @@ export class DifficultySelectMenu extends Phaser.Scene {
                 ).setOrigin(0.5);
 
                 // Add tooltip to the lock icon (only if not level 1)
-                if (difficulty > 1) {
-                    addTooltip(this, lockIcon, `Complete Level ${difficulty - 1} Boss`);
+                if (helpText) {
+                    addTooltip(this, lockIcon, helpText);
                 }
             }
         }
