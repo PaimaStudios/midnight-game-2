@@ -203,7 +203,6 @@ export class QuestMenu extends Phaser.Scene {
         loader.setText("Finalizing Quest");
 
         const attemptFinalizeQuest = () => {
-            // Set up the event listener BEFORE calling finalize_quest to avoid race condition
             this.events.once('questFinalized', () => {
                 this.scene.stop('Loader');
                 if (this.bossBattleId !== null) {
