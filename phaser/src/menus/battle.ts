@@ -3,13 +3,14 @@
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { BattleConfig, pureCircuits } from "game2-contract";
+import { BattleConfig, pureCircuits, BOSS_TYPE } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
 import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { BattleLayout } from "../battle/BattleLayout";
+import { difficultyCache } from "../utils/difficultyCache";
 import { CombatAnimationManager } from "../battle/CombatAnimationManager";
 import { EnemyManager, Actor } from "../battle/EnemyManager";
 import { SpiritManager, BattlePhase } from "../battle/SpiritManager";
@@ -211,6 +212,13 @@ export class ActiveBattle extends Phaser.Scene {
         if (circuit != undefined) {
             // Battle is over, show end-of-battle screen
             this.spiritManager.cleanupSpirits();
+
+            // Check if this was a boss battle victory and invalidate difficulty cache
+            if (circuit.alive && this.battle.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
+                logger.combat.info('Boss defeated! Invalidating difficulty cache.');
+                difficultyCache.invalidateBiome(this.battle.level.biome as BIOME_ID);
+            }
+
             this.uiStateManager.showBattleEndScreen(circuit, this.state);
         } else {
             // Battle continues, reset targeting state for next round
