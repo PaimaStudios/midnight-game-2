@@ -31,77 +31,82 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const snowmanStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(38), attack: BigInt(30), block: BigInt(3), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
     const snowmanElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(50), attack: BigInt(40), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
 
-    // Grasslands
+    // Define all level configurations
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
-    await api.admin_level_new(grass1, makeEnemiesConfig([dragon]));
-    await api.admin_level_add_config(grass1, makeEnemiesConfig([goblin, goblin, goblin]));
-    await api.admin_level_add_config(grass1, makeEnemiesConfig([snowman, fireSprite]));
-
     const grass2 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(2) };
-    await api.admin_level_new(grass2, makeEnemiesConfig([dragonStrong]));
-    await api.admin_level_add_config(grass2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong]));
-    await api.admin_level_add_config(grass2, makeEnemiesConfig([snowmanStrong, fireSpriteStrong]));
-    await api.admin_level_add_config(grass2, makeEnemiesConfig([iceGolemStrong, goblinStrong]));
-
     const grass3 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(3) };
-    await api.admin_level_new(grass3, makeEnemiesConfig([dragonElite]));
-    await api.admin_level_add_config(grass3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite]));
-    await api.admin_level_add_config(grass3, makeEnemiesConfig([snowmanElite, fireSpriteElite]));
-    await api.admin_level_add_config(grass3, makeEnemiesConfig([iceGolemElite, goblinElite]));
-
-    // Desert
     const desert1 = { biome: BigInt(BIOME_ID.desert), difficulty: BigInt(1) };
-    await api.admin_level_new(desert1, makeEnemiesConfig([enigma]));
-    await api.admin_level_add_config(desert1, makeEnemiesConfig([fireSprite, fireSprite]));
-    await api.admin_level_add_config(desert1, makeEnemiesConfig([goblin, fireSprite]));
-
     const desert2 = { biome: BigInt(BIOME_ID.desert), difficulty: BigInt(2) };
-    await api.admin_level_new(desert2, makeEnemiesConfig([enigmaStrong]));
-    await api.admin_level_add_config(desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong]));
-    await api.admin_level_add_config(desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong]));
-    await api.admin_level_add_config(desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, goblinStrong]));
-
     const desert3 = { biome: BigInt(BIOME_ID.desert), difficulty: BigInt(3) };
-    await api.admin_level_new(desert3, makeEnemiesConfig([enigmaElite]));
-    await api.admin_level_add_config(desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite]));
-    await api.admin_level_add_config(desert3, makeEnemiesConfig([goblinElite, fireSpriteElite]));
-    await api.admin_level_add_config(desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite, goblinElite]));
-
-    // Tundra
     const tundra1 = { biome: BigInt(BIOME_ID.tundra), difficulty: BigInt(1) };
-    await api.admin_level_new(tundra1, makeEnemiesConfig([enigma]));
-    await api.admin_level_add_config(tundra1, makeEnemiesConfig([snowman, snowman, snowman]));
-    await api.admin_level_add_config(tundra1, makeEnemiesConfig([iceGolem, snowman]));
-
     const tundra2 = { biome: BigInt(BIOME_ID.tundra), difficulty: BigInt(2) };
-    await api.admin_level_new(tundra2, makeEnemiesConfig([enigmaStrong]));
-    await api.admin_level_add_config(tundra2, makeEnemiesConfig([snowmanStrong, snowmanStrong, snowmanStrong]));
-    await api.admin_level_add_config(tundra2, makeEnemiesConfig([iceGolemStrong, snowmanStrong]));
-    await api.admin_level_add_config(tundra2, makeEnemiesConfig([iceGolemStrong, iceGolemStrong]));
-
     const tundra3 = { biome: BigInt(BIOME_ID.tundra), difficulty: BigInt(3) };
-    await api.admin_level_new(tundra3, makeEnemiesConfig([enigmaElite]));
-    await api.admin_level_add_config(tundra3, makeEnemiesConfig([snowmanElite, snowmanElite, snowmanElite]));
-    await api.admin_level_add_config(tundra3, makeEnemiesConfig([iceGolemElite, snowmanElite]));
-    await api.admin_level_add_config(tundra3, makeEnemiesConfig([iceGolemElite, iceGolemElite]));
-
-    // Cave
     const cave1 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(1) };
-    await api.admin_level_new(cave1, makeEnemiesConfig([dragon]));
-    await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, fireSprite, goblin]));
-    await api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, goblin, goblin]));
-
     const cave2 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(2) };
-    await api.admin_level_new(cave2, makeEnemiesConfig([dragonStrong]));
-    await api.admin_level_add_config(cave2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinStrong]));
-    await api.admin_level_add_config(cave2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong]));
-    await api.admin_level_add_config(cave2, makeEnemiesConfig([iceGolemStrong, fireSpriteStrong]));
-
     const cave3 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(3) };
-    await api.admin_level_new(cave3, makeEnemiesConfig([dragonElite]));
-    await api.admin_level_add_config(cave3, makeEnemiesConfig([goblinElite, fireSpriteElite, goblinElite]));
-    await api.admin_level_add_config(cave3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite]));
-    await api.admin_level_add_config(cave3, makeEnemiesConfig([iceGolemElite, fireSpriteElite]));
+
+    // Execute all admin calls in parallel
+    await Promise.all([
+        // Grasslands
+        api.admin_level_new(grass1, makeEnemiesConfig([dragon])),
+        api.admin_level_add_config(grass1, makeEnemiesConfig([goblin, goblin, goblin])),
+        api.admin_level_add_config(grass1, makeEnemiesConfig([snowman, fireSprite])),
+
+        api.admin_level_new(grass2, makeEnemiesConfig([dragonStrong])),
+        api.admin_level_add_config(grass2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])),
+        api.admin_level_add_config(grass2, makeEnemiesConfig([snowmanStrong, fireSpriteStrong])),
+        api.admin_level_add_config(grass2, makeEnemiesConfig([iceGolemStrong, goblinStrong])),
+
+        api.admin_level_new(grass3, makeEnemiesConfig([dragonElite])),
+        api.admin_level_add_config(grass3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])),
+        api.admin_level_add_config(grass3, makeEnemiesConfig([snowmanElite, fireSpriteElite])),
+        api.admin_level_add_config(grass3, makeEnemiesConfig([iceGolemElite, goblinElite])),
+
+        // Desert
+        api.admin_level_new(desert1, makeEnemiesConfig([enigma])),
+        api.admin_level_add_config(desert1, makeEnemiesConfig([fireSprite, fireSprite])),
+        api.admin_level_add_config(desert1, makeEnemiesConfig([goblin, fireSprite])),
+
+        api.admin_level_new(desert2, makeEnemiesConfig([enigmaStrong])),
+        api.admin_level_add_config(desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong])),
+        api.admin_level_add_config(desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong])),
+        api.admin_level_add_config(desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, goblinStrong])),
+
+        api.admin_level_new(desert3, makeEnemiesConfig([enigmaElite])),
+        api.admin_level_add_config(desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite])),
+        api.admin_level_add_config(desert3, makeEnemiesConfig([goblinElite, fireSpriteElite])),
+        api.admin_level_add_config(desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite, goblinElite])),
+
+        // Tundra
+        api.admin_level_new(tundra1, makeEnemiesConfig([enigma])),
+        api.admin_level_add_config(tundra1, makeEnemiesConfig([snowman, snowman, snowman])),
+        api.admin_level_add_config(tundra1, makeEnemiesConfig([iceGolem, snowman])),
+
+        api.admin_level_new(tundra2, makeEnemiesConfig([enigmaStrong])),
+        api.admin_level_add_config(tundra2, makeEnemiesConfig([snowmanStrong, snowmanStrong, snowmanStrong])),
+        api.admin_level_add_config(tundra2, makeEnemiesConfig([iceGolemStrong, snowmanStrong])),
+        api.admin_level_add_config(tundra2, makeEnemiesConfig([iceGolemStrong, iceGolemStrong])),
+
+        api.admin_level_new(tundra3, makeEnemiesConfig([enigmaElite])),
+        api.admin_level_add_config(tundra3, makeEnemiesConfig([snowmanElite, snowmanElite, snowmanElite])),
+        api.admin_level_add_config(tundra3, makeEnemiesConfig([iceGolemElite, snowmanElite])),
+        api.admin_level_add_config(tundra3, makeEnemiesConfig([iceGolemElite, iceGolemElite])),
+
+        // Cave
+        api.admin_level_new(cave1, makeEnemiesConfig([dragon])),
+        api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, fireSprite, goblin])),
+        api.admin_level_add_config(cave1, makeEnemiesConfig([goblin, goblin, goblin])),
+
+        api.admin_level_new(cave2, makeEnemiesConfig([dragonStrong])),
+        api.admin_level_add_config(cave2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinStrong])),
+        api.admin_level_add_config(cave2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])),
+        api.admin_level_add_config(cave2, makeEnemiesConfig([iceGolemStrong, fireSpriteStrong])),
+
+        api.admin_level_new(cave3, makeEnemiesConfig([dragonElite])),
+        api.admin_level_add_config(cave3, makeEnemiesConfig([goblinElite, fireSpriteElite, goblinElite])),
+        api.admin_level_add_config(cave3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])),
+        api.admin_level_add_config(cave3, makeEnemiesConfig([iceGolemElite, fireSpriteElite]))
+    ]);
 }
 
 function makeEnemiesConfig(stats: EnemyStats[]): EnemiesConfig {

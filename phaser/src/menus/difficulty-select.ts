@@ -10,6 +10,7 @@ import { TopBar } from "../widgets/top-bar";
 import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
 import { addTooltip } from "../widgets/tooltip";
+import { Loader } from "./loader";
 
 export class DifficultySelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -86,44 +87,96 @@ export class DifficultySelectMenu extends Phaser.Scene {
     }
 
     private async createDifficultyButtons(maxDifficulties: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
-        for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
-            const isUnlocked = await this.isDifficultyUnlocked(this.biome, difficulty);
-            const difficultyName = this.getDifficultyName(difficulty);
-            const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
+        // Show loading screen while checking difficulty unlocks
+        this.scene.pause().launch('Loader');
+        const loader = this.scene.get('Loader') as Loader;
+        loader.setText("Checking available difficulties...");
 
-            const button = new Button(
-                this,
-                GAME_WIDTH / 2,
-                startY + (difficulty - 1) * spacingY,
-                buttonWidth,
-                buttonHeight,
-                difficultyName,
-                12,
-                () => {
-                    if (isUnlocked) {
-                        this.scene.remove('StartBattleMenu');
-                        this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, difficulty));
-                        this.scene.start('StartBattleMenu');
-                    }
-                },
-                helpText,
-            );
+        try {
+            // Batch all difficulty unlock checks to run in parallel
+            const difficultyChecks = [];
+            for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
+                difficultyChecks.push(this.isDifficultyUnlocked(this.biome, difficulty));
+            }
 
-            // Disable button if difficulty is locked
-            if (!isUnlocked) {
-                button.setEnabled(false);
+            const unlockedStates = await Promise.all(difficultyChecks);
 
-                // Add lock icon as visual indicator with tooltip
-                const lockIcon = addScaledImage(
+            // Hide loading screen
+            this.scene.resume().stop('Loader');
+
+            // Create buttons with the pre-fetched unlock states
+            for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
+                const isUnlocked = unlockedStates[difficulty - 1];
+                const difficultyName = this.getDifficultyName(difficulty);
+                const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
+
+                const button = new Button(
                     this,
-                    GAME_WIDTH / 2 + buttonWidth / 2 + 30,
-                    (startY + (difficulty - 1) * spacingY) - 5,
-                    'lock-icon'
-                ).setOrigin(0.5);
+                    GAME_WIDTH / 2,
+                    startY + (difficulty - 1) * spacingY,
+                    buttonWidth,
+                    buttonHeight,
+                    difficultyName,
+                    12,
+                    () => {
+                        if (isUnlocked) {
+                            this.scene.remove('StartBattleMenu');
+                            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, difficulty));
+                            this.scene.start('StartBattleMenu');
+                        }
+                    },
+                    helpText,
+                );
 
-                // Add tooltip to the lock icon (only if not level 1)
-                if (helpText) {
-                    addTooltip(this, lockIcon, helpText);
+                // Disable button if difficulty is locked
+                if (!isUnlocked) {
+                    button.setEnabled(false);
+
+                    // Add lock icon as visual indicator with tooltip
+                    const lockIcon = addScaledImage(
+                        this,
+                        GAME_WIDTH / 2 + buttonWidth / 2 + 30,
+                        (startY + (difficulty - 1) * spacingY) - 5,
+                        'lock-icon'
+                    ).setOrigin(0.5);
+
+                    // Add tooltip to the lock icon (only if not level 1)
+                    if (helpText) {
+                        addTooltip(this, lockIcon, helpText);
+                    }
+                }
+            }
+        } catch (error) {
+            // Hide loading screen and show error
+            this.scene.resume().stop('Loader');
+            console.error('Error checking difficulty unlocks:', error);
+
+            // Create fallback buttons (assume only level 1 is unlocked)
+            for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
+                const isUnlocked = difficulty === 1; // Only level 1 unlocked on error
+                const difficultyName = this.getDifficultyName(difficulty);
+                const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
+
+                const button = new Button(
+                    this,
+                    GAME_WIDTH / 2,
+                    startY + (difficulty - 1) * spacingY,
+                    buttonWidth,
+                    buttonHeight,
+                    difficultyName,
+                    12,
+                    () => {
+                        if (isUnlocked) {
+                            this.scene.remove('StartBattleMenu');
+                            this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, difficulty));
+                            this.scene.start('StartBattleMenu');
+                        }
+                    },
+                    helpText,
+                );
+
+                if (!isUnlocked) {
+                    button.setEnabled(false);
                 }
             }
         }
