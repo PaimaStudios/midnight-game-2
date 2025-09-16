@@ -125,7 +125,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
         for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
             const isUnlocked = unlockedStates[difficulty];
             const difficultyName = this.getDifficultyName(difficulty);
-            const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
+            const helpText = !isUnlocked ? `Complete ${this.getDifficultyName(difficulty - 1)} Level Quest Boss` : undefined;
 
             const button = new Button(
                 this,
