@@ -60,6 +60,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('tablet1', 'tablet1.png');
         this.load.image('tablet2', 'tablet2.png');
         this.load.image('tablet-round', 'tablet-round.png');
+        this.load.image('lock-icon', 'lock-icon.png');
 
         // Icon sprites
         this.load.image('fire', 'fire.png');
@@ -235,7 +236,7 @@ export class TestMenu extends Phaser.Scene {
                 this.api!.register_new_player().then(() => {
                     this.errorText?.setText('');
                     loader.setText("Waiting on chain update");
-                    this.events.on('stateChange', () => {
+                    this.events.once('stateChange', () => {
                         logger.gameState.info('Registered new player');
                         this.scene.resume().stop('Loader');
                     });

@@ -4,7 +4,7 @@ import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH } from "../main";
 import { TestMenu } from "./main";
-import { StartBattleMenu } from "./pre-battle";
+import { DifficultySelectMenu } from "./difficulty-select";
 import { DungeonScene } from "./dungeon-scene";
 import { TopBar } from "../widgets/top-bar";
 import { QuestsMenu } from "./quests";
@@ -57,9 +57,9 @@ export class BiomeSelectMenu extends Phaser.Scene {
             biomeToName(biome),
             12,
             () => {
-                this.scene.remove('StartBattleMenu');
-                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, biome, this.isQuest, this.state));
-                this.scene.start('StartBattleMenu');
+                this.scene.remove('DifficultySelectMenu');
+                this.scene.add('DifficultySelectMenu', new DifficultySelectMenu(this.api!, biome, this.isQuest, this.state));
+                this.scene.start('DifficultySelectMenu');
             }
         ));
         new TopBar(this, true, this.api, this.state)

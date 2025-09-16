@@ -70,4 +70,6 @@ export type Game2DerivedState = {
   levels: Map<bigint, Map<bigint, Map<bigint, EnemiesConfig>>>;
   // biome -> difficulty
   bosses: Map<bigint, Map<bigint, EnemiesConfig>>;
+  // level -> completion status - tracks which bosses the player has beaten
+  playerBossCompletions: Map<string, boolean>;
 }

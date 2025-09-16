@@ -21,7 +21,8 @@ export class QuestsMenu extends Phaser.Scene {
     state: Game2DerivedState;
     subscription: Subscription;
     buttons: Button[];
-    
+    private isDestroyed: boolean = false;
+
     // Quest count limit - adjust as needed
     private readonly MAX_ACTIVE_QUESTS = 3;
 
@@ -30,7 +31,19 @@ export class QuestsMenu extends Phaser.Scene {
         this.api = api;
         this.state = state;
         this.buttons = [];
-        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+        this.subscription = api.state$.subscribe({
+            next: (state) => {
+                try {
+                    this.onStateChange(state);
+                } catch (error) {
+                    // Ignore errors from destroyed scenes
+                    logger.gameState.debug(`QuestsMenu subscription error (ignoring): ${error}`);
+                }
+            },
+            error: (error) => {
+                logger.gameState.debug(`QuestsMenu subscription error: ${error}`);
+            }
+        });
     }
 
     private questStr(quest: QuestConfig): string {
@@ -38,11 +51,15 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     onStateChange(state: Game2DerivedState) {
+        if (this.isDestroyed) {
+            return;
+        }
         this.state = state;
         this.refreshQuestDisplay();
     }
 
     create() {
+        logger.gameState.debug('QuestsMenu.create() called');
         // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
@@ -55,6 +72,8 @@ export class QuestsMenu extends Phaser.Scene {
 
         new TopBar(this, true, this.api, this.state)
             .back(() => {
+                // Properly clean up this scene before navigating
+                this.subscription?.unsubscribe();
                 this.scene.remove('TestMenu');
                 this.scene.add('TestMenu', new TestMenu(this.api, this.state));
                 this.scene.start('TestMenu');
@@ -64,6 +83,12 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     private refreshQuestDisplay() {
+        // Only refresh if this scene has a valid display list
+        // This prevents errors when trying to create UI elements on destroyed scenes
+        if (!this.sys || !this.sys.displayList) {
+            return;
+        }
+
         // Clear existing buttons
         this.buttons.forEach((b) => b.destroy());
         this.buttons = [];
@@ -98,7 +123,6 @@ export class QuestsMenu extends Phaser.Scene {
         // Display active quests
         let offset = 0;
         for (const [id, quest] of this.state.quests) {
-            logger.gameState.debug(`displaying quest: ${id}`);
             const questButton = new Button(
                 this, 
                 GAME_WIDTH / 2, 
@@ -119,6 +143,13 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     shutdown() {
+        this.isDestroyed = true;
         this.subscription?.unsubscribe();
+    }
+
+    destroy() {
+        this.isDestroyed = true;
+        this.subscription?.unsubscribe();
+        super.destroy();
     }
 }

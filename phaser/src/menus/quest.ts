@@ -45,7 +45,26 @@ export class QuestMenu extends Phaser.Scene {
         this.spiritPreviews = [];
         this.abilityWidgets = [];
         this.summoningTablets = [];
-        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+        this.subscription = api.state$.subscribe({
+            next: (state) => {
+                try {
+                    this.onStateChange(state);
+                } catch (error) {
+                    // Ignore errors from destroyed scenes
+                    logger.gameState.debug(`QuestMenu subscription error (ignoring): ${error}`);
+                }
+            },
+            error: (error) => {
+                logger.gameState.debug(`QuestMenu subscription error: ${error}`);
+            }
+        });
+    }
+
+    destroy() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+        }
+        super.destroy();
     }
 
     create() {
@@ -62,8 +81,7 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        logger.gameState.info(`QuestMenu.onStateChange() called, quest exists: ${state.quests.has(this.questId)}`);
-        
+
         // Set background based on quest biome (only once)
         if (!this.backgroundSet) {
             const quest = state.quests.get(this.questId);
@@ -90,8 +108,10 @@ export class QuestMenu extends Phaser.Scene {
         if (!this.uiCreated) {
             this.createQuestUI(state);
             this.uiCreated = true;
-        } else {
-            // Update quest status if UI already exists
+        }
+
+        // Always update quest status when state changes
+        if (this.uiCreated) {
             this.updateQuestStatus(state);
         }
 
@@ -162,7 +182,9 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     private updateQuestStatus(state: Game2DerivedState) {
-        if (!this.statusText || !this.initiateButton) return;
+        if (!this.statusText || !this.initiateButton) {
+            return;
+        }
 
         const quest = state.quests.get(this.questId);
         if (!quest) {
@@ -173,6 +195,7 @@ export class QuestMenu extends Phaser.Scene {
         }
 
         this.api.is_quest_ready(this.questId).then((isReady) => {
+
             // Hide loader once we have the result
             this.scene.resume().stop('Loader');
             

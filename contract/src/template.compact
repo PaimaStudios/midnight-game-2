@@ -170,6 +170,10 @@ export ledger players: Map<Field, Player>;
 // this isn't a part of Player as you can't sore Map/List/etc ledger types inside a regular compact type
 export ledger player_abilities: Map<Field, Map<Field, Uint<32>>>;
 
+// player id -> { level -> whether boss has been completed }
+// tracks which bosses each player has beaten to unlock higher difficulties
+export ledger player_boss_completions: Map<Field, Map<Level, Boolean>>;
+
 export struct QuestConfig {
     level: Level,
     player_pub_key: Field,
@@ -227,6 +231,7 @@ export circuit register_new_player(): [] {
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_ice_id, 1);
     player_abilities.lookup(player_id).insert(ability_base_fire_aoe_id, 1);
+    player_boss_completions.insertDefault(player_id);
 }
 
 // both validates and drops from the player's current available abilities
@@ -494,7 +499,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
     } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
-        
+
         const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
                             + boss_type_reward_factor(config.enemies.count >= 2 ? config.enemies.stats[1].boss_type : BOSS_TYPE.normal)
                             + boss_type_reward_factor(config.enemies.count >= 3 ? config.enemies.stats[2].boss_type : BOSS_TYPE.normal);
@@ -505,6 +510,14 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
                 all_abilities.insert(reward_ability_id, reward_ability);
             }
             player_abilities.lookup(player_pub_key).insert(reward_ability_id, (player_abilities.lookup(player_pub_key).lookup(reward_ability_id) + 1) as Uint<32>);
+        }
+
+        // Track boss completion if this battle contained any boss-type enemies
+        const has_boss = (config.enemies.stats[0].boss_type == BOSS_TYPE.boss) ||
+                        (config.enemies.count >= 2 && config.enemies.stats[1].boss_type == BOSS_TYPE.boss) ||
+                        (config.enemies.count >= 3 && config.enemies.stats[2].boss_type == BOSS_TYPE.boss);
+        if (has_boss) {
+            player_boss_completions.lookup(player_pub_key).insert(config.level, true);
         }
 
         const reward = BattleRewards {
@@ -597,6 +610,7 @@ circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {
     const index = rng_mod(rng, levels.lookup(level).size() as INSERT_RNG_MOD_INPUT_TYPE);
     return levels.lookup(level).lookup(index);
 }
+
 
 
 // ADMIN ONLY CODE AFTER THIS POINT

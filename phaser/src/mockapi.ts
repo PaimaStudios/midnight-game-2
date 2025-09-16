@@ -6,8 +6,8 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { Observable, Subscriber } from "rxjs";
+import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits, BOSS_TYPE } from "game2-contract";
+import { Observable, Subscriber, Subject } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
@@ -21,18 +21,18 @@ export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
 export class MockGame2API implements DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
-    subscriber: Subscriber<Game2DerivedState> | undefined;
+    private stateSubject: Subject<Game2DerivedState>;
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
+    private playerRegistered: boolean = false;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
-        this.state$ = new Observable<Game2DerivedState>((subscriber) => {
-            this.subscriber = subscriber;
-        });
+        this.stateSubject = new Subject<Game2DerivedState>();
+        this.state$ = this.stateSubject.asObservable();
         this.mockState = {
             activeBattleConfigs: new Map(),
             activeBattleStates: new Map(),
@@ -47,14 +47,93 @@ export class MockGame2API implements DeployedGame2API {
             playerAbilities: new Map(),
             levels: new Map(),
             bosses: new Map(),
+            playerBossCompletions: new Map(),
         };
+        // Initialize default levels and bosses for testing
+        this.initializeDefaultContent();
+
         setTimeout(() => {
-            this.subscriber?.next(this.mockState);
+            this.stateSubject.next(this.mockState);
         }, MOCK_DELAY);
+    }
+
+    private initializeDefaultContent() {
+        // Create default enemy configurations for testing
+        const createDefaultEnemies = (bossType: any): any => ({
+            count: BigInt(3),
+            stats: [
+                {
+                    boss_type: bossType,
+                    enemy_type: BigInt(0),
+                    hp: BigInt(30),
+                    attack: BigInt(10),
+                    block: BigInt(0),
+                    physical_def: BigInt(5),
+                    fire_def: BigInt(5),
+                    ice_def: BigInt(5),
+                },
+                {
+                    boss_type: 'normal',
+                    enemy_type: BigInt(1),
+                    hp: BigInt(20),
+                    attack: BigInt(8),
+                    block: BigInt(0),
+                    physical_def: BigInt(5),
+                    fire_def: BigInt(5),
+                    ice_def: BigInt(5),
+                },
+                {
+                    boss_type: 'normal',
+                    enemy_type: BigInt(2),
+                    hp: BigInt(15),
+                    attack: BigInt(6),
+                    block: BigInt(0),
+                    physical_def: BigInt(5),
+                    fire_def: BigInt(5),
+                    ice_def: BigInt(5),
+                },
+            ],
+        });
+
+        // Initialize levels and bosses for all biomes and difficulties
+        for (let biome = 0; biome < 4; biome++) {
+            for (let difficulty = 1; difficulty <= 3; difficulty++) {
+                const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
+
+                // Add regular level configs
+                let levelsByBiome = this.mockState.levels.get(level.biome);
+                if (!levelsByBiome) {
+                    levelsByBiome = new Map();
+                    this.mockState.levels.set(level.biome, levelsByBiome);
+                }
+                let levelsByDifficulty = levelsByBiome.get(level.difficulty);
+                if (!levelsByDifficulty) {
+                    levelsByDifficulty = new Map();
+                    levelsByBiome.set(level.difficulty, levelsByDifficulty);
+                }
+                levelsByDifficulty.set(BigInt(0), createDefaultEnemies('normal'));
+
+                // Add boss configs
+                let bossesByBiome = this.mockState.bosses.get(level.biome);
+                if (!bossesByBiome) {
+                    bossesByBiome = new Map();
+                    this.mockState.bosses.set(level.biome, bossesByBiome);
+                }
+                bossesByBiome.set(level.difficulty, createDefaultEnemies(BOSS_TYPE.boss));
+            }
+        }
+
+        logger.gameState.info('Initialized default levels and bosses for MockAPI');
     }
 
     public register_new_player(): Promise<void> {
         return this.response(() => {
+            // Use a simple flag to prevent duplicate registrations
+            if (this.playerRegistered) {
+                return;
+            }
+
+            this.playerRegistered = true;
             this.mockState.player = {
                 gold: BigInt(0),
                 rng: randomBytes(32)
@@ -69,6 +148,8 @@ export class MockGame2API implements DeployedGame2API {
             for (let i = 0; i < 20; ++i) {
                 this.givePlayerRandomAbility(BigInt(1));
             }
+
+            // No boss completions by default - they must be earned by defeating bosses
         });
     }
 
@@ -115,6 +196,18 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 if (ret != undefined) {
                     this.addRewards(ret);
+
+                    // Track boss completion if this was a boss battle and player won
+                    if (ret.alive) {
+                        const battleConfig = this.mockState.activeBattleConfigs.get(battle_id)!;
+                        const hasBoss = battleConfig.enemies.stats.some(stat => stat.boss_type === BOSS_TYPE.boss);
+                        if (hasBoss) {
+                            const levelKey = `${battleConfig.level.biome}-${battleConfig.level.difficulty}`;
+                            this.mockState.playerBossCompletions.set(levelKey, true);
+                            logger.gameState.info(`Boss completion tracked for level ${levelKey}`);
+                        }
+                    }
+
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
@@ -135,6 +228,18 @@ export class MockGame2API implements DeployedGame2API {
             // Quest starts not ready, record start time
             this.questReadiness.set(questId, false);
             this.questStartTimes.set(questId, Date.now());
+
+            // Set up automatic quest readiness check after 5 seconds
+            setTimeout(() => {
+                if (this.questReadiness.get(questId) === false) {
+                    logger.gameState.info(`Auto-marking quest ${questId} as ready after timeout`);
+                    this.questReadiness.set(questId, true);
+                    // Trigger state update to notify UI immediately
+                    logger.gameState.info(`Triggering state update for quest ${questId} readiness change`);
+                    this.stateSubject.next(this.mockState);
+                }
+            }, 5000);
+
             return questId;
         });
     }
@@ -152,6 +257,10 @@ export class MockGame2API implements DeployedGame2API {
                     // Mark as ready and keep it ready
                     this.questReadiness.set(quest_id, true);
                     isReady = true;
+
+                    // Trigger state update to notify UI that quest is now ready
+                    logger.gameState.info(`Quest ${quest_id} is now ready - triggering state update`);
+                    this.stateSubject.next(this.mockState);
                 }
             }
             
@@ -164,13 +273,27 @@ export class MockGame2API implements DeployedGame2API {
             // Use the stored readiness state instead of new random
             if (this.questReadiness.get(quest_id) ?? false) {
                 const quest = this.mockState.quests.get(quest_id)!;
+
+                // Check if boss exists for this biome/difficulty
+                const biomeBosses = this.mockState.bosses.get(quest.level.biome);
+                if (!biomeBosses) {
+                    logger.network.error(`No bosses configured for biome ${quest.level.biome}`);
+                    return undefined;
+                }
+
+                const boss = biomeBosses.get(quest.level.difficulty);
+                if (!boss) {
+                    logger.network.error(`No boss configured for biome ${quest.level.biome}, difficulty ${quest.level.difficulty}`);
+                    return undefined;
+                }
+
                 this.mockState.quests.delete(quest_id);
                 this.questReadiness.delete(quest_id);
                 this.questStartTimes.delete(quest_id);
 
                 const battle_config = {
                     level: quest.level,
-                    enemies: this.mockState.bosses.get(quest.level.biome)!.get(quest.level.difficulty)!,
+                    enemies: boss,
                     player_pub_key: MOCK_PLAYER_ID,
                     loadout: quest.loadout,
                 };
@@ -258,7 +381,7 @@ export class MockGame2API implements DeployedGame2API {
                 reject(e);
             }
             setTimeout(() => {
-                this.subscriber?.next(this.mockState);
+                this.stateSubject.next(this.mockState);
             }, delay);
         }, delay));
     }

@@ -227,6 +227,19 @@ export class Game2API implements DeployedGame2API {
                     }
                     return bossesByBiomes;
                 };
+                // Extract boss completions for the current player
+                const extractPlayerBossCompletions = () => {
+                    const completions = new Map<string, boolean>();
+                    if (ledgerState.player_boss_completions.member(playerId)) {
+                        const playerCompletions = ledgerState.player_boss_completions.lookup(playerId);
+                        for (let [level, completed] of playerCompletions) {
+                            const levelKey = `${level.biome}-${level.difficulty}`;
+                            completions.set(levelKey, completed);
+                        }
+                    }
+                    return completions;
+                };
+
                 return {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
@@ -236,6 +249,7 @@ export class Game2API implements DeployedGame2API {
                     allAbilities: new Map(ledgerState.all_abilities),
                     levels: extractLevelsFromLedgerState(),
                     bosses: extractBossesFromLedgerState(),
+                    playerBossCompletions: extractPlayerBossCompletions(),
                 };
             },
         );
