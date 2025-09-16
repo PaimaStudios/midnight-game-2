@@ -59,16 +59,17 @@ export class Button extends Phaser.GameObjects.Container {
                 this.bg.onMouseOver();
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'pointer';
                 this.text.setColor(this.bg.textColorOver);
-                if (this.helpText != null) {
-                    if (this.helpText.visible == false) {
-                        this.helpText.visible = true;
-                        this.helpTween = this.scene.tweens.add({
-                            targets: this.helpText,
-                            alpha: 1,
-                            delay: 800,
-                            duration: 800,
-                        });
-                    }
+            }
+            // Show tooltip
+            if (this.helpText != null) {
+                if (this.helpText.visible == false) {
+                    this.helpText.visible = true;
+                    this.helpTween = this.scene.tweens.add({
+                        targets: this.helpText,
+                        alpha: 1,
+                        delay: 800,
+                        duration: 800,
+                    });
                 }
             }
         });
@@ -77,12 +78,13 @@ export class Button extends Phaser.GameObjects.Container {
                 this.bg.onMouseOff();
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
                 this.text.setColor(this.bg.textColor);
-                if (this.helpText != null) {
-                    this.helpText.visible = false;
-                    this.helpText.alpha = 0;
-                    this.helpTween?.destroy();
-                    this.helpTween = null;
-                }
+            }
+            // Hide tooltip
+            if (this.helpText != null) {
+                this.helpText.visible = false;
+                this.helpText.alpha = 0;
+                this.helpTween?.destroy();
+                this.helpTween = null;
             }
         });
 
