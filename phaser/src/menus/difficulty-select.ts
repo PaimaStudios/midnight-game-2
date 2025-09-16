@@ -157,7 +157,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
                     'lock-icon'
                 ).setOrigin(0.5);
 
-                // Add tooltip to the lock icon (only if not level 1)
+                // Add tooltip to the lock icon
                 if (helpText) {
                     addTooltip(this, lockIcon, helpText);
                 }

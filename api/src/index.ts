@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { type ContractAddress, convert_bigint_to_Uint8Array } from '@midnight-ntwrk/compact-runtime';
+import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { type Logger } from 'pino';
 import type { Game2DerivedState, Game2Contract, Game2Providers, DeployedGame2Contract, PrivateStates } from './common-types.js';
 import {
@@ -25,7 +25,6 @@ import {
 import * as utils from './utils/index.js';
 import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { combineLatest, map, tap, from, type Observable } from 'rxjs';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */

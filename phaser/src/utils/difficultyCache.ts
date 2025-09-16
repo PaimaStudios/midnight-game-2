@@ -14,7 +14,7 @@ interface DifficultyUnlockStatus {
 class DifficultyCache {
     private cache: DifficultyUnlockStatus = {};
     private cacheTimestamp: number = 0;
-    private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    private readonly CACHE_DURATION = 5 * 60 * 1000;  // 5 minutes cache
 
     /**
      * Get cached unlock status for a specific biome and difficulty

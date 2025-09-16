@@ -65,7 +65,7 @@ export class TopBar extends Phaser.GameObjects.Container {
     }
 
     destroy() {
-        // Clean up subscription to prevent memory leaks and errors
+        // Clean up subscription
         this.subscription?.unsubscribe();
         super.destroy();
     }
