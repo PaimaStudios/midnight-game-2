@@ -157,6 +157,18 @@ export class DifficultySelectMenu extends Phaser.Scene {
                     'lock-icon'
                 ).setOrigin(0.5);
 
+                // Add subtle rotation animation to the lock icon
+                lockIcon.setRotation(-0.1);
+                this.tweens.add({
+                    targets: lockIcon,
+                    rotation: 0.1, // Rotate from left (-0.1) to right (0.1)
+                    duration: 2000, // 2 seconds for full left-to-right cycle
+                    ease: 'Sine.easeInOut',
+                    yoyo: true, // Return back (right to left)
+                    repeat: -1, // Repeat infinitely
+                    delay: difficulty * 100 // Stagger the animations
+                });
+
                 // Add tooltip to the lock icon
                 if (helpText) {
                     addTooltip(this, lockIcon, helpText);
