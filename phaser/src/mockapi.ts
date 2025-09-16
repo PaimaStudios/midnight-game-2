@@ -6,7 +6,7 @@
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits, BOSS_TYPE } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 import { logger } from "./main";
@@ -25,11 +25,13 @@ export class MockGame2API implements DeployedGame2API {
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
+    playerBossProgress: Map<bigint, Map<bigint, boolean>>;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
+        this.playerBossProgress = new Map();
         this.state$ = new Observable<Game2DerivedState>((subscriber) => {
             this.subscriber = subscriber;
         });
@@ -115,6 +117,16 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 if (ret != undefined) {
                     this.addRewards(ret);
+                    // Check if this was a boss battle and mark completion
+                    const battleConfig = this.mockState.activeBattleConfigs.get(battle_id);
+                    if (battleConfig && ret.alive && battleConfig.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
+                        const biome = battleConfig.level.biome;
+                        const difficulty = battleConfig.level.difficulty;
+                        if (!this.playerBossProgress.has(biome)) {
+                            this.playerBossProgress.set(biome, new Map());
+                        }
+                        this.playerBossProgress.get(biome)!.set(difficulty, true);
+                    }
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
@@ -213,7 +225,7 @@ export class MockGame2API implements DeployedGame2API {
                 this.mockState.bosses.set(level.biome, bossesByBiome);
             }
             bossesByBiome.set(level.difficulty, boss);
-        }, 50);
+        }, 10);
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
@@ -229,7 +241,17 @@ export class MockGame2API implements DeployedGame2API {
                 byBiome.set(level.difficulty, byDifficulty);
             }
             byDifficulty.set(BigInt(byDifficulty.size), enemies);
-        }, 50);
+        }, 10);
+    }
+
+    public async is_boss_completed(biome: bigint, difficulty: bigint): Promise<boolean> {
+        return this.response(() => {
+            const biomeProgress = this.playerBossProgress.get(biome);
+            if (!biomeProgress) {
+                return false;
+            }
+            return biomeProgress.get(difficulty) ?? false;
+        });
     }
 
 

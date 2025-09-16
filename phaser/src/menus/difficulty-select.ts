@@ -75,8 +75,19 @@ export class DifficultySelectMenu extends Phaser.Scene {
         const startY = GAME_HEIGHT * 0.35;
         const spacingY = 100;
 
+        this.createDifficultyButtons(maxDifficulties, buttonWidth, buttonHeight, startY, spacingY);
+
+        new TopBar(this, true, this.api, this.state)
+            .back(() => {
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, this.isQuest, this.state));
+                this.scene.start('BiomeSelectMenu');
+            }, 'Back to Biome Select');
+    }
+
+    private async createDifficultyButtons(maxDifficulties: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
         for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
-            const isUnlocked = this.isDifficultyUnlocked(this.biome, difficulty);
+            const isUnlocked = await this.isDifficultyUnlocked(this.biome, difficulty);
             const difficultyName = this.getDifficultyName(difficulty);
             const helpText = !isUnlocked ? `Complete Level ${difficulty - 1} Quest Boss` : undefined;
 
@@ -91,7 +102,6 @@ export class DifficultySelectMenu extends Phaser.Scene {
                 () => {
                     if (isUnlocked) {
                         this.scene.remove('StartBattleMenu');
-                        // TODO: Edit StartBattleMenu to accept difficulty
                         this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, difficulty));
                         this.scene.start('StartBattleMenu');
                     }
@@ -117,23 +127,22 @@ export class DifficultySelectMenu extends Phaser.Scene {
                 }
             }
         }
-
-        new TopBar(this, true, this.api, this.state)
-            .back(() => {
-                this.scene.remove('BiomeSelectMenu');
-                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, this.isQuest, this.state));
-                this.scene.start('BiomeSelectMenu');
-            }, 'Back to Biome Select');
     }
 
-    private isDifficultyUnlocked(biome: BIOME_ID, difficulty: number): boolean {
+    private async isDifficultyUnlocked(biome: BIOME_ID, difficulty: number): Promise<boolean> {
         // Level 1 is always unlocked
         if (difficulty <= 1) {
             return true;
         }
 
-        // TODO: Check if the previous difficulty's boss has been completed
-        return true;
+        // Check if the previous difficulty's boss has been completed
+        const prevDifficulty = difficulty - 1;
+        try {
+            return await this.api.is_boss_completed(BigInt(biome), BigInt(prevDifficulty));
+        } catch (error) {
+            console.warn(`Failed to check boss completion status for biome ${biome}, difficulty ${prevDifficulty}:`, error);
+            return false;
+        }
     }
 
     private getDifficultyName(difficulty: number): string {

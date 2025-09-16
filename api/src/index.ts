@@ -131,10 +131,19 @@ export interface DeployedGame2API {
 
     /**
      * Sell an ability
-     * 
+     *
      * @param ability The ability to sell. You must own at least 1
      */
     sell_ability: (ability: Ability) => Promise<void>;
+
+    /**
+     * Check if a boss has been completed
+     *
+     * @param biome The biome ID to check
+     * @param difficulty The difficulty level to check
+     * @returns True if the boss for that biome/difficulty has been completed, false otherwise
+     */
+    is_boss_completed: (biome: bigint, difficulty: bigint) => Promise<boolean>;
 
     // TODO: add an admin-only API or not?
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
@@ -343,6 +352,20 @@ export class Game2API implements DeployedGame2API {
                 blockHeight: txData.public.blockHeight,
             },
         });
+    }
+
+    async is_boss_completed(biome: bigint, difficulty: bigint): Promise<boolean> {
+        const txData = await this.deployedContract.callTx.is_boss_completed(biome, difficulty);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'is_boss_completed',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+
+        return txData.private.result;
     }
     async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
         const txData = await this.deployedContract.callTx.admin_level_new(level, boss);
