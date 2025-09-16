@@ -9,6 +9,7 @@ import { DungeonScene } from "./dungeon-scene";
 import { TopBar } from "../widgets/top-bar";
 import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
+import { addTooltip } from "../widgets/tooltip";
 
 export class DifficultySelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -58,7 +59,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
         ).setOrigin(0.5).setStroke(Color.Licorice, 8);
         this.add.text(
             GAME_WIDTH / 2,
-            80,
+            90,
             `Select Difficulty`,
             {
                 ...fontStyle(12),
@@ -93,20 +94,25 @@ export class DifficultySelectMenu extends Phaser.Scene {
                         this.scene.start('StartBattleMenu');
                     }
                 },
-                !isUnlocked ? `Complete Level ${difficulty - 1} Boss` : undefined
+                !isUnlocked && difficulty > 1 ? `Complete Level ${difficulty - 1} Boss` : undefined
             );
 
             // Disable button if difficulty is locked
             if (!isUnlocked) {
                 button.setEnabled(false);
 
-                // Add lock icon as visual indicator
-                addScaledImage(
+                // Add lock icon as visual indicator with tooltip
+                const lockIcon = addScaledImage(
                     this,
                     GAME_WIDTH / 2 + buttonWidth / 2 + 30,
                     (startY + (difficulty - 1) * spacingY) - 5,
                     'lock-icon'
                 ).setOrigin(0.5);
+
+                // Add tooltip to the lock icon (only if not level 1)
+                if (difficulty > 1) {
+                    addTooltip(this, lockIcon, `Complete Level ${difficulty - 1} Boss`);
+                }
             }
         }
 
@@ -132,9 +138,9 @@ export class DifficultySelectMenu extends Phaser.Scene {
     private getDifficultyName(difficulty: number): string {
         switch (difficulty) {
             case 1:
-                return 'Novice';
+                return 'Beginner';
             case 2:
-                return 'Veteran';
+                return 'Intermediate';
             case 3:
                 return 'Master';
             default:
