@@ -153,7 +153,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
                 const lockIcon = addScaledImage(
                     this,
                     GAME_WIDTH / 2 + buttonWidth / 2 + 30,
-                    (startY + (difficulty - 1) * spacingY) - 5,
+                    (startY + (difficulty - 1) * spacingY) - 2,
                     'lock-icon'
                 ).setOrigin(0.5);
 
