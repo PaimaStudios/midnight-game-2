@@ -64,7 +64,7 @@ export class BiomeSelectMenu extends Phaser.Scene {
         biomes.forEach((biome, i) => new Button(
             this,
             GAME_WIDTH / 2,
-            140 + i * 80, // Start at 140px and space buttons 80px apart
+            140 + i * 80,
             buttonWidth,
             buttonHeight,
             biomeToName(biome),

@@ -2,7 +2,7 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BIOME_ID, biomeToName, biomeToBackground } from "../battle/biome";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
-import { GAME_HEIGHT, GAME_WIDTH, fontStyle } from "../main";
+import { GAME_HEIGHT, GAME_WIDTH, fontStyle, logger } from "../main";
 import { BiomeSelectMenu } from "./biome-select";
 import { StartBattleMenu } from "./pre-battle";
 import { DungeonScene } from "./dungeon-scene";
@@ -70,7 +70,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
             }
         ).setOrigin(0.5).setStroke(Color.Licorice, 8);
 
-        // Create difficulty level buttons (up to 3 difficulties)
+        // Create difficulty level buttons
         const maxDifficulties = 3;
         const buttonWidth = 320;
         const buttonHeight = 64;
@@ -111,7 +111,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
             } catch (error) {
                 // Hide loading screen and show error
                 this.scene.resume().stop('Loader');
-                console.error('Error checking difficulty unlocks:', error);
+                logger.network.error('Error fetching difficulty unlock states:', error);
 
                 // Create fallback - only level 1 unlocked
                 unlockedStates = {};

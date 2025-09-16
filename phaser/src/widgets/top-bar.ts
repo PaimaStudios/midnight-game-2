@@ -55,7 +55,6 @@ export class TopBar extends Phaser.GameObjects.Container {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        // Check if text objects still exist and haven't been destroyed
         if (state.player != undefined && this.goldLabel && this.goldText &&
             this.goldLabel.active && this.goldText.active) {
             this.goldLabel.setVisible(true);
