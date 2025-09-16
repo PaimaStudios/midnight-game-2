@@ -216,7 +216,7 @@ export class ActiveBattle extends Phaser.Scene {
             // Check if this was a boss battle victory and invalidate difficulty cache
             if (circuit.alive && this.battle.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
                 logger.combat.info('Boss defeated! Invalidating difficulty cache.');
-                difficultyCache.invalidateBiome(this.battle.level.biome as BIOME_ID);
+                difficultyCache.invalidateBiome(Number(this.battle.level.biome) as BIOME_ID);
             }
 
             this.uiStateManager.showBattleEndScreen(circuit, this.state);
