@@ -17,7 +17,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { TOP_BAR_OFFSET, TOP_BAR_WIDTH, TopBar } from "../widgets/top-bar";
-import { DifficultySelectMenu } from "./difficulty-select";
+import { LevelSelectMenu } from "./level-select";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -158,10 +158,10 @@ export class StartBattleMenu extends Phaser.Scene {
         const remainingWidth = GAME_WIDTH - topBarOffset;
         new TopBar(this, false, this.api, this.state)
             .back(() => {
-                this.scene.remove('DifficultySelectMenu');
-                this.scene.add('DifficultySelectMenu', new DifficultySelectMenu(this.api!, this.biome, this.isQuest, this.state));
-                this.scene.start('DifficultySelectMenu');
-            }, 'Back to Difficulty Select');
+                this.scene.remove('LevelSelectMenu');
+                this.scene.add('LevelSelectMenu', new LevelSelectMenu(this.api!, this.biome, this.isQuest, this.state));
+                this.scene.start('LevelSelectMenu');
+            }, 'Back to Level Select');
         this.loadLastButton = new Button(this, topBarOffset + remainingWidth * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
             this.loadCurrentLoadout(LAST_LOADOUT_KEY);
         });

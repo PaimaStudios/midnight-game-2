@@ -11,9 +11,9 @@ import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
 import { addTooltip } from "../widgets/tooltip";
 import { Loader } from "./loader";
-import { difficultyCache } from "../utils/difficultyCache";
+import { levelCache } from "../utils/levelCache";
 
-export class DifficultySelectMenu extends Phaser.Scene {
+export class LevelSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
     state: Game2DerivedState;
     isQuest: boolean;
@@ -22,7 +22,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
     topBar: TopBar | undefined;
 
     constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState) {
-        super('DifficultySelectMenu');
+        super('LevelSelectMenu');
         this.api = api;
         this.biome = biome;
         this.isQuest = isQuest;
@@ -62,7 +62,7 @@ export class DifficultySelectMenu extends Phaser.Scene {
         this.add.text(
             GAME_WIDTH / 2,
             90,
-            `Select Difficulty`,
+            this.isQuest ? `Select Boss Quest Level` : `Select Level`,
             {
                 ...fontStyle(12),
                 color: Color.White,
@@ -70,14 +70,14 @@ export class DifficultySelectMenu extends Phaser.Scene {
             }
         ).setOrigin(0.5).setStroke(Color.Licorice, 8);
 
-        // Create difficulty level buttons
-        const maxDifficulties = 3;
+        // Create level buttons
+        const maxLevels = 3;
         const buttonWidth = 320;
         const buttonHeight = 64;
         const startY = GAME_HEIGHT * 0.35;
         const spacingY = 100;
 
-        this.createDifficultyButtons(maxDifficulties, buttonWidth, buttonHeight, startY, spacingY);
+        this.createLevelButtons(maxLevels, buttonWidth, buttonHeight, startY, spacingY);
 
         new TopBar(this, true, this.api, this.state)
             .back(() => {
@@ -87,73 +87,78 @@ export class DifficultySelectMenu extends Phaser.Scene {
             }, 'Back to Biome Select');
     }
 
-    private async createDifficultyButtons(maxDifficulties: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
+    private async createLevelButtons(maxLevels: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
         // Check if we have cached data for this biome
-        const cachedUnlocks = difficultyCache.getCachedForBiome(this.biome);
+        const cachedUnlocks = levelCache.getCachedForBiome(this.biome);
 
-        let unlockedStates: { [difficulty: number]: boolean };
+        let unlockedStates: { [level: number]: boolean };
 
         if (cachedUnlocks) {
             // Use cached data - no loading screen needed!
             unlockedStates = cachedUnlocks;
         } else {
-            // Show loading screen while checking difficulty unlocks
+            // Show loading screen while checking level unlocks
             this.scene.pause().launch('Loader');
             const loader = this.scene.get('Loader') as Loader;
-            loader.setText("Checking available difficulties");
+            loader.setText("Checking available levels");
 
             try {
                 // Fetch and cache the unlock states
-                unlockedStates = await difficultyCache.fetchAndCache(this.api, this.biome, maxDifficulties);
+                unlockedStates = await levelCache.fetchAndCache(this.api, this.biome, maxLevels);
 
                 // Hide loading screen
                 this.scene.resume().stop('Loader');
             } catch (error) {
                 // Hide loading screen and show error
                 this.scene.resume().stop('Loader');
-                logger.network.error('Error fetching difficulty unlock states:', error);
+                logger.network.error('Error fetching level unlock states:', error);
 
                 // Create fallback - only level 1 unlocked
                 unlockedStates = {};
-                for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
-                    unlockedStates[difficulty] = difficulty === 1;
+                for (let level = 1; level <= maxLevels; level++) {
+                    unlockedStates[level] = level === 1;
                 }
             }
         }
 
         // Create buttons with the unlock states
-        for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
-            const isUnlocked = unlockedStates[difficulty];
-            const difficultyName = this.getDifficultyName(difficulty);
-            const helpText = !isUnlocked ? `Complete ${this.getDifficultyName(difficulty - 1)} Level Quest Boss` : undefined;
+        for (let level = 1; level <= maxLevels; level++) {
+            const isUnlocked = unlockedStates[level];
+            const levelName = this.getLevelName(level);
 
             const button = new Button(
                 this,
                 GAME_WIDTH / 2,
-                startY + (difficulty - 1) * spacingY,
+                startY + (level - 1) * spacingY,
                 buttonWidth,
                 buttonHeight,
-                difficultyName,
+                levelName,
                 12,
                 () => {
                     if (isUnlocked) {
                         this.scene.remove('StartBattleMenu');
-                        this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, difficulty));
+                        this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, this.biome, this.isQuest, this.state, level));
                         this.scene.start('StartBattleMenu');
                     }
                 },
-                helpText,
             );
 
-            // Disable button if difficulty is locked
-            if (!isUnlocked) {
+            // Disable button if level is locked
+            if (isUnlocked) {
+                const tooltipText = `${this.getLevelOrdinal(level)} Level. Beat the quest boss to unlock ${this.getLevelName(level + 1)}.`;
+                addTooltip(this, button, tooltipText);
+
+            } else {
                 button.setEnabled(false);
+
+                const tooltipText = `Complete ${this.getLevelName(level - 1)} Level Quest Boss`;
+                addTooltip(this, button, tooltipText);
 
                 // Add lock icon as visual indicator with tooltip
                 const lockIcon = addScaledImage(
                     this,
                     GAME_WIDTH / 2 + buttonWidth / 2 + 30,
-                    (startY + (difficulty - 1) * spacingY) - 2,
+                    (startY + (level - 1) * spacingY) - 2,
                     'lock-icon'
                 ).setOrigin(0.5);
 
@@ -166,28 +171,49 @@ export class DifficultySelectMenu extends Phaser.Scene {
                     ease: 'Sine.easeInOut',
                     yoyo: true, // Return back (right to left)
                     repeat: -1, // Repeat infinitely
-                    delay: difficulty * 100 // Stagger the animations
+                    delay: level * 100 // Stagger the animations
                 });
 
                 // Add tooltip to the lock icon
-                if (helpText) {
-                    addTooltip(this, lockIcon, helpText);
+                if (tooltipText) {
+                    addTooltip(this, lockIcon, tooltipText);
                 }
             }
         }
     }
 
 
-    private getDifficultyName(difficulty: number): string {
-        switch (difficulty) {
+    private getLevelName(level: number): string {
+        switch (level) {
             case 1:
-                return 'Beginner';
+                return 'Frontier';
             case 2:
-                return 'Intermediate';
+                return 'Interior';
             case 3:
-                return 'Master';
+                return 'Stronghold';
             default:
-                return `Level ${difficulty}`;
+                return `Level ${level}`;
+        }
+    }
+
+    private getLevelOrdinal(level: number): string {
+        switch (level) {
+            case 1:
+                return 'First';
+            case 2:
+                return 'Second';
+            case 3:
+                return 'Third';
+            case 4:
+                return 'Fourth';
+            case 5:
+                return 'Fifth';
+            case 6:
+                return 'Sixth';
+            case 7:
+                return 'Seventh';
+            default:
+                return `${level}th`;
         }
     }
 }

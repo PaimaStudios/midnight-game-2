@@ -10,7 +10,7 @@ import { Loader } from "./loader";
 import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { BattleLayout } from "../battle/BattleLayout";
-import { difficultyCache } from "../utils/difficultyCache";
+import { levelCache } from "../utils/levelCache";
 import { CombatAnimationManager } from "../battle/CombatAnimationManager";
 import { EnemyManager, Actor } from "../battle/EnemyManager";
 import { SpiritManager, BattlePhase } from "../battle/SpiritManager";
@@ -213,10 +213,10 @@ export class ActiveBattle extends Phaser.Scene {
             // Battle is over, show end-of-battle screen
             this.spiritManager.cleanupSpirits();
 
-            // Check if this was a boss battle victory and invalidate difficulty cache
+            // Check if this was a boss battle victory and invalidate level cache
             if (circuit.alive && this.battle.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
-                logger.combat.info('Boss defeated! Invalidating difficulty cache.');
-                difficultyCache.invalidateBiome(Number(this.battle.level.biome) as BIOME_ID);
+                logger.combat.info('Boss defeated! Invalidating level cache.');
+                levelCache.invalidateBiome(Number(this.battle.level.biome) as BIOME_ID);
             }
 
             this.uiStateManager.showBattleEndScreen(circuit, this.state);

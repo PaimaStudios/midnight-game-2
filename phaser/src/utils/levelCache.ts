@@ -1,36 +1,36 @@
 /**
- * Local cache for difficulty unlock status to avoid repeated API calls
+ * Local cache for level unlock status to avoid repeated API calls
  */
 
 import { DeployedGame2API } from "game2-api";
 import { BIOME_ID } from "../constants/biome";
 
-interface DifficultyUnlockStatus {
+interface LevelUnlockStatus {
     [biome: number]: {
-        [difficulty: number]: boolean;
+        [level: number]: boolean;
     };
 }
 
-class DifficultyCache {
-    private cache: DifficultyUnlockStatus = {};
+class LevelCache {
+    private cache: LevelUnlockStatus = {};
     private cacheTimestamp: number = 0;
     private readonly CACHE_DURATION = 5 * 60 * 1000;  // 5 minutes cache
 
     /**
-     * Get cached unlock status for a specific biome and difficulty
+     * Get cached unlock status for a specific biome and level
      */
-    getCached(biome: BIOME_ID, difficulty: number): boolean | null {
+    getCached(biome: BIOME_ID, level: number): boolean | null {
         if (!this.isValid()) {
             return null;
         }
 
-        return this.cache[biome]?.[difficulty] ?? null;
+        return this.cache[biome]?.[level] ?? null;
     }
 
     /**
      * Get all cached unlock statuses for a biome
      */
-    getCachedForBiome(biome: BIOME_ID): { [difficulty: number]: boolean } | null {
+    getCachedForBiome(biome: BIOME_ID): { [level: number]: boolean } | null {
         if (!this.isValid()) {
             return null;
         }
@@ -41,18 +41,18 @@ class DifficultyCache {
     /**
      * Set unlock status in cache
      */
-    setCached(biome: BIOME_ID, difficulty: number, unlocked: boolean): void {
+    setCached(biome: BIOME_ID, level: number, unlocked: boolean): void {
         if (!this.cache[biome]) {
             this.cache[biome] = {};
         }
-        this.cache[biome][difficulty] = unlocked;
+        this.cache[biome][level] = unlocked;
         this.updateTimestamp();
     }
 
     /**
      * Set multiple unlock statuses for a biome
      */
-    setCachedForBiome(biome: BIOME_ID, unlockStates: { [difficulty: number]: boolean }): void {
+    setCachedForBiome(biome: BIOME_ID, unlockStates: { [level: number]: boolean }): void {
         this.cache[biome] = { ...unlockStates };
         this.updateTimestamp();
     }
@@ -60,24 +60,24 @@ class DifficultyCache {
     /**
      * Fetch and cache unlock status for a biome
      */
-    async fetchAndCache(api: DeployedGame2API, biome: BIOME_ID, maxDifficulties: number): Promise<{ [difficulty: number]: boolean }> {
-        const difficultyChecks = [];
+    async fetchAndCache(api: DeployedGame2API, biome: BIOME_ID, maxLevels: number): Promise<{ [level: number]: boolean }> {
+        const levelChecks = [];
 
-        for (let difficulty = 1; difficulty <= maxDifficulties; difficulty++) {
-            if (difficulty === 1) {
+        for (let level = 1; level <= maxLevels; level++) {
+            if (level === 1) {
                 // Level 1 is always unlocked, no need to call API
-                difficultyChecks.push(Promise.resolve(true));
+                levelChecks.push(Promise.resolve(true));
             } else {
                 // Check if previous level boss was completed
-                const prevDifficulty = difficulty - 1;
-                difficultyChecks.push(api.is_boss_completed(BigInt(biome), BigInt(prevDifficulty)));
+                const prevLevel = level - 1;
+                levelChecks.push(api.is_boss_completed(BigInt(biome), BigInt(prevLevel)));
             }
         }
 
-        const unlockStates = await Promise.all(difficultyChecks);
+        const unlockStates = await Promise.all(levelChecks);
 
         // Convert to object format
-        const unlockMap: { [difficulty: number]: boolean } = {};
+        const unlockMap: { [level: number]: boolean } = {};
         for (let i = 0; i < unlockStates.length; i++) {
             unlockMap[i + 1] = unlockStates[i];
         }
@@ -134,4 +134,4 @@ class DifficultyCache {
 }
 
 // Export singleton instance
-export const difficultyCache = new DifficultyCache();
+export const levelCache = new LevelCache();
