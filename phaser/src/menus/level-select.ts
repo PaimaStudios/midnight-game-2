@@ -125,7 +125,7 @@ export class LevelSelectMenu extends Phaser.Scene {
 
             // Disable button if level is locked
             if (isUnlocked) {
-                const tooltipText = `${this.getLevelOrdinal(level)} Level. Beat the quest boss to unlock ${this.getLevelName(level + 1)}.`;
+                const tooltipText = `${this.getLevelOrdinal(level)} Level. Beat quest boss to unlock ${this.getLevelName(level + 1)}.`;
                 addTooltip(this, button, tooltipText);
 
             } else {

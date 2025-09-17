@@ -232,14 +232,21 @@ export class Game2API implements DeployedGame2API {
                     const progressByBiomes = new Map();
                     if (ledgerState.player_boss_progress.member(playerId)) {
                         const playerProgress = ledgerState.player_boss_progress.lookup(playerId);
-                        for (let [biome, difficultyMap] of playerProgress) {
-                            let byBiome = progressByBiomes.get(biome);
-                            if (byBiome == undefined) {
-                                byBiome = new Map();
-                                progressByBiomes.set(biome, byBiome);
-                            }
-                            for (let [difficulty, completed] of difficultyMap) {
-                                byBiome.set(difficulty, completed);
+                        // Manually iterate through known biomes (similar to levels extraction)
+                        const BIOME_COUNT = 4;
+                        const DIFFICULTY_COUNT = 3; // Now we have 3 levels per biome
+                        for (let biome = 0; biome < BIOME_COUNT; ++biome) {
+                            if (playerProgress.member(BigInt(biome))) {
+                                const biomeProgress = playerProgress.lookup(BigInt(biome));
+                                let byBiome = new Map();
+                                for (let difficulty = 1; difficulty <= DIFFICULTY_COUNT; ++difficulty) {
+                                    if (biomeProgress.member(BigInt(difficulty))) {
+                                        byBiome.set(BigInt(difficulty), biomeProgress.lookup(BigInt(difficulty)));
+                                    }
+                                }
+                                if (byBiome.size > 0) {
+                                    progressByBiomes.set(BigInt(biome), byBiome);
+                                }
                             }
                         }
                     }
