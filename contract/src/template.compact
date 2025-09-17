@@ -269,16 +269,6 @@ export circuit sell_ability(ability: Ability): [] {
     });
 }
 
-export circuit is_boss_completed(biome: Uint<32>, difficulty: Uint<32>): Boolean {
-    const player_id = derive_player_pub_key(disclose(player_secret_key()));
-    if (!player_boss_progress.lookup(player_id).member(disclose(biome))) {
-        return false;
-    }
-    if (!player_boss_progress.lookup(player_id).lookup(disclose(biome)).member(disclose(difficulty))) {
-        return false;
-    }
-    return player_boss_progress.lookup(player_id).lookup(disclose(biome)).lookup(disclose(difficulty));
-}
 
 
 export pure circuit filler_enemy_stats(): EnemyStats {
@@ -290,7 +280,12 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
 
     // Validate difficulty access - level 1 is always allowed, higher levels require previous boss completion
     if (disclose(level.difficulty) > 1) {
-        assert(is_boss_completed(disclose(level.biome), disclose(level.difficulty - 1)), "Must complete previous difficulty boss to access this level");
+        const player_id = derive_player_pub_key(disclose(player_secret_key()));
+        const prevLevel = disclose(level.difficulty) - 1;
+        assert(player_boss_progress.lookup(player_id).member(disclose(level.biome)) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).member(prevLevel) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).lookup(prevLevel),
+               "Must complete previous level boss to access this level");
     }
 
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
@@ -398,7 +393,12 @@ export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleCon
 
     // Validate difficulty access - level 1 is always allowed, higher levels require previous boss completion
     if (disclose(level.difficulty) > 1) {
-        assert(is_boss_completed(disclose(level.biome), disclose(level.difficulty - 1)), "Must complete previous difficulty boss to access this level");
+        const player_id = derive_player_pub_key(disclose(player_secret_key()));
+        const prevLevel = disclose(level.difficulty) - 1;
+        assert(player_boss_progress.lookup(player_id).member(disclose(level.biome)) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).member(prevLevel) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).lookup(prevLevel),
+               "Must complete previous level boss to access this level");
     }
 
     const rng = (get_player_rng() as Vector<32, Uint<8>>);

@@ -70,4 +70,6 @@ export type Game2DerivedState = {
   levels: Map<bigint, Map<bigint, Map<bigint, EnemiesConfig>>>;
   // biome -> difficulty
   bosses: Map<bigint, Map<bigint, EnemiesConfig>>;
+  // biome -> difficulty -> boolean (true if boss completed)
+  playerBossProgress: Map<bigint, Map<bigint, boolean>>;
 }

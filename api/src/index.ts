@@ -135,14 +135,6 @@ export interface DeployedGame2API {
      */
     sell_ability: (ability: Ability) => Promise<void>;
 
-    /**
-     * Check if a boss has been completed
-     *
-     * @param biome The biome ID to check
-     * @param difficulty The difficulty level to check
-     * @returns True if the boss for that biome/difficulty has been completed, false otherwise
-     */
-    is_boss_completed: (biome: bigint, difficulty: bigint) => Promise<boolean>;
 
     // TODO: add an admin-only API or not?
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
@@ -235,6 +227,24 @@ export class Game2API implements DeployedGame2API {
                     }
                     return bossesByBiomes;
                 };
+                // player boss progress
+                const extractPlayerBossProgressFromLedgerState = () => {
+                    const progressByBiomes = new Map();
+                    if (ledgerState.player_boss_progress.member(playerId)) {
+                        const playerProgress = ledgerState.player_boss_progress.lookup(playerId);
+                        for (let [biome, difficultyMap] of playerProgress) {
+                            let byBiome = progressByBiomes.get(biome);
+                            if (byBiome == undefined) {
+                                byBiome = new Map();
+                                progressByBiomes.set(biome, byBiome);
+                            }
+                            for (let [difficulty, completed] of difficultyMap) {
+                                byBiome.set(difficulty, completed);
+                            }
+                        }
+                    }
+                    return progressByBiomes;
+                };
                 return {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
@@ -244,6 +254,7 @@ export class Game2API implements DeployedGame2API {
                     allAbilities: new Map(ledgerState.all_abilities),
                     levels: extractLevelsFromLedgerState(),
                     bosses: extractBossesFromLedgerState(),
+                    playerBossProgress: extractPlayerBossProgressFromLedgerState(),
                 };
             },
         );
@@ -353,19 +364,6 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async is_boss_completed(biome: bigint, difficulty: bigint): Promise<boolean> {
-        const txData = await this.deployedContract.callTx.is_boss_completed(biome, difficulty);
-
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'is_boss_completed',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
-
-        return txData.private.result;
-    }
     async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
         const txData = await this.deployedContract.callTx.admin_level_new(level, boss);
 

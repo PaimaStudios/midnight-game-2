@@ -2,7 +2,7 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BIOME_ID, biomeToName, biomeToBackground } from "../battle/biome";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
-import { GAME_HEIGHT, GAME_WIDTH, fontStyle, logger } from "../main";
+import { GAME_HEIGHT, GAME_WIDTH, fontStyle } from "../main";
 import { BiomeSelectMenu } from "./biome-select";
 import { StartBattleMenu } from "./pre-battle";
 import { DungeonScene } from "./dungeon-scene";
@@ -10,8 +10,6 @@ import { TopBar } from "../widgets/top-bar";
 import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
 import { addTooltip } from "../widgets/tooltip";
-import { Loader } from "./loader";
-import { levelCache } from "../utils/levelCache";
 
 export class LevelSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -87,37 +85,19 @@ export class LevelSelectMenu extends Phaser.Scene {
             }, 'Back to Biome Select');
     }
 
-    private async createLevelButtons(maxLevels: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
-        // Check if we have cached data for this biome
-        const cachedUnlocks = levelCache.getCachedForBiome(this.biome);
+    private createLevelButtons(maxLevels: number, buttonWidth: number, buttonHeight: number, startY: number, spacingY: number) {
+        // Get unlock states from game state
+        const unlockedStates: { [level: number]: boolean } = {};
+        const biomeProgress = this.state.playerBossProgress.get(BigInt(this.biome));
 
-        let unlockedStates: { [level: number]: boolean };
-
-        if (cachedUnlocks) {
-            // Use cached data - no loading screen needed!
-            unlockedStates = cachedUnlocks;
-        } else {
-            // Show loading screen while checking level unlocks
-            this.scene.pause().launch('Loader');
-            const loader = this.scene.get('Loader') as Loader;
-            loader.setText("Checking available levels");
-
-            try {
-                // Fetch and cache the unlock states
-                unlockedStates = await levelCache.fetchAndCache(this.api, this.biome, maxLevels);
-
-                // Hide loading screen
-                this.scene.resume().stop('Loader');
-            } catch (error) {
-                // Hide loading screen and show error
-                this.scene.resume().stop('Loader');
-                logger.network.error('Error fetching level unlock states:', error);
-
-                // Create fallback - only level 1 unlocked
-                unlockedStates = {};
-                for (let level = 1; level <= maxLevels; level++) {
-                    unlockedStates[level] = level === 1;
-                }
+        for (let level = 1; level <= maxLevels; level++) {
+            if (level === 1) {
+                // Level 1 is always unlocked
+                unlockedStates[level] = true;
+            } else {
+                // Check if previous level boss was completed
+                const prevLevel = level - 1;
+                unlockedStates[level] = biomeProgress?.get(BigInt(prevLevel)) ?? false;
             }
         }
 

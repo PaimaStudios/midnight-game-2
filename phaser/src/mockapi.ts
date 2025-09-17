@@ -49,6 +49,7 @@ export class MockGame2API implements DeployedGame2API {
             playerAbilities: new Map(),
             levels: new Map(),
             bosses: new Map(),
+            playerBossProgress: this.playerBossProgress,
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -244,15 +245,6 @@ export class MockGame2API implements DeployedGame2API {
         }, 10);
     }
 
-    public async is_boss_completed(biome: bigint, difficulty: bigint): Promise<boolean> {
-        return this.response(() => {
-            const biomeProgress = this.playerBossProgress.get(biome);
-            if (!biomeProgress) {
-                return false;
-            }
-            return biomeProgress.get(difficulty) ?? false;
-        });
-    }
 
 
     private addRewards(rewards: BattleRewards) {
