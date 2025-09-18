@@ -152,6 +152,8 @@ export class Game2API implements DeployedGame2API {
         private readonly providers: Game2Providers,
         private readonly logger?: Logger,
     ) {
+        const BIOME_COUNT = 4;
+        const DIFFICULTY_COUNT = 3;
         this.deployedContractAddress = deployedContract.deployTxData.public.contractAddress;
         this.state$ = combineLatest(
             [
@@ -186,8 +188,6 @@ export class Game2API implements DeployedGame2API {
                     const levelsByBiomes = new Map();
                     // TODO: for some reason ledgerState.levels has no [Symbol.iterator]() and thus can't be converted or iterated
                     // so we're just going to manually index by biome id... we should have a better way to do this!
-                    const BIOME_COUNT = 4;
-                    const DIFFICULTY_COUNT = 1;
                     const iteratingLevels: [bigint, bigint, any][] = [];
                     for (let biome = 0; biome < BIOME_COUNT; ++biome) {
                         for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
@@ -233,8 +233,6 @@ export class Game2API implements DeployedGame2API {
                     if (ledgerState.player_boss_progress.member(playerId)) {
                         const playerProgress = ledgerState.player_boss_progress.lookup(playerId);
                         // Manually iterate through known biomes (similar to levels extraction)
-                        const BIOME_COUNT = 4;
-                        const DIFFICULTY_COUNT = 3; // Now we have 3 levels per biome
                         for (let biome = 0; biome < BIOME_COUNT; ++biome) {
                             if (playerProgress.member(BigInt(biome))) {
                                 const biomeProgress = playerProgress.lookup(BigInt(biome));
