@@ -1,24 +1,23 @@
 /**
  * Generic Button UI object. Taken from pvp-arena. Might be replaced with rex-ui
  */
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, rootObject } from "../main";
+import { fontStyle } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
+import { Tooltip } from "./tooltip";
 
 
 export class Button extends Phaser.GameObjects.Container {
     bg: WidgetBackground & Phaser.GameObjects.GameObject;
     enabled: boolean = true;
     text: BBCodeText;
-    helpText: Phaser.GameObjects.Text | null;
-    helpTween: Phaser.Tweens.Tween | null;
+    tooltip: Tooltip | null;
     soundOnClick: boolean;
 
     constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, text: string, fontSize: number, onClick: () => void, helpText?: string, soundOnClick = true) {
         super(scene, x, y);
-        
-        this.helpText = null;
-        this.helpTween = null;
+
+        this.tooltip = null;
         this.soundOnClick = soundOnClick;
 
         this.bg = makeWidgetBackground(scene, 0, 0, w, h, BG_TYPE.Stone);
@@ -34,14 +33,7 @@ export class Button extends Phaser.GameObjects.Container {
 
         this.setSize(w, h);
         this.setInteractive();
-        if (helpText != null) {
-            this.helpText = scene.add.text(0, 0, helpText, fontStyle(10))
-                .setAlpha(0)
-                .setVisible(false)
-                .setOrigin(0.5, 0.5);
-            this.add(this.helpText);
-        }
-        this.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        this.on('pointerdown', () => {
             if (this.enabled) {
                 if (this.soundOnClick) {
                     this.scene.sound.play('button-press-1', { volume: 0.5 });
@@ -54,22 +46,11 @@ export class Button extends Phaser.GameObjects.Container {
                 onClick();
             }
         });
-        this.on('pointerover', (pointer: Phaser.Input.Pointer, localX: number, localY: number) => {
+        this.on('pointerover', () => {
             if (this.enabled) {
                 this.bg.onMouseOver();
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'pointer';
                 this.text.setColor(this.bg.textColorOver);
-                if (this.helpText != null) {
-                    if (this.helpText.visible == false) {
-                        this.helpText.visible = true;
-                        this.helpTween = this.scene.tweens.add({
-                            targets: this.helpText,
-                            alpha: 1,
-                            delay: 800,
-                            duration: 800,
-                        });
-                    }
-                }
             }
         });
         this.on('pointerout', () => {
@@ -77,12 +58,6 @@ export class Button extends Phaser.GameObjects.Container {
                 this.bg.onMouseOff();
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
                 this.text.setColor(this.bg.textColor);
-                if (this.helpText != null) {
-                    this.helpText.visible = false;
-                    this.helpText.alpha = 0;
-                    this.helpTween?.destroy();
-                    this.helpTween = null;
-                }
             }
         });
 
@@ -94,25 +69,26 @@ export class Button extends Phaser.GameObjects.Container {
                 this.text.scaleX = tween.progress;
             },
             duration: 500,
+            onComplete: () => {
+                // Create tooltip after button animation completes
+                if (helpText != null) {
+                    this.tooltip = new Tooltip(scene, this, helpText);
+                }
+            }
         });
     }
 
     setEnabled(enabled: boolean) {
         this.enabled = enabled;
         this.bg.setEnabled(enabled);
+        // Keep button interactive even when disabled so tooltips work
+        // The onClick handler already checks this.enabled before executing
         return this;
     }
 
-    preUpdate() {
-        if (this.helpText != null && this.helpText.visible) {
-            const parent = rootObject(this);
-            const mx = this.scene.input.activePointer.worldX;
-            const my = this.scene.input.activePointer.worldY;
-            this.helpText.setPosition(
-                Math.min(GAME_WIDTH - this.helpText.width / 2, Math.max(mx, 16 + this.helpText.width / 2)) - parent.x,
-                Math.min(GAME_HEIGHT - this.helpText.height / 2, my - 32 > this.helpText.height / 2 ? my - 32 : my + 32) - parent.y,
-            );
-        }
+    destroy() {
+        this.tooltip?.destroy();
+        super.destroy();
     }
 
 }

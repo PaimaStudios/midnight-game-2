@@ -2,12 +2,13 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BIOME_ID, biomeToName } from "../battle/biome";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
-import { GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { GAME_HEIGHT, GAME_WIDTH, fontStyle } from "../main";
 import { TestMenu } from "./main";
-import { StartBattleMenu } from "./pre-battle";
+import { LevelSelectMenu } from "./level-select";
 import { DungeonScene } from "./dungeon-scene";
 import { TopBar } from "../widgets/top-bar";
 import { QuestsMenu } from "./quests";
+import { Color } from "../constants/colors";
 
 export class BiomeSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -48,18 +49,30 @@ export class BiomeSelectMenu extends Phaser.Scene {
             this.scene.launch('DungeonScene');
         }
 
+        // Add title
+        this.add.text(
+            GAME_WIDTH / 2,
+            50,
+            'Biome',
+            {
+                ...fontStyle(18),
+                color: Color.White,
+                align: 'center'
+            }
+        ).setOrigin(0.5).setStroke(Color.Licorice, 8);
+
         biomes.forEach((biome, i) => new Button(
             this,
             GAME_WIDTH / 2,
-            GAME_HEIGHT * ((i + 1) / (biomes.length + 2)),
+            140 + i * 80,
             buttonWidth,
             buttonHeight,
             biomeToName(biome),
             12,
             () => {
-                this.scene.remove('StartBattleMenu');
-                this.scene.add('StartBattleMenu', new StartBattleMenu(this.api!, biome, this.isQuest, this.state));
-                this.scene.start('StartBattleMenu');
+                this.scene.remove('LevelSelectMenu');
+                this.scene.add('LevelSelectMenu', new LevelSelectMenu(this.api!, biome, this.isQuest, this.state));
+                this.scene.start('LevelSelectMenu');
             }
         ));
         new TopBar(this, true, this.api, this.state)
