@@ -25,13 +25,11 @@ export class MockGame2API implements DeployedGame2API {
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
-    playerBossProgress: Map<bigint, Map<bigint, boolean>>;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
-        this.playerBossProgress = new Map();
         this.state$ = new Observable<Game2DerivedState>((subscriber) => {
             this.subscriber = subscriber;
         });
@@ -49,7 +47,7 @@ export class MockGame2API implements DeployedGame2API {
             playerAbilities: new Map(),
             levels: new Map(),
             bosses: new Map(),
-            playerBossProgress: this.playerBossProgress,
+            playerBossProgress: new Map(),
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -123,10 +121,10 @@ export class MockGame2API implements DeployedGame2API {
                     if (battleConfig && ret.alive && battleConfig.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
                         const biome = battleConfig.level.biome;
                         const difficulty = battleConfig.level.difficulty;
-                        if (!this.playerBossProgress.has(biome)) {
-                            this.playerBossProgress.set(biome, new Map());
+                        if (!this.mockState.playerBossProgress.has(biome)) {
+                            this.mockState.playerBossProgress.set(biome, new Map());
                         }
-                        this.playerBossProgress.get(biome)!.set(difficulty, true);
+                        this.mockState.playerBossProgress.get(biome)!.set(difficulty, true);
                     }
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
