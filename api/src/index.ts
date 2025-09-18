@@ -20,7 +20,7 @@ import {
     BattleConfig,
     BattleRewards,
     EnemiesConfig,
-    LEVEL_COUNT_PER_BIOME
+    LEVEL_COUNT_PER_BIOME,
     BIOME_COUNT,
   // Command,
 } from 'game2-contract';
@@ -190,7 +190,7 @@ export class Game2API implements DeployedGame2API {
                     // so we're just going to manually index by biome id... we should have a better way to do this!
                     const iteratingLevels: [bigint, bigint, any][] = [];
                     for (let biome = 0; biome < BIOME_COUNT; ++biome) {
-                        for (let difficulty = 0; difficulty < LEVEL_COUNT_PER_BIOMEdifficulty) {
+                        for (let difficulty = 1; difficulty <= LEVEL_COUNT_PER_BIOME; ++difficulty) {
                             const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
                             if (ledgerState.levels.member(level)) {
                                 iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
@@ -237,7 +237,7 @@ export class Game2API implements DeployedGame2API {
                             if (playerProgress.member(BigInt(biome))) {
                                 const biomeProgress = playerProgress.lookup(BigInt(biome));
                                 let byBiome = new Map();
-                                for (let difficulty = 1; difficulty <= LEVEL_COUNT_PER_BIOMEdifficulty) {
+                                for (let difficulty = 1; difficulty <= LEVEL_COUNT_PER_BIOME; ++difficulty) {
                                     if (biomeProgress.member(BigInt(difficulty))) {
                                         byBiome.set(BigInt(difficulty), biomeProgress.lookup(BigInt(difficulty)));
                                     }
