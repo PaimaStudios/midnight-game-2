@@ -10,7 +10,7 @@ import { TopBar } from "../widgets/top-bar";
 import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
 import { addTooltip } from "../widgets/tooltip";
-import { LEVELS_PER_BIOME } from "game2-contract";
+import { LEVEL_COUNT_PER_BIOME } from "game2-contract";
 
 export class LevelSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -75,7 +75,7 @@ export class LevelSelectMenu extends Phaser.Scene {
         const startY = GAME_HEIGHT * 0.35;
         const spacingY = 100;
 
-        this.createLevelButtons(LEVELS_PER_BIOME, buttonWidth, buttonHeight, startY, spacingY);
+        this.createLevelButtons(LEVEL_COUNT_PER_BIOME, buttonWidth, buttonHeight, startY, spacingY);
 
         new TopBar(this, true, this.api, this.state)
             .back(() => {
