@@ -20,6 +20,8 @@ import {
     BattleConfig,
     BattleRewards,
     EnemiesConfig,
+    LEVELS_PER_BIOME
+    BIOME_COUNT,
   // Command,
 } from 'game2-contract';
 import * as utils from './utils/index.js';
@@ -152,8 +154,6 @@ export class Game2API implements DeployedGame2API {
         private readonly providers: Game2Providers,
         private readonly logger?: Logger,
     ) {
-        const BIOME_COUNT = 4;
-        const DIFFICULTY_COUNT = 3;
         this.deployedContractAddress = deployedContract.deployTxData.public.contractAddress;
         this.state$ = combineLatest(
             [
@@ -190,7 +190,7 @@ export class Game2API implements DeployedGame2API {
                     // so we're just going to manually index by biome id... we should have a better way to do this!
                     const iteratingLevels: [bigint, bigint, any][] = [];
                     for (let biome = 0; biome < BIOME_COUNT; ++biome) {
-                        for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
+                        for (let difficulty = 0; difficulty < LEVELS_PER_BIOMEdifficulty) {
                             const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
                             if (ledgerState.levels.member(level)) {
                                 iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
@@ -237,7 +237,7 @@ export class Game2API implements DeployedGame2API {
                             if (playerProgress.member(BigInt(biome))) {
                                 const biomeProgress = playerProgress.lookup(BigInt(biome));
                                 let byBiome = new Map();
-                                for (let difficulty = 1; difficulty <= DIFFICULTY_COUNT; ++difficulty) {
+                                for (let difficulty = 1; difficulty <= LEVELS_PER_BIOMEdifficulty) {
                                     if (biomeProgress.member(BigInt(difficulty))) {
                                         byBiome.set(BigInt(difficulty), biomeProgress.lookup(BigInt(difficulty)));
                                     }
