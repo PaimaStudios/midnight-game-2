@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { type ContractAddress, convert_bigint_to_Uint8Array } from '@midnight-ntwrk/compact-runtime';
+import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { type Logger } from 'pino';
 import type { Game2DerivedState, Game2Contract, Game2Providers, DeployedGame2Contract, PrivateStates } from './common-types.js';
 import {
@@ -20,12 +20,13 @@ import {
     BattleConfig,
     BattleRewards,
     EnemiesConfig,
+    LEVEL_COUNT_PER_BIOME,
+    BIOME_COUNT,
   // Command,
 } from 'game2-contract';
 import * as utils from './utils/index.js';
 import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { combineLatest, map, tap, from, type Observable } from 'rxjs';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */
@@ -128,10 +129,11 @@ export interface DeployedGame2API {
 
     /**
      * Sell an ability
-     * 
+     *
      * @param ability The ability to sell. You must own at least 1
      */
     sell_ability: (ability: Ability) => Promise<void>;
+
 
     // TODO: add an admin-only API or not?
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
@@ -184,11 +186,9 @@ export class Game2API implements DeployedGame2API {
                     const levelsByBiomes = new Map();
                     // TODO: for some reason ledgerState.levels has no [Symbol.iterator]() and thus can't be converted or iterated
                     // so we're just going to manually index by biome id... we should have a better way to do this!
-                    const BIOME_COUNT = 4;
-                    const DIFFICULTY_COUNT = 1;
                     const iteratingLevels: [bigint, bigint, any][] = [];
                     for (let biome = 0; biome < BIOME_COUNT; ++biome) {
-                        for (let difficulty = 0; difficulty < DIFFICULTY_COUNT; ++difficulty) {
+                        for (let difficulty = 1; difficulty <= LEVEL_COUNT_PER_BIOME; ++difficulty) {
                             const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
                             if (ledgerState.levels.member(level)) {
                                 iteratingLevels.push([level.biome, level.difficulty, ledgerState.levels.lookup(level)]);
@@ -225,6 +225,29 @@ export class Game2API implements DeployedGame2API {
                     }
                     return bossesByBiomes;
                 };
+                // player boss progress
+                const extractPlayerBossProgressFromLedgerState = () => {
+                    const progressByBiomes = new Map();
+                    if (ledgerState.player_boss_progress.member(playerId)) {
+                        const playerProgress = ledgerState.player_boss_progress.lookup(playerId);
+                        // Manually iterate through known biomes (similar to levels extraction)
+                        for (let biome = 0; biome < BIOME_COUNT; ++biome) {
+                            if (playerProgress.member(BigInt(biome))) {
+                                const biomeProgress = playerProgress.lookup(BigInt(biome));
+                                let byBiome = new Map();
+                                for (let difficulty = 1; difficulty <= LEVEL_COUNT_PER_BIOME; ++difficulty) {
+                                    if (biomeProgress.member(BigInt(difficulty))) {
+                                        byBiome.set(BigInt(difficulty), biomeProgress.lookup(BigInt(difficulty)));
+                                    }
+                                }
+                                if (byBiome.size > 0) {
+                                    progressByBiomes.set(BigInt(biome), byBiome);
+                                }
+                            }
+                        }
+                    }
+                    return progressByBiomes;
+                };
                 return {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
@@ -234,6 +257,7 @@ export class Game2API implements DeployedGame2API {
                     allAbilities: new Map(ledgerState.all_abilities),
                     levels: extractLevelsFromLedgerState(),
                     bosses: extractBossesFromLedgerState(),
+                    playerBossProgress: extractPlayerBossProgressFromLedgerState(),
                 };
             },
         );
@@ -342,6 +366,7 @@ export class Game2API implements DeployedGame2API {
             },
         });
     }
+
     async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
         const txData = await this.deployedContract.callTx.admin_level_new(level, boss);
 

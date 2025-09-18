@@ -47,6 +47,7 @@ export class MockGame2API implements DeployedGame2API {
             playerAbilities: new Map(),
             levels: new Map(),
             bosses: new Map(),
+            playerBossProgress: new Map(),
         };
         setTimeout(() => {
             this.subscriber?.next(this.mockState);
@@ -115,6 +116,16 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 if (ret != undefined) {
                     this.addRewards(ret);
+                    // Check if this was a boss battle and mark completion
+                    const battleConfig = this.mockState.activeBattleConfigs.get(battle_id);
+                    if (battleConfig && ret.alive && battleConfig.enemies.stats[0].boss_type === BOSS_TYPE.boss) {
+                        const biome = battleConfig.level.biome;
+                        const difficulty = battleConfig.level.difficulty;
+                        if (!this.mockState.playerBossProgress.has(biome)) {
+                            this.mockState.playerBossProgress.set(biome, new Map());
+                        }
+                        this.mockState.playerBossProgress.get(biome)!.set(difficulty, true);
+                    }
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
@@ -213,7 +224,7 @@ export class MockGame2API implements DeployedGame2API {
                 this.mockState.bosses.set(level.biome, bossesByBiome);
             }
             bossesByBiome.set(level.difficulty, boss);
-        }, 50);
+        }, 10);
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
@@ -229,8 +240,9 @@ export class MockGame2API implements DeployedGame2API {
                 byBiome.set(level.difficulty, byDifficulty);
             }
             byDifficulty.set(BigInt(byDifficulty.size), enemies);
-        }, 50);
+        }, 10);
     }
+
 
 
     private addRewards(rewards: BattleRewards) {

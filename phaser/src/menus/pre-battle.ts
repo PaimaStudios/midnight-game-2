@@ -17,7 +17,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { TOP_BAR_OFFSET, TOP_BAR_WIDTH, TopBar } from "../widgets/top-bar";
-import { BiomeSelectMenu } from "./biome-select";
+import { LevelSelectMenu } from "./level-select";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -42,6 +42,7 @@ export class StartBattleMenu extends Phaser.Scene {
     abilitySlots: Phaser.GameObjects.GameObject[];
     isQuest: boolean;
     biome: BIOME_ID;
+    difficulty: number;
     loader: Loader | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
     spiritPreviews: (SpiritWidget | null)[];
@@ -51,7 +52,7 @@ export class StartBattleMenu extends Phaser.Scene {
     battleConfig: BattleConfig | undefined;
     waitingOnState: boolean;
 
-    constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState) {
+    constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState, difficulty: number = 1) {
         super('StartBattleMenu');
         this.api = api;
         this.loadout = {
@@ -63,6 +64,7 @@ export class StartBattleMenu extends Phaser.Scene {
         this.spiritPreviews = new Array(MAX_ABILITIES).map((_) => null);
         this.isQuest = isQuest;
         this.biome = biome;
+        this.difficulty = difficulty;
         this.state = state;
         this.waitingOnState = true;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -159,9 +161,9 @@ export class StartBattleMenu extends Phaser.Scene {
         const remainingWidth = GAME_WIDTH - topBarOffset;
         new TopBar(this, false, this.api, this.state)
             .back(() => {
-                this.scene.remove('BiomeSelectMenu');
-                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, this.isQuest, this.state));
-                this.scene.start('BiomeSelectMenu');
+                this.scene.remove('LevelSelectMenu');
+                this.scene.add('LevelSelectMenu', new LevelSelectMenu(this.api!, this.biome, this.isQuest, this.state));
+                this.scene.start('LevelSelectMenu');
             }, 'Back to Level Select');
         this.loadLastButton = new Button(this, topBarOffset + remainingWidth * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
             this.loadCurrentLoadout(LAST_LOADOUT_KEY);
@@ -173,8 +175,7 @@ export class StartBattleMenu extends Phaser.Scene {
         this.startButton = new Button(this, topBarOffset + remainingWidth * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
-                // TODO: control difficulty https://github.com/PaimaStudios/midnight-game-2/issues/103
-                const level = { biome: BigInt(this.biome), difficulty: BigInt(1) };
+                const level = { biome: BigInt(this.biome), difficulty: BigInt(this.difficulty) };
                 if (this.isQuest) {
                     this.api.start_new_quest(this.loadout, level).then((questId) => {
                         this.scene.remove('QuestsMenu');

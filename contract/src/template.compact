@@ -170,6 +170,9 @@ export ledger players: Map<Field, Player>;
 // this isn't a part of Player as you can't sore Map/List/etc ledger types inside a regular compact type
 export ledger player_abilities: Map<Field, Map<Field, Uint<32>>>;
 
+// player progress tracking: player id -> biome -> difficulty -> boss completed
+export ledger player_boss_progress: Map<Field, Map<Uint<32>, Map<Uint<32>, Boolean>>>;
+
 export struct QuestConfig {
     level: Level,
     player_pub_key: Field,
@@ -227,6 +230,7 @@ export circuit register_new_player(): [] {
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_ice_id, 1);
     player_abilities.lookup(player_id).insert(ability_base_fire_aoe_id, 1);
+    player_boss_progress.insertDefault(player_id);
 }
 
 // both validates and drops from the player's current available abilities
@@ -266,12 +270,24 @@ export circuit sell_ability(ability: Ability): [] {
 }
 
 
+
 export pure circuit filler_enemy_stats(): EnemyStats {
     return EnemyStats { BOSS_TYPE.normal, 0, 0, 0, 0, 0, 0, 0 };
 }
 
 export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     verify_loadout(disclose(loadout));
+
+    // Validate difficulty access - level 1 is always allowed, higher levels require previous boss completion
+    if (disclose(level.difficulty) > 1) {
+        const player_id = derive_player_pub_key(disclose(player_secret_key()));
+        const prevLevel = disclose(level.difficulty) - 1;
+        assert(player_boss_progress.lookup(player_id).member(disclose(level.biome)) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).member(prevLevel) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).lookup(prevLevel),
+               "Must complete previous level boss to access this level");
+    }
+
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const quest = QuestConfig {
         level,
@@ -371,11 +387,21 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
 
     return some<Field>(battle_id);
 }
-ledger testing: Vector<32, Uint<8>>;
+
 export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleConfig {
     verify_loadout(disclose(loadout));
+
+    // Validate difficulty access - level 1 is always allowed, higher levels require previous boss completion
+    if (disclose(level.difficulty) > 1) {
+        const player_id = derive_player_pub_key(disclose(player_secret_key()));
+        const prevLevel = disclose(level.difficulty) - 1;
+        assert(player_boss_progress.lookup(player_id).member(disclose(level.biome)) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).member(prevLevel) &&
+               player_boss_progress.lookup(player_id).lookup(disclose(level.biome)).lookup(prevLevel),
+               "Must complete previous level boss to access this level");
+    }
+
     //const rng = (get_player_rng() as Vector<32, Uint<8>>);
-    //testing = rng;
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const battle = BattleConfig {
         disclose(level),
@@ -506,6 +532,14 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
                 all_abilities.insert(reward_ability_id, reward_ability);
             }
             player_abilities.lookup(player_pub_key).insert(reward_ability_id, (player_abilities.lookup(player_pub_key).lookup(reward_ability_id) + 1) as Uint<32>);
+        }
+
+        // Mark boss completion if this was a boss battle
+        if (config.enemies.stats[0].boss_type == BOSS_TYPE.boss) {
+            if (!player_boss_progress.lookup(player_pub_key).member(config.level.biome)) {
+                player_boss_progress.lookup(player_pub_key).insertDefault(config.level.biome);
+            }
+            player_boss_progress.lookup(player_pub_key).lookup(config.level.biome).insert(config.level.difficulty, true);
         }
 
         const reward = BattleRewards {

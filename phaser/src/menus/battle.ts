@@ -3,7 +3,7 @@
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { BattleConfig, pureCircuits } from "game2-contract";
+import { BattleConfig, pureCircuits, BOSS_TYPE } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
@@ -211,6 +211,9 @@ export class ActiveBattle extends Phaser.Scene {
         if (circuit != undefined) {
             // Battle is over, show end-of-battle screen
             this.spiritManager.cleanupSpirits();
+
+            // Boss completion is now tracked in the contract state automatically
+
             this.uiStateManager.showBattleEndScreen(circuit, this.state);
         } else {
             // Battle continues, reset targeting state for next round

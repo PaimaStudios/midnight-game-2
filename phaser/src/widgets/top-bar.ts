@@ -34,6 +34,7 @@ export class TopBar extends Phaser.GameObjects.Container {
             this.goldText = scene.add.text(80, TOP_BAR_OFFSET, '', fontStyle(12, { color: Color.Yellow, align: 'left' }))
                 .setOrigin(0, 0.65)
                 .setVisible(false);
+
             if (initialState != undefined) {
                 this.onStateChange(initialState);
             }
@@ -54,10 +55,17 @@ export class TopBar extends Phaser.GameObjects.Container {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        if (state.player != undefined) {
-            this.goldLabel?.setVisible(true);
-            this.goldText?.setVisible(true);
-            this.goldText?.setText(state.player.gold.toString());
+        if (state.player != undefined && this.goldLabel && this.goldText &&
+            this.goldLabel.active && this.goldText.active) {
+            this.goldLabel.setVisible(true);
+            this.goldText.setVisible(true);
+            this.goldText.setText(state.player.gold.toString());
         }
+    }
+
+    destroy() {
+        // Clean up subscription
+        this.subscription?.unsubscribe();
+        super.destroy();
     }
 }
