@@ -203,7 +203,7 @@ export class QuestMenu extends Phaser.Scene {
         loader.setText("Finalizing Quest");
 
         const attemptFinalizeQuest = () => {
-            this.events.once('questFinalized', () => {
+            this.events.on('questFinalized', () => {
                 this.scene.stop('Loader');
                 if (this.bossBattleId !== null) {
                     const battleConfig = state.activeBattleConfigs.get(this.bossBattleId!);

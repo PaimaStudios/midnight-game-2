@@ -53,55 +53,6 @@ export function fontStyle(fontSize: number, extra?: Phaser.Types.GameObjects.Tex
     };
 }
 
-// only converts bigint, but this is the only problem we have with printing ledger types
-export function safeJSONString(obj: object): string {
-    // hacky but just doing it manually since otherwise: 'string' can't be used to index type '{}'
-    // let newObj = {}
-    // for (let [key, val] of Object.entries(obj)) {
-    //     if (typeof val == 'bigint') {
-    //         newObj[key] = Number(val);
-    //     } else {
-    //         newObj[key] = val;
-    //     }
-    // }
-    // return JSON.stringify(newObj);
-    if (typeof obj == 'bigint') {
-        return Number(obj).toString();
-    } else if (Array.isArray(obj)) {
-        let str = '[';
-        let innerFirst = true;
-        for (let i = 0; i < obj.length; ++i) {
-            if (!innerFirst) {
-                str += ', ';
-            }
-            innerFirst = false;
-            str += safeJSONString(obj[i]);
-        }
-        str += ']';
-        return str;
-    } else if (typeof obj == 'object') {
-        let entries = Object.entries(obj);
-        // this allows us to print Map properly
-        let len = ('length' in obj ? obj.length : undefined) ?? ('size' in obj ? obj.size : undefined) ?? entries.length;;
-        if ('entries' in obj && typeof obj.entries === "function") {
-            entries = obj.entries();
-        }
-        let str = `[${len}]{`;
-        let first = true;
-        for (let [key, val] of entries) {
-            if (!first) {
-                str += ', ';
-            }
-            first = false;
-            str += `"${key}": ${safeJSONString(val)}`;
-        }
-        str += '}';
-        return str;
-    }
-    //logger.debugging.debug(`safeJsonString(${typeof obj}): ${JSON.stringify(obj)}`);
-    return JSON.stringify(obj);
-}
-
 export function rootObject(obj: Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform): Phaser.GameObjects.Components.Transform {
     while (obj.parentContainer != undefined) {
         obj = obj.parentContainer;
