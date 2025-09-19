@@ -301,19 +301,19 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
 }
 
 export pure circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
-    const color = rng_mod_6(rng[0]);
-    const trigger1 = color != 0 && rng_mod_3(rng[1]) == 0;
-    const trigger2 = color != 1 && rng_mod_3(rng[2]) == 0;
-    const trigger3 = color != 2 && rng_mod_3(rng[3]) == 0;
+    const color = rng_mod_6(0/*rng[0]*/);
+    const trigger1 = color != 0 && rng_mod_3(0/*rng[1]*/) == 0;
+    const trigger2 = color != 1 && rng_mod_3(0/*rng[2]*/) == 0;
+    const trigger3 = color != 2 && rng_mod_3(0/*rng[3]*/) == 0;
     const main_factor = difficulty * (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1);
-    const main_effect = random_effect(rng[4], main_factor as Uint<32>);
+    const main_effect = random_effect(0/*rng[4]*/, main_factor as Uint<32>);
     const trigger_factor = (2 * difficulty) as Uint<32>;
     return Ability {
         some<Effect>(main_effect),
         [
-            trigger1 ? some<Effect>(random_effect(rng[5], trigger_factor)) : none<Effect>(),
-            trigger2 ? some<Effect>(random_effect(rng[6], trigger_factor)) : none<Effect>(),
-            trigger3 ? some<Effect>(random_effect(rng[7], trigger_factor)) : none<Effect>()
+            trigger1 ? some<Effect>(random_effect(0/*rng[5]*/, trigger_factor)) : none<Effect>(),
+            trigger2 ? some<Effect>(random_effect(0/*rng[6]*/, trigger_factor)) : none<Effect>(),
+            trigger3 ? some<Effect>(random_effect(0/*rng[7]*/, trigger_factor)) : none<Effect>()
         ],
         color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>()
     };
@@ -371,7 +371,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    const rng = (get_player_rng() as Vector<32, Uint<8>>);
+    //const rng = (get_player_rng() as Vector<32, Uint<8>>);
     // TODO: check block height here
     const battle_config = BattleConfig {
         quest.level,
@@ -380,7 +380,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
         quest.loadout
     };
     const battle_id = derive_battle_id(battle_config);
-    active_battle_states.insert(battle_id, init_battlestate(rng[0], battle_config));
+    active_battle_states.insert(battle_id, init_battlestate(0/*rng[0]*/, battle_config));
     active_battle_configs.insert(battle_id, battle_config);
 
     quests.remove(disclose(quest_id));

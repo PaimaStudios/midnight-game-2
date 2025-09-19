@@ -248,7 +248,7 @@ export class Game2API implements DeployedGame2API {
                     }
                     return progressByBiomes;
                 };
-                return {
+                const newState = {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
                     quests: new Map(ledgerState.quests),
@@ -259,6 +259,10 @@ export class Game2API implements DeployedGame2API {
                     bosses: extractBossesFromLedgerState(),
                     playerBossProgress: extractPlayerBossProgressFromLedgerState(),
                 };
+                // can't use regular logging from this module
+                // TODO: remove this once we're done debugging the on-chain stuff
+                console.log(`newState = ${safeJSONString(newState)}`);
+                return newState;
             },
         );
     }
