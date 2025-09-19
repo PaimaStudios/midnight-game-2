@@ -2,6 +2,30 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 import wasm from 'vite-plugin-wasm';
+import { execSync } from 'child_process';
+import path from 'path';
+
+// Plugin to copy contract artifacts after each build
+const copyContractArtifacts = () => {
+  return {
+    name: 'copy-contract-artifacts',
+    writeBundle() {
+      try {
+        const contractKeysPath = path.resolve('../contract/dist/managed/game2/keys');
+        const contractZkirPath = path.resolve('../contract/dist/managed/game2/zkir');
+        const distKeysPath = path.resolve('./dist/keys');
+        const distZkirPath = path.resolve('./dist/zkir');
+
+        console.log('Copying contract artifacts...');
+        execSync(`cp -r "${contractKeysPath}" "${distKeysPath}"`);
+        execSync(`cp -r "${contractZkirPath}" "${distZkirPath}"`);
+        console.log('Contract artifacts copied successfully');
+      } catch (error) {
+        console.warn('Failed to copy contract artifacts:', error.message);
+      }
+    }
+  };
+};
 
 // https://github.com/vitejs/vite/blob/ec7ee22cf15bed05a6c55693ecbac27cfd615118/packages/vite/src/node/plugins/workerImportMetaUrl.ts#L127-L128
 const workerImportMetaUrlRE =
@@ -19,7 +43,8 @@ export default defineConfig({
     react({
       include: "**/*.tsx",
     }),
-    viteCommonjs()
+    viteCommonjs(),
+    copyContractArtifacts()
   ],
   optimizeDeps: {
     esbuildOptions: {
@@ -34,7 +59,7 @@ export default defineConfig({
       {
         name: "foo",
         enforce: "pre",
-        transform(code, id) {
+        transform(code) {
           if (
             code.includes("new Worker") &&
             code.includes("new URL") &&
