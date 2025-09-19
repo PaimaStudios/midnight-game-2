@@ -233,9 +233,32 @@ export class StartBattleMenu extends Phaser.Scene {
         if (raw != null) {
             this.clearSelectedAbilities();
             const ids: bigint[] = raw.split(',').map((s) => BigInt(s));
-            const children = ids
-                .map((id) => this.inactiveAbilityPanel?.getChildren().find((c) => pureCircuits.derive_ability_id(getAbility(c)) == id))
-                .filter((c) => c != undefined);
+            const children: Phaser.GameObjects.GameObject[] = [];
+
+            // Track how many of each ability type we've already consumed
+            const consumedCounts = new Map<bigint, number>();
+            const inactiveChildren = this.inactiveAbilityPanel?.getChildren() || [];
+
+            for (const targetId of ids) {
+                const currentConsumed = consumedCounts.get(targetId) || 0;
+
+                // Find the (currentConsumed+1)th occurrence of this ability type
+                let foundCount = 0;
+                const matchingChild = inactiveChildren.find((c) => {
+                    const abilityId = pureCircuits.derive_ability_id(getAbility(c));
+                    if (abilityId === targetId) {
+                        foundCount++;
+                        return foundCount === currentConsumed + 1;
+                    }
+                    return false;
+                });
+
+                if (matchingChild) {
+                    children.push(matchingChild);
+                    consumedCounts.set(targetId, currentConsumed + 1);
+                }
+            }
+
             logger.ui.info(`Loaded ${children.length} / ${ids.length} abilities from '${key}'`);
             children.forEach((c) => this.transferAbilityBetweenPanels(c as Phaser.GameObjects.Container));
         }
