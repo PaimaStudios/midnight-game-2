@@ -178,7 +178,6 @@ export class Game2API implements DeployedGame2API {
             ],
             // ...and combine them to produce the required derived state.
             (ledgerState, privateState) => {
-                console.log(`========= NEW STATE RECEIVED ${ledgerState.players.size()} - ${ledgerState.player_abilities.size()} ==========`);
                 const playerId = pureCircuits.derive_player_pub_key(privateState.secretKey);
                 // we can't index by Level directly so we map by biome then difficulty and add an extra map (for both levels + bosses)
                 // levels

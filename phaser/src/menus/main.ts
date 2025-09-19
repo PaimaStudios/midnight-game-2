@@ -235,12 +235,10 @@ export class TestMenu extends Phaser.Scene {
                 loader.setText("Submitting Proof");
                 this.events.on('stateChange', () => {
                     logger.gameState.info('Registered new player');
-                    console.log(`---stopping loader---`);
                     this.scene.resume().stop('Loader');
                 });
                 this.api!.register_new_player().then(() => {
                     this.errorText?.setText('');
-                    console.log(`---register new player---`);
                     loader.setText("Waiting on chain update");
                     
                 }).catch((e) => {
