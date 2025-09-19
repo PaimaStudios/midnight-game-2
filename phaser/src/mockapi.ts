@@ -224,7 +224,7 @@ export class MockGame2API implements DeployedGame2API {
                 this.mockState.bosses.set(level.biome, bossesByBiome);
             }
             bossesByBiome.set(level.difficulty, boss);
-        }, 10);
+        }, 5);
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
@@ -240,7 +240,7 @@ export class MockGame2API implements DeployedGame2API {
                 byBiome.set(level.difficulty, byDifficulty);
             }
             byDifficulty.set(BigInt(byDifficulty.size), enemies);
-        }, 10);
+        }, 5);
     }
 
 
