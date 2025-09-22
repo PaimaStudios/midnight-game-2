@@ -263,7 +263,7 @@ export class MockGame2API implements DeployedGame2API {
 
     private response<T>(body: () => T, delay: number = MOCK_DELAY): Promise<T> {
         return new Promise((resolve, reject) => setTimeout(() => {
-            const returnBeforeState = false;//Math.random() > 0.5;
+            const returnBeforeState = Math.random() > 0.5;
             try {
                 const ret = body();
                 if (returnBeforeState) {
