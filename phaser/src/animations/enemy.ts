@@ -12,11 +12,11 @@ export const ENEMY_ANIMATION_DURATIONS = {
 
 export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
-    COYOTE = 'coyote',
-    SNOWMAN = 'snowman',
     PYRAMID = 'pyramid',
     FIRE_SPRITE = 'fire-sprite',
     ICE_GOLEM = 'ice-golem',
+    COYOTE = 'coyote',
+    SNOWMAN = 'snowman',
     BOSS_DRAGON = 'boss-dragon',
     BOSS_ENIGMA = 'boss-enigma',
 }
@@ -24,11 +24,11 @@ export enum SPRITE_SHEET_ENEMIES {
 // Configuration for enemy frame counts
 const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: number[] }> = {
     [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2, attackFrames: [2] },
-    [SPRITE_SHEET_ENEMIES.COYOTE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2, attackFrames: [2] },
-    [SPRITE_SHEET_ENEMIES.PYRAMID]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.COYOTE]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.PYRAMID]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7] },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6, attackFrames: [6, 7, 8, 8, 9, 6] },
 };
