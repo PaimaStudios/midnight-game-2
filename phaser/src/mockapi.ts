@@ -5,8 +5,8 @@
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
-import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, Level, EnemiesConfig, PlayerLoadout, pureCircuits, BOSS_TYPE } from "game2-contract";
+import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
+import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 import { logger } from "./main";
@@ -224,7 +224,7 @@ export class MockGame2API implements DeployedGame2API {
                 this.mockState.bosses.set(level.biome, bossesByBiome);
             }
             bossesByBiome.set(level.difficulty, boss);
-        }, 10);
+        }, 5);
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
@@ -240,7 +240,7 @@ export class MockGame2API implements DeployedGame2API {
                 byBiome.set(level.difficulty, byDifficulty);
             }
             byDifficulty.set(BigInt(byDifficulty.size), enemies);
-        }, 10);
+        }, 5);
     }
 
 
@@ -263,15 +263,23 @@ export class MockGame2API implements DeployedGame2API {
 
     private response<T>(body: () => T, delay: number = MOCK_DELAY): Promise<T> {
         return new Promise((resolve, reject) => setTimeout(() => {
+            const returnBeforeState = Math.random() > 0.5;
             try {
                 const ret = body();
-                resolve(ret);
+                if (returnBeforeState) {
+                    resolve(ret);
+                } else {
+                    this.subscriber?.next(this.mockState);
+                    setTimeout(() => resolve(ret), delay);
+                }
             } catch (e) {
                 reject(e);
             }
-            setTimeout(() => {
-                this.subscriber?.next(this.mockState);
-            }, delay);
+            if (returnBeforeState) {
+                setTimeout(() => {
+                    this.subscriber?.next(this.mockState);
+                }, delay);
+            }
         }, delay));
     }
 }

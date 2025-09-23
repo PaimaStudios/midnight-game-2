@@ -5,13 +5,13 @@
  * 
  * This contains a list of active quests as well as buttons to initiate new quests or new battles.
  */
-import { DeployedGame2API, Game2DerivedState } from "game2-api";
+import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { BrowserDeploymentManager } from "../wallet";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, safeJSONString } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Color, colorToNumber } from "../constants/colors";
 import { ShopMenu } from "./shop";
 import { createSpiritAnimations } from "../animations/spirit";
@@ -235,13 +235,14 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
                 loader.setText("Submitting Proof");
+                this.events.on('stateChange', () => {
+                    logger.gameState.info('Registered new player');
+                    this.scene.resume().stop('Loader');
+                });
                 this.api!.register_new_player().then(() => {
                     this.errorText?.setText('');
                     loader.setText("Waiting on chain update");
-                    this.events.on('stateChange', () => {
-                        logger.gameState.info('Registered new player');
-                        this.scene.resume().stop('Loader');
-                    });
+                    
                 }).catch((e) => {
                     this.errorText?.setText('Error Registering Player. Try again...');
                     logger.network.error(`Error registering new player: ${e}`);

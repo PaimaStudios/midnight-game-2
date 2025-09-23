@@ -1,6 +1,6 @@
-import { Game2DerivedState } from "game2-api";
+import { Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits } from "game2-contract";
-import { safeJSONString, logger } from '../main';
+import { logger } from '../main';
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks
