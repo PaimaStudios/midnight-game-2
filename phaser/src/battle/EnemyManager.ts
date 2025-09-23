@@ -5,18 +5,10 @@ import { GAME_WIDTH } from "../main";
 import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 import { Def } from "../constants/def";
+import { SPRITE_SHEET_ENEMIES } from "../animations/enemy";
 
-const ENEMY_TEXTURES = [
-    'enemy-goblin',
-    'enemy-fire-sprite',
-    'enemy-ice-golem',
-    'enemy-snowman'
-];
-
-const BOSS_TEXTURES = [
-    'enemy-boss-dragon',
-    'enemy-boss-enigma'
-];
+// Generate texture names from enemy constants
+const ENEMY_TEXTURES = Object.values(SPRITE_SHEET_ENEMIES).map(enemy => `enemy-${enemy}`);
 
 type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
 
@@ -42,7 +34,6 @@ export class Actor extends Phaser.GameObjects.Container {
         if (stats != null) {
             let texture = ENEMY_TEXTURES[Math.min(ENEMY_TEXTURES.length - 1, Number(stats.enemy_type))];
             if (stats.boss_type == BOSS_TYPE.boss) {
-                texture = BOSS_TEXTURES[Math.min(BOSS_TEXTURES.length - 1, Number(stats.enemy_type))];
                 healtBarYOffset = 80;  // Move healthbar for large enemies (bosses)
             }
             

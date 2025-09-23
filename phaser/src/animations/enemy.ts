@@ -12,6 +12,7 @@ export const ENEMY_ANIMATION_DURATIONS = {
 
 export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
+    COYOTE = 'coyote',
     SNOWMAN = 'snowman',
     FIRE_SPRITE = 'fire-sprite',
     ICE_GOLEM = 'ice-golem',
@@ -22,6 +23,7 @@ export enum SPRITE_SHEET_ENEMIES {
 // Configuration for enemy frame counts
 const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: number[] }> = {
     [SPRITE_SHEET_ENEMIES.GOBLIN]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.COYOTE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2, attackFrames: [2] },
@@ -33,7 +35,8 @@ const defaultFameConfig = { idleFrames: 2 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
     // Check if animations already exist to avoid duplicate warnings
-    if (scene.anims.exists('goblin-idle')) {
+    const firstEnemyType = Object.values(SPRITE_SHEET_ENEMIES)[0];
+    if (scene.anims.exists(`${firstEnemyType}-idle`)) {
         return; // Animations already created
     }
     
