@@ -160,7 +160,7 @@ export class TestMenu extends Phaser.Scene {
                     if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
                         logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
                     }
-                    this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deeploy', 10, () => {
+                    this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
                         logger.network.info('~deploying~');
                         this.deployProvider.create().then((api) => {
                             logger.network.info('==========GOT API========');
