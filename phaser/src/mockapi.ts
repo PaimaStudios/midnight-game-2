@@ -55,7 +55,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public register_new_player(): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             this.mockState.player = {
                 gold: BigInt(0),
                 rng: randomBytes(32)
@@ -74,7 +74,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
-        return this.response(() => {
+        return this.response(async () => {
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
             const battleConfig = configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
@@ -114,6 +114,9 @@ export class MockGame2API implements DeployedGame2API {
                         }
                     }
                 }
+                console.log(`battleState.round = ${battleState.round}`);
+                battleState.round += BigInt(1);
+                console.log(`   to ${battleState.round}`);
                 if (ret != undefined) {
                     this.addRewards(ret);
                     // Check if this was a boss battle and mark completion
@@ -129,13 +132,14 @@ export class MockGame2API implements DeployedGame2API {
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
+                console.log(`combat_round state ----> ${this.mockState.activeBattleStates.get(battle_id) == undefined ? 'null' : safeJSONString(this.mockState.activeBattleStates.get(battle_id)!)}`);
                 return ret;
             });
         });
     }
 
     public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
-        return this.response(() => {
+        return this.response(async () => {
             const quest = {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
@@ -151,7 +155,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
-        return this.response(() => {
+        return this.response(async () => {
             // Check if already marked as ready
             let isReady = this.questReadiness.get(quest_id) ?? false;
             
@@ -171,7 +175,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
-        return this.response(() => {
+        return this.response(async () => {
             // Use the stored readiness state instead of new random
             if (this.questReadiness.get(quest_id) ?? false) {
                 const quest = this.mockState.quests.get(quest_id)!;
@@ -188,13 +192,7 @@ export class MockGame2API implements DeployedGame2API {
 
                 const battleId = pureCircuits.derive_battle_id(battle_config);
 
-                this.mockState.activeBattleStates.set(battleId, {
-                    deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
-                    player_hp: BigInt(100),
-                    enemy_hp_0: battle_config.enemies.stats[0].hp,
-                    enemy_hp_1: battle_config.enemies.stats[1].hp,
-                    enemy_hp_2: battle_config.enemies.stats[2].hp,
-                });
+                this.mockState.activeBattleStates.set(battleId, pureCircuits.init_battlestate(BigInt(Phaser.Math.Between(0, 255)), battle_config));
                 this.mockState.activeBattleConfigs.set(battleId, battle_config);
 
                 return battleId;
@@ -204,7 +202,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async sell_ability(ability: Ability): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
             const oldCount = this.mockState.playerAbilities.get(id)!;
             if (oldCount > BigInt(1)) {
@@ -217,7 +215,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             let bossesByBiome = this.mockState.bosses.get(level.biome);
             if (bossesByBiome == undefined) {
                 bossesByBiome = new Map();
@@ -228,7 +226,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             let byBiome = this.mockState.levels.get(level.biome);
             if (byBiome == undefined) {
                 byBiome = new Map();
@@ -261,11 +259,13 @@ export class MockGame2API implements DeployedGame2API {
         return abilityId;
     }
 
-    private response<T>(body: () => T, delay: number = MOCK_DELAY): Promise<T> {
-        return new Promise((resolve, reject) => setTimeout(() => {
+    private async response<T>(body: () => Promise<T>, delay: number = MOCK_DELAY): Promise<T> {
+        return new Promise((resolve, reject) => setTimeout(async () => {
             const returnBeforeState = Math.random() > 0.5;
+            console.log(`returnBeforeState = ${returnBeforeState}`);
             try {
-                const ret = body();
+                const ret = await body();
+                console.log(`   post body() state: ${safeJSONString(this.mockState)}`);
                 if (returnBeforeState) {
                     resolve(ret);
                 } else {

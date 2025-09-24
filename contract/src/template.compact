@@ -210,6 +210,8 @@ export pure circuit derive_quest_id(quest: QuestConfig): Field {
 }
 
 export struct BattleState {
+    /// Current round. This allows us to ignore outdated state
+    round: Uint<32>;
     deck_indices: Vector<3, Uint<32>>;
     player_hp: Uint<32>;
     enemy_hp_0: Uint<32>;
@@ -435,6 +437,7 @@ pure circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
 
 export pure circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
     return BattleState {
+        0,
         random_deck_indices(rng),
         100,// TODO: source from somewhere - also do we want multiple people?
         battle.enemies.stats[0].hp,
@@ -518,7 +521,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             0,
             none<Field>()
         });
-    }/* else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+    } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
@@ -555,7 +558,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         active_battle_states.remove(disclose(battle_id));
 
         return some<BattleRewards>(reward);
-    }*/
+    }
     return none<BattleRewards>();
 }
 
@@ -594,6 +597,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     // CODE-GENERATION END
 
     return BattleState {
+        (old_state.round + 1) as Uint<32>,
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
         player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
         new_enemy_dmg_0,
