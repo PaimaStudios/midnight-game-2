@@ -1,27 +1,46 @@
-import { defineConfig } from "vite";
+import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 import wasm from 'vite-plugin-wasm';
-import { execSync } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
-// Plugin to copy contract artifacts after each build
-const copyContractArtifacts = () => {
+// Plugin to copy contract artifacts as bundle assets (survives watch mode)
+const copyContractArtifacts = (): Plugin => {
   return {
     name: 'copy-contract-artifacts',
-    writeBundle() {
+    generateBundle() {
       try {
         const contractKeysPath = path.resolve('../contract/dist/managed/game2/keys');
         const contractZkirPath = path.resolve('../contract/dist/managed/game2/zkir');
-        const distKeysPath = path.resolve('./dist/keys');
-        const distZkirPath = path.resolve('./dist/zkir');
 
-        console.log('Copying contract artifacts...');
-        execSync(`cp -r "${contractKeysPath}" "${distKeysPath}"`);
-        execSync(`cp -r "${contractZkirPath}" "${distZkirPath}"`);
-        console.log('Contract artifacts copied successfully');
+        console.log('Adding contract artifacts to bundle...');
+
+        // Helper function to recursively add files
+        const addFilesToBundle = (sourceDir: string, targetDir: string) => {
+          if (fs.existsSync(sourceDir)) {
+            const files = fs.readdirSync(sourceDir, { recursive: true });
+            files.forEach(file => {
+              if (typeof file === 'string') {
+                const fullPath = path.join(sourceDir, file);
+                if (fs.statSync(fullPath).isFile()) {
+                  this.emitFile({
+                    type: 'asset',
+                    fileName: `${targetDir}/${file}`,
+                    source: fs.readFileSync(fullPath)
+                  });
+                }
+              }
+            });
+          }
+        };
+
+        addFilesToBundle(contractKeysPath, 'keys');
+        addFilesToBundle(contractZkirPath, 'zkir');
+
+        console.log('Contract artifacts added to bundle successfully');
       } catch (error) {
-        console.warn('Failed to copy contract artifacts:', error.message);
+        console.warn('Failed to add contract artifacts to bundle:', error instanceof Error ? error.message : String(error));
       }
     }
   };

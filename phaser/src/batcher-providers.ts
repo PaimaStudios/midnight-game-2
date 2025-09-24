@@ -91,7 +91,34 @@ export const initializeProviders = async (
 ): Promise<Game2Providers> => {
     logger.info("initializing batcher providers");
     await init();
-    await initThreadPool(navigator.hardwareConcurrency);
+    // Check if we should attempt thread pool initialization
+    const shouldTryWorkers = (() => {
+        // Skip workers in development/preview mode where they commonly fail
+        if (window.location.port === '4173' || window.location.port === '5173') {
+            logger.info("Skipping thread pool in dev/preview mode to avoid worker issues");
+            return false;
+        }
+
+        // Skip if Worker is not available
+        if (typeof Worker === 'undefined') {
+            logger.info("Worker not available, skipping thread pool");
+            return false;
+        }
+
+        return true;
+    })();
+
+    if (shouldTryWorkers) {
+        try {
+            const workerCount = Math.min(2, navigator.hardwareConcurrency);
+            await initThreadPool(workerCount);
+            logger.info("Thread pool initialized successfully with", workerCount, "workers");
+        } catch (error) {
+            logger.warn("Failed to initialize thread pool, continuing single-threaded. Error:", error);
+        }
+    } else {
+        logger.info("Thread pool initialization skipped, running single-threaded");
+    }
 
     const batcherAddress = await getBatcherAddress();
 
