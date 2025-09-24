@@ -1,4 +1,4 @@
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
@@ -24,6 +24,7 @@ export class ShopMenu extends Phaser.Scene {
     loader: Loader | undefined;
     topBar: TopBar | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
+    waitingForSell: boolean = false;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
         super("ShopMenu");
@@ -50,13 +51,20 @@ export class ShopMenu extends Phaser.Scene {
         this.onStateChange(this.state);
     }
 
+    shutdown() {
+        this.subscription?.unsubscribe();
+    }
+
     private onStateChange(state: Game2DerivedState) {
-        logger.gameState.debug(`ShopMenu.onStateChange(): ${safeJSONString(state)}`);
+        logger.gameState.debug(`ShopMenu.onStateChange(): ${JSON.stringify(state)}`);
 
         this.state = structuredClone(state);
-        if (this.loader != undefined) {
-            this.scene.resume().stop('Loader');
-            this.loader = undefined;
+        if (this.waitingForSell) {
+            this.waitingForSell = false;
+            if (this.loader != undefined) {
+                this.scene.resume().stop('Loader');
+                this.loader = undefined;
+            }
         }
 
         this.ui.forEach((o) => o.destroy());
@@ -82,9 +90,11 @@ export class ShopMenu extends Phaser.Scene {
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
                     this.loader.setText("Submitting Proof");
+                    this.waitingForSell = true; // Set this just before the API call
                     this.api.sell_ability(ability).then(() => {
                         this.loader?.setText("Waiting on chain update");
                     }).catch((e) => {
+                        this.waitingForSell = false;
                         this.errorText?.setText('Error Talking to the network. Try again...');
                         logger.network.error(`Error selling ability: ${e}`);
                         this.scene.resume().stop('Loader');
@@ -92,24 +102,19 @@ export class ShopMenu extends Phaser.Scene {
                 }
             });
 
-            // Grey out starting abilities and add tooltips
+            const spiritWidget = new SpiritWidget(this, 0, -120, ability);
             if (isStarting) {
+                // Grey out starting abilities and add tooltips
                 sellButton.setEnabled(false);
-                // Grey out the ability widget and spirit widget
                 abilityWidget.setAlpha(0.5);
+                spiritWidget.setAlpha(0.5);
 
                 // Add tooltips to all interactive elements
                 addTooltip(this, abilityWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
                 addTooltip(this, sellButton, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
-            }
-
-            abilityContainer.add(sellButton);
-            const spiritWidget = new SpiritWidget(this, 0, -120, ability);
-            if (isStarting) {
-                spiritWidget.setAlpha(0.5);
-                // Add tooltip to spirit widget too
                 addTooltip(this, spiritWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
             }
+            abilityContainer.add(sellButton);
             abilityContainer.add(spiritWidget);
             this.ui.push(abilityContainer);
 
