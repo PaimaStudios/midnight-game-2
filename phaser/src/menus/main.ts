@@ -185,7 +185,6 @@ export class TestMenu extends Phaser.Scene {
         }
     }
 
-
     private initApi(api: DeployedGame2API) {
         this.api = api;
         this.buttons.forEach((b) => b.destroy());
