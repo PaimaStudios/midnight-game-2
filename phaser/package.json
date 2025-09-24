@@ -13,7 +13,7 @@
     "build-undeployed": "tsc && vite build --mode undeployed && cp -r ../contract/dist/managed/game2/keys ./dist/keys && cp -r ../contract/dist/managed/game2/zkir ./dist/zkir",
     "build-batcher": "tsc && vite build --mode batcher-undeployed && cp -r ../contract/dist/managed/game2/keys ./dist/keys && cp -r ../contract/dist/managed/game2/zkir ./dist/zkir",
     "build-mock": "tsc && vite build --mode mock",
-    "preview": "tsc && vite build --watch --mode testnet & vite preview",
+    "preview": "tsc && vite build & vite preview",
     "workaround": "vite preview",
     "lint": "eslint ./src",
     "test": "jest --passWithNoTests"
