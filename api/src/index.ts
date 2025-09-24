@@ -32,17 +32,8 @@ import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 /** @internal */
 const game2ContractInstance: Game2Contract = new Contract(witnesses);
 
+// only converts bigint, but this is the only problem we have with printing ledger types
 export function safeJSONString(obj: object): string {
-    // hacky but just doing it manually since otherwise: 'string' can't be used to index type '{}'
-    // let newObj = {}
-    // for (let [key, val] of Object.entries(obj)) {
-    //     if (typeof val == 'bigint') {
-    //         newObj[key] = Number(val);
-    //     } else {
-    //         newObj[key] = val;
-    //     }
-    // }
-    // return JSON.stringify(newObj);
     if (typeof obj == 'bigint') {
         return Number(obj).toString();
     } else if (Array.isArray(obj)) {
@@ -58,9 +49,15 @@ export function safeJSONString(obj: object): string {
         str += ']';
         return str;
     } else if (typeof obj == 'object') {
-        let str = '{';
+        let entries = Object.entries(obj);
+        // this allows us to print Map properly
+        let len = ('length' in obj ? obj.length : undefined) ?? ('size' in obj ? obj.size : undefined) ?? entries.length;;
+        if ('entries' in obj && typeof obj.entries === "function") {
+            entries = obj.entries();
+        }
+        let str = `[${len}]{`;
         let first = true;
-        for (let [key, val] of Object.entries(obj)) {
+        for (let [key, val] of entries) {
             if (!first) {
                 str += ', ';
             }
@@ -250,7 +247,7 @@ export class Game2API implements DeployedGame2API {
                     }
                     return progressByBiomes;
                 };
-                return {
+                const newState = {
                     activeBattleConfigs: new Map(ledgerState.active_battle_configs),
                     activeBattleStates: new Map(ledgerState.active_battle_states),
                     quests: new Map(ledgerState.quests),
@@ -261,6 +258,10 @@ export class Game2API implements DeployedGame2API {
                     bosses: extractBossesFromLedgerState(),
                     playerBossProgress: extractPlayerBossProgressFromLedgerState(),
                 };
+                // can't use regular logging from this module
+                // TODO: remove this once we're done debugging the on-chain stuff
+                console.log(`newState = ${safeJSONString(newState)}`);
+                return newState;
             },
         );
     }
