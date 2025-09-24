@@ -46,7 +46,7 @@ const copyContractArtifacts = (): Plugin => {
   };
 };
 
-// Plugin to inject worker control meta tag based on environment
+// Plugin to control worker behavior based on environment
 // This allows us to disable WASM workers in development while keeping them enabled in production
 const injectWorkersMeta = (): Plugin => {
   return {
@@ -55,14 +55,14 @@ const injectWorkersMeta = (): Plugin => {
       const disableWorkers = process.env.VITE_DISABLE_WORKERS === 'true';
 
       if (disableWorkers) {
-        // Inject meta tag to disable workers - this prevents WASM worker loading issues in development
-        const metaTag = '<meta name="enable-workers" content="false" />';
+        // Replace the default "true" with "false" to disable workers in development
         return html.replace(
-          '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
-          `<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    ${metaTag}`
+          '<meta name="enable-workers" content="true" />',
+          '<meta name="enable-workers" content="false" />'
         );
       }
 
+      // Keep the default "true" value for production
       return html;
     }
   };
