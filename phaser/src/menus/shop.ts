@@ -12,6 +12,9 @@ import { TestMenu } from "./main";
 import { addScaledImage } from "../utils/scaleImage";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { TopBar } from "../widgets/top-bar";
+import { addTooltip } from "../widgets/tooltip";
+
+const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be sold";
 
 export class ShopMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -63,27 +66,51 @@ export class ShopMenu extends Phaser.Scene {
         this.ui.push(scrollablePanel.panel);
 
         const abilityButtonWidth = 100;
-        const abilities = sortedAbilities(state).filter((a) => !isStartingAbility(a));
+        const abilities = sortedAbilities(state); // Show all abilities, not just sellable ones
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             const value = Number(pureCircuits.ability_value(ability));
+            const isStarting = isStartingAbility(ability);
 
             const abilityWidget = new AbilityWidget(this, 0, 80, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
             abilityContainer.add(abilityWidget);
-            abilityContainer.add(new Button(this, 0, -39, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
-                this.scene.pause().launch('Loader');
-                this.loader = this.scene.get('Loader') as Loader;
-                this.loader.setText("Submitting Proof");
-                this.api.sell_ability(ability).then(() => {
-                    this.loader?.setText("Waiting on chain update");
-                }).catch((e) => {
-                    this.errorText?.setText('Error Talking to the network. Try again...');
-                    logger.network.error(`Error selling ability: ${e}`);
-                    this.scene.resume().stop('Loader');
-                });
-            }));
-            abilityContainer.add(new SpiritWidget(this, 0, -120, ability));
+
+            // Create sell button - disabled and greyed out for starting abilities
+            const sellButton = new Button(this, 0, -39, abilityButtonWidth - 8, 64, `Sell\n$${value}`, 8, () => {
+                if (!isStarting) {
+                    this.scene.pause().launch('Loader');
+                    this.loader = this.scene.get('Loader') as Loader;
+                    this.loader.setText("Submitting Proof");
+                    this.api.sell_ability(ability).then(() => {
+                        this.loader?.setText("Waiting on chain update");
+                    }).catch((e) => {
+                        this.errorText?.setText('Error Talking to the network. Try again...');
+                        logger.network.error(`Error selling ability: ${e}`);
+                        this.scene.resume().stop('Loader');
+                    });
+                }
+            });
+
+            // Grey out starting abilities and add tooltips
+            if (isStarting) {
+                sellButton.setEnabled(false);
+                // Grey out the ability widget and spirit widget
+                abilityWidget.setAlpha(0.5);
+
+                // Add tooltips to all interactive elements
+                addTooltip(this, abilityWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
+                addTooltip(this, sellButton, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
+            }
+
+            abilityContainer.add(sellButton);
+            const spiritWidget = new SpiritWidget(this, 0, -120, ability);
+            if (isStarting) {
+                spiritWidget.setAlpha(0.5);
+                // Add tooltip to spirit widget too
+                addTooltip(this, spiritWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
+            }
+            abilityContainer.add(spiritWidget);
             this.ui.push(abilityContainer);
 
             // Add new child to scrollable panel
