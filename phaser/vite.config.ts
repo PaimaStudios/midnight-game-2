@@ -46,6 +46,28 @@ const copyContractArtifacts = (): Plugin => {
   };
 };
 
+// Plugin to inject worker control meta tag based on environment
+// This allows us to disable WASM workers in development while keeping them enabled in production
+const injectWorkersMeta = (): Plugin => {
+  return {
+    name: 'inject-workers-meta',
+    transformIndexHtml(html) {
+      const disableWorkers = process.env.VITE_DISABLE_WORKERS === 'true';
+
+      if (disableWorkers) {
+        // Inject meta tag to disable workers - this prevents WASM worker loading issues in development
+        const metaTag = '<meta name="enable-workers" content="false" />';
+        return html.replace(
+          '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+          `<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    ${metaTag}`
+        );
+      }
+
+      return html;
+    }
+  };
+};
+
 // https://github.com/vitejs/vite/blob/ec7ee22cf15bed05a6c55693ecbac27cfd615118/packages/vite/src/node/plugins/workerImportMetaUrl.ts#L127-L128
 const workerImportMetaUrlRE =
   /\bnew\s+(?:Worker|SharedWorker)\s*\(\s*(new\s+URL\s*\(\s*('[^']+'|"[^"]+"|`[^`]+`)\s*,\s*import\.meta\.url\s*\))/g;
@@ -63,7 +85,8 @@ export default defineConfig({
       include: "**/*.tsx",
     }),
     viteCommonjs(),
-    copyContractArtifacts()
+    copyContractArtifacts(),
+    injectWorkersMeta()
   ],
   optimizeDeps: {
     esbuildOptions: {

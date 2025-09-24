@@ -91,20 +91,24 @@ export const initializeProviders = async (
 ): Promise<Game2Providers> => {
     logger.info("initializing batcher providers");
     await init();
-    // Check if we should attempt thread pool initialization
+    // Check if we should attempt thread pool initialization for WASM operations
+    // Workers provide better performance but can cause issues in development environments
     const shouldTryWorkers = (() => {
-        // Skip workers in development/preview mode where they commonly fail
-        if (window.location.port === '4173' || window.location.port === '5173') {
-            logger.info("Skipping thread pool in dev/preview mode to avoid worker issues");
-            return false;
-        }
-
         // Skip if Worker is not available
         if (typeof Worker === 'undefined') {
             logger.info("Worker not available, skipping thread pool");
             return false;
         }
 
+        // Check if workers are explicitly disabled via meta tag (injected by build process)
+        const workersMeta = document.querySelector('meta[name="enable-workers"]');
+        if (workersMeta && workersMeta.getAttribute('content') === 'false') {
+            logger.info("Workers disabled via meta tag");
+            return false;
+        }
+
+        // Enable workers by default for optimal performance
+        logger.info("Workers enabled by default");
         return true;
     })();
 
