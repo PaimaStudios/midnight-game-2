@@ -10,7 +10,9 @@ const ENEMY_TEXTURES = [
     'enemy-goblin',
     'enemy-fire-sprite',
     'enemy-ice-golem',
-    'enemy-snowman'
+    'enemy-snowman',
+    'enemy-coyote',
+    'enemy-pyramid',
 ];
 
 const BOSS_TEXTURES = [
