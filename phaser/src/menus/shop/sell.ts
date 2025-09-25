@@ -1,22 +1,22 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
-import { AbilityWidget, SpiritWidget } from "../widgets/ability";
-import { createSpiritAnimations } from "../animations/spirit";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { Button } from "../widgets/button";
-import { Loader } from "./loader";
-import { Color } from "../constants/colors";
-import { isStartingAbility, sortedAbilities } from "./pre-battle";
-import { TestMenu } from "./main";
-import { addScaledImage } from "../utils/scaleImage";
-import { ScrollablePanel } from "../widgets/scrollable";
-import { TopBar } from "../widgets/top-bar";
-import { addTooltip } from "../widgets/tooltip";
+import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
+import { createSpiritAnimations } from "../../animations/spirit";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
+import { Button } from "../../widgets/button";
+import { Loader } from "../loader";
+import { Color } from "../../constants/colors";
+import { isStartingAbility, sortedAbilities } from "../pre-battle";
+import { addScaledImage } from "../../utils/scaleImage";
+import { ScrollablePanel } from "../../widgets/scrollable";
+import { TopBar } from "../../widgets/top-bar";
+import { addTooltip } from "../../widgets/tooltip";
+import { ShopMenu } from "./shop";
 
 const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be sold";
 
-export class ShopMenu extends Phaser.Scene {
+export class SellSpiritsMenu extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
     state: Game2DerivedState;
@@ -27,7 +27,7 @@ export class ShopMenu extends Phaser.Scene {
     waitingForSell: boolean = false;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
-        super("ShopMenu");
+        super("SellSpiritsMenu");
         
         this.api = api;
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
@@ -43,10 +43,10 @@ export class ShopMenu extends Phaser.Scene {
 
         this.topBar = new TopBar(this, true, this.api, this.state)
             .back(() => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                this.scene.start('TestMenu');
-            }, 'Return to Hub');
+                this.scene.remove('ShopMenu');
+                this.scene.add('ShopMenu', new ShopMenu(this.api, this.state));
+                this.scene.start('ShopMenu');
+            }, 'Back to Shop');
 
         this.onStateChange(this.state);
     }

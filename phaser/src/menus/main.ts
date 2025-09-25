@@ -13,7 +13,7 @@ import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Color, colorToNumber } from "../constants/colors";
-import { ShopMenu } from "./shop";
+import { ShopMenu } from "./shop/shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
