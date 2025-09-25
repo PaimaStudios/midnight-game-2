@@ -15,6 +15,7 @@ import { addTooltip } from "../../widgets/tooltip";
 import { ShopMenu } from "./shop";
 
 const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be used for upgrading";
+const STARTING_SPIRITS_COUNT = 8;
 
 export class UpgradeSpiritsMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -66,10 +67,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.upgradeButton = new Button(
             this,
             GAME_WIDTH / 2,
-            GAME_HEIGHT - 80,
-            200,
-            50,
-            'Upgrade Spirit',
+            80,
+            150,
+            120,
+            'Upgrade\nSpirit',
             12,
             () => this.performUpgrade()
         ).setEnabled(false);
@@ -85,6 +86,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const slotY = GAME_HEIGHT * 0.35;
         const slotWidth = 120;
         const slotHeight = 160;
+        const titleOffsetY = 120;
 
         // Upgrading slot (left side)
         this.upgradingSlot = this.rexUI.add.roundRectangle(
@@ -101,7 +103,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.upgradingSlot.setInteractive().setData('slotType', 'upgrading');
 
         // Add label for upgrading slot
-        this.add.text(GAME_WIDTH * 0.3, slotY - 100, 'Upgrading Spirit',
+        this.add.text(GAME_WIDTH * 0.3, slotY - titleOffsetY, 'Upgrading Spirit',
             fontStyle(12, { color: Color.White })).setOrigin(0.5);
 
         // Sacrificing slot (right side)
@@ -119,12 +121,12 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.sacrificingSlot.setInteractive().setData('slotType', 'sacrificing');
 
         // Add label for sacrificing slot
-        this.add.text(GAME_WIDTH * 0.7, slotY - 100, 'Sacrificing Spirit',
+        this.add.text(GAME_WIDTH * 0.7, slotY - titleOffsetY, 'Sacrificing Spirit',
             fontStyle(12, { color: Color.White })).setOrigin(0.5);
     }
 
     private createSpiritsPanel() {
-        this.spiritPanel = new ScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT * 0.75, GAME_WIDTH*0.95, 200);
+        this.spiritPanel = new ScrollablePanel(this, GAME_WIDTH/2.0, GAME_HEIGHT * 0.8, GAME_WIDTH*0.95, 180);
         this.ui.push(this.spiritPanel.panel);
 
         // Enable drag functionality for the spirits panel
@@ -134,10 +136,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             },
             onDragEnd: () => {
                 // Reset any visual feedback
-            },
-            onDoubleClick: (panel, child) => {
-                // Try to place spirit in available slot
-                this.tryPlaceSpiritInSlot(child as Phaser.GameObjects.Container);
             }
         });
 
@@ -153,8 +151,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
     private setupSlotDropZones() {
         // Enable the slots as drop zones for Phaser's drag system
-        this.upgradingSlot.setInteractive().setData('drop', true);
-        this.sacrificingSlot.setInteractive().setData('drop', true);
+        this.upgradingSlot?.setInteractive().setData('drop', true);
+        this.sacrificingSlot?.setInteractive().setData('drop', true);
 
         // Add global drag event listener to the scene
         this.input.on('dragend', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dropped: boolean) => {
@@ -166,25 +164,29 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                 const dragEndY = pointer.y;
 
                 // Check upgrading slot bounds
-                const upgradingBounds = this.upgradingSlot.getBounds();
-                logger.ui.debug(`Upgrading slot bounds:`, upgradingBounds);
+                if (this.upgradingSlot) {
+                    const upgradingBounds = (this.upgradingSlot as any).getBounds();
+                    logger.ui.debug(`Upgrading slot bounds:`, upgradingBounds);
 
-                if (Phaser.Geom.Rectangle.Contains(upgradingBounds, dragEndX, dragEndY)) {
-                    logger.ui.debug('Drag ended over upgrading slot');
-                    this.handleSpiritDropOnSlot('upgrading', gameObject);
-                    this.animateSlotShrink(this.upgradingSlot);
-                    return;
+                    if (Phaser.Geom.Rectangle.Contains(upgradingBounds, dragEndX, dragEndY)) {
+                        logger.ui.debug('Drag ended over upgrading slot');
+                        this.handleSpiritDropOnSlot('upgrading', gameObject);
+                        this.animateSlotShrink(this.upgradingSlot);
+                        return;
+                    }
                 }
 
                 // Check sacrificing slot bounds
-                const sacrificingBounds = this.sacrificingSlot.getBounds();
-                logger.ui.debug(`Sacrificing slot bounds:`, sacrificingBounds);
+                if (this.sacrificingSlot) {
+                    const sacrificingBounds = (this.sacrificingSlot as any).getBounds();
+                    logger.ui.debug(`Sacrificing slot bounds:`, sacrificingBounds);
 
-                if (Phaser.Geom.Rectangle.Contains(sacrificingBounds, dragEndX, dragEndY)) {
-                    logger.ui.debug('Drag ended over sacrificing slot');
-                    this.handleSpiritDropOnSlot('sacrificing', gameObject);
-                    this.animateSlotShrink(this.sacrificingSlot);
-                    return;
+                    if (Phaser.Geom.Rectangle.Contains(sacrificingBounds, dragEndX, dragEndY)) {
+                        logger.ui.debug('Drag ended over sacrificing slot');
+                        this.handleSpiritDropOnSlot('sacrificing', gameObject);
+                        this.animateSlotShrink(this.sacrificingSlot);
+                        return;
+                    }
                 }
 
                 logger.ui.debug('Drag ended outside of slots');
@@ -272,50 +274,26 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private removeFromScrollablePanel(spiritContainer: Phaser.GameObjects.Container) {
-        logger.ui.debug('Attempting to remove spirit container from scrollable panel');
-
-        if (!this.spiritPanel) {
-            logger.ui.warn('No spirit panel available');
+        if (!this.spiritPanel || !this.spiritPanel.hasChild(spiritContainer)) {
             return;
         }
 
-        if (this.spiritPanel.hasChild(spiritContainer)) {
-            logger.ui.debug('Found spirit container in scrollable panel, removing...');
+        // Remove from the scrollable panel sizer
+        const sizer = this.spiritPanel.getPanelElement();
+        const items = (sizer as any).getElement?.('items');
 
-            // Remove from the scrollable panel sizer
-            const sizer = this.spiritPanel.getPanelElement();
-            const items = (sizer as any).getElement?.('items');
+        if (items && Array.isArray(items)) {
+            const wrappedChildIndex = items.findIndex((item: any) => {
+                const children = item.getAll();
+                return children.length > 0 && children[0] === spiritContainer;
+            });
 
-            if (items && Array.isArray(items)) {
-                const wrappedChildIndex = items.findIndex((item: any) => {
-                    // Access the inner child from the wrapper
-                    const children = item.getAll();
-                    if (children.length > 0) {
-                        return children[0] === spiritContainer;
-                    }
-                    return false;
-                });
-
-                if (wrappedChildIndex !== -1) {
-                    const wrappedChild = items[wrappedChildIndex];
-                    logger.ui.debug(`Found wrapped child at index ${wrappedChildIndex}, removing...`);
-
-                    // Remove the wrapped child from the sizer
-                    (sizer as any).remove(wrappedChild);
-                    this.spiritPanel.panel.layout();
-
-                    // Also destroy the spirit container to remove it visually
-                    spiritContainer.destroy();
-
-                    logger.ui.debug('Successfully removed spirit from scrollable panel');
-                } else {
-                    logger.ui.warn('Could not find wrapped child in items array');
-                }
-            } else {
-                logger.ui.warn('Could not access items array from sizer');
+            if (wrappedChildIndex !== -1) {
+                const wrappedChild = items[wrappedChildIndex];
+                (sizer as any).remove(wrappedChild);
+                this.spiritPanel.panel.layout();
+                spiritContainer.destroy();
             }
-        } else {
-            logger.ui.debug('Spirit container not found in scrollable panel');
         }
     }
 
@@ -347,20 +325,15 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             const ability = abilities[i];
             const isStarting = isStartingAbility(ability);
 
-            const abilityWidget = new AbilityWidget(this, 0, 2, ability);
-            const spiritWidget = new SpiritWidget(this, 0, -60, ability);
-            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
-
+            // Only create ability widgets for the scrollable panel
+            const abilityWidget = new AbilityWidget(this, 0, 0, ability);
+            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
             abilityContainer.add(abilityWidget);
-            abilityContainer.add(spiritWidget);
 
             if (isStarting) {
                 // Grey out starting abilities and add tooltips
                 abilityWidget.setAlpha(0.5);
-                spiritWidget.setAlpha(0.5);
-
                 addTooltip(this, abilityWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
-                addTooltip(this, spiritWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
             }
 
             // Add to scrollable panel
@@ -368,58 +341,30 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
     }
 
-    private tryPlaceSpiritInSlot(spiritContainer: Phaser.GameObjects.Container) {
-        let ability: Ability;
-        try {
-            ability = this.getAbilityFromContainer(spiritContainer);
-        } catch (error) {
-            logger.ui.error('Failed to extract ability from container in double-click:', error);
-            return;
-        }
-
-        if (isStartingAbility(ability)) {
-            return; // Can't use starting abilities
-        }
-
-        // Check if this exact spirit instance is already in use
-        if (this.upgradingSpiritContainer === spiritContainer) {
-            logger.ui.warn('This spirit instance is already being used for upgrading');
-            return;
-        }
-        if (this.sacrificingSpiritContainer === spiritContainer) {
-            logger.ui.warn('This spirit instance is already being used for sacrificing');
-            return;
-        }
-
-        // Try upgrading slot first, then sacrificing slot
-        if (!this.upgradingSpirit) {
-            this.removeFromScrollablePanel(spiritContainer);
-            this.placeSpiritInUpgradingSlot(spiritContainer, ability);
-        } else if (!this.sacrificingSpirit) {
-            this.removeFromScrollablePanel(spiritContainer);
-            this.placeSpiritInSacrificingSlot(spiritContainer, ability);
-        } else {
-            // Both slots are occupied, replace the upgrading slot by default
-            logger.ui.info('Both slots occupied, replacing upgrading slot');
-            this.returnSpiritToPanel(this.upgradingSpirit);
-            this.removeFromUpgradingSlot();
-            this.removeFromScrollablePanel(spiritContainer);
-            this.placeSpiritInUpgradingSlot(spiritContainer, ability);
-        }
-    }
 
 
     private placeSpiritInUpgradingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
         this.upgradingSpirit = ability;
         this.upgradingSpiritContainer = spiritContainer;
 
-        // Create a visual representation in the slot
-        const spiritWidget = new SpiritWidget(this, this.upgradingSlot!.x, this.upgradingSlot!.y, ability);
-        spiritWidget.setInteractive().on('pointerdown', () => {
-            this.removeFromUpgradingSlot();
-            this.returnSpiritToPanel(ability);
-        });
+        // Create an ability card representation in the slot
+        const abilityWidget = new AbilityWidget(this, (this.upgradingSlot as any).x, (this.upgradingSlot as any).y, ability);
+        abilityWidget.setInteractive()
+            .on('pointerover', () => {
+                (this.game.canvas as HTMLCanvasElement).style.cursor = 'pointer';
+            })
+            .on('pointerout', () => {
+                (this.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+            })
+            .on('pointerdown', () => {
+                this.removeFromUpgradingSlot();
+                this.returnSpiritToPanel(ability);
+            });
 
+        // Create a spirit display to the left of the upgrading slot
+        const spiritWidget = new SpiritWidget(this, (this.upgradingSlot as any).x - 100, (this.upgradingSlot as any).y, ability);
+
+        this.ui.push(abilityWidget);
         this.ui.push(spiritWidget);
         this.checkUpgradeButtonState();
     }
@@ -428,13 +373,24 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.sacrificingSpirit = ability;
         this.sacrificingSpiritContainer = spiritContainer;
 
-        // Create a visual representation in the slot
-        const spiritWidget = new SpiritWidget(this, this.sacrificingSlot!.x, this.sacrificingSlot!.y, ability);
-        spiritWidget.setInteractive().on('pointerdown', () => {
-            this.removeFromSacrificingSlot();
-            this.returnSpiritToPanel(ability);
-        });
+        // Create an ability card representation in the slot
+        const abilityWidget = new AbilityWidget(this, (this.sacrificingSlot as any).x, (this.sacrificingSlot as any).y, ability);
+        abilityWidget.setInteractive()
+            .on('pointerover', () => {
+                (this.game.canvas as HTMLCanvasElement).style.cursor = 'pointer';
+            })
+            .on('pointerout', () => {
+                (this.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+            })
+            .on('pointerdown', () => {
+                this.removeFromSacrificingSlot();
+                this.returnSpiritToPanel(ability);
+            });
 
+        // Create a spirit display to the right of the sacrificing slot
+        const spiritWidget = new SpiritWidget(this, (this.sacrificingSlot as any).x + 100, (this.sacrificingSlot as any).y, ability);
+
+        this.ui.push(abilityWidget);
         this.ui.push(spiritWidget);
         this.checkUpgradeButtonState();
     }
@@ -454,11 +410,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private removeSlotSpirit(slot: Phaser.GameObjects.GameObject) {
-        // Remove any spirit widgets near this slot
+        // Remove any ability widgets and spirit widgets near this slot
         this.ui = this.ui.filter(obj => {
-            if (obj instanceof SpiritWidget) {
-                const distance = Math.abs(obj.x - slot.x) + Math.abs(obj.y - slot.y);
-                if (distance < 50) {
+            if (obj instanceof AbilityWidget || obj instanceof SpiritWidget) {
+                const distance = Math.abs(obj.x - (slot as any).x) + Math.abs(obj.y - (slot as any).y);
+                if (distance < 150) { // Increased range to catch spirit widgets positioned further away
                     obj.destroy();
                     return false;
                 }
@@ -468,91 +424,62 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private returnSpiritToPanel(ability: Ability) {
-        // Recreate the spirit container and add it back to the scrollable panel
+        // Recreate the ability container and add it back to the scrollable panel
         const isStarting = isStartingAbility(ability);
 
-        const abilityWidget = new AbilityWidget(this, 0, 2, ability);
-        const spiritWidget = new SpiritWidget(this, 0, -60, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, 128);
-
+        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
         abilityContainer.add(abilityWidget);
-        abilityContainer.add(spiritWidget);
 
         if (isStarting) {
             // Grey out starting abilities and add tooltips
             abilityWidget.setAlpha(0.5);
-            spiritWidget.setAlpha(0.5);
-            addTooltip(this, abilityWidget, 'Starting spirits cannot be used for upgrading', 300, 400);
-            addTooltip(this, spiritWidget, 'Starting spirits cannot be used for upgrading', 300, 400);
+            addTooltip(this, abilityWidget, UNSELLABLE_TOOLTIP_TEXT, 300, 400);
         }
 
-        // Add back to scrollable panel in the correct sorted position
-        this.insertSpiritInSortedOrder(abilityContainer, ability);
+        // Add back to scrollable panel in correct position (before starting spirits)
+        this.insertSpiritBeforeStartingSpirits(abilityContainer, ability);
     }
 
-    private insertSpiritInSortedOrder(abilityContainer: Phaser.GameObjects.Container, newAbility: Ability) {
+    private insertSpiritBeforeStartingSpirits(abilityContainer: Phaser.GameObjects.Container, ability: Ability) {
         if (!this.spiritPanel) {
             return;
         }
 
-        const isNewStarting = isStartingAbility(newAbility);
-        const newScore = Number(pureCircuits.ability_score(newAbility));
+        const isStarting = isStartingAbility(ability);
 
-        // Get all existing children from the scrollable panel
+        // If it's a starting spirit, just append it at the end
+        if (isStarting) {
+            this.spiritPanel.addChild(abilityContainer);
+            return;
+        }
+
+        // For non-starting spirits, insert before the starting spirits block
+        // Since there are always exactly STARTING_SPIRITS_COUNT starting spirits at the end
         const existingChildren = this.spiritPanel.getChildren();
-
-        // Find the correct insertion position
-        let insertIndex = 0;
-
-        for (let i = 0; i < existingChildren.length; i++) {
-            const existingContainer = existingChildren[i] as Phaser.GameObjects.Container;
-            const existingAbility = this.getAbilityFromContainer(existingContainer);
-            const isExistingStarting = isStartingAbility(existingAbility);
-            const existingScore = Number(pureCircuits.ability_score(existingAbility));
-
-            // If the new spirit is not starting but the existing one is, insert before it
-            if (!isNewStarting && isExistingStarting) {
-                insertIndex = i;
-                break;
-            }
-
-            // If both are starting or both are not starting, sort by score (descending)
-            if (isNewStarting === isExistingStarting) {
-                if (newScore > existingScore) {
-                    insertIndex = i;
-                    break;
-                }
-            }
-
-            // If we made it through all items, insert at the end
-            insertIndex = i + 1;
-        }
-
-        // Insert at the calculated position
-        this.insertSpiritAtIndex(abilityContainer, insertIndex);
-    }
-
-    private insertSpiritAtIndex(abilityContainer: Phaser.GameObjects.Container, index: number) {
-        if (!this.spiritPanel) {
-            return;
-        }
+        const insertIndex = Math.max(0, existingChildren.length - STARTING_SPIRITS_COUNT);
 
         const sizer = this.spiritPanel.getPanelElement();
         const wrappedChild = this.rexUI.add.fixWidthSizer({}).add(abilityContainer);
 
-        // Insert at the specified index
-        (sizer as any).insert(index, wrappedChild, { expand: true });
+        // Insert at the calculated position (right before starting spirits)
+        (sizer as any).insert(insertIndex, wrappedChild, { expand: true });
         this.spiritPanel.panel.layout();
-
-        logger.ui.debug(`Inserted spirit at index ${index}`);
     }
 
     private sortedAbilitiesWithStartingLast(state: Game2DerivedState): Ability[] {
         const abilities = sortedAbilities(state);
+        const nonStartingAbilities: Ability[] = [];
+        const startingAbilities: Ability[] = [];
 
-        // Separate starting and non-starting abilities
-        const nonStartingAbilities = abilities.filter(ability => !isStartingAbility(ability));
-        const startingAbilities = abilities.filter(ability => isStartingAbility(ability));
+        // Single pass to separate abilities - more efficient than double filter
+        for (const ability of abilities) {
+            if (isStartingAbility(ability)) {
+                startingAbilities.push(ability);
+            } else {
+                nonStartingAbilities.push(ability);
+            }
+        }
 
         // Return non-starting abilities first, then starting abilities
         return [...nonStartingAbilities, ...startingAbilities];
@@ -570,27 +497,16 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private getAbilityFromContainer(container: Phaser.GameObjects.Container): Ability {
-        // Debug logging to understand the structure
-        logger.ui.debug('Container structure:', container);
-        logger.ui.debug('Container list:', container.list);
-
         if (!container.list || container.list.length === 0) {
-            logger.ui.error('Container has no list or empty list');
             throw new Error('Invalid container structure');
         }
 
-        // Try to find AbilityWidget in the container's children
-        for (let i = 0; i < container.list.length; i++) {
-            const child = container.list[i];
+        // Find AbilityWidget in the container's children
+        for (const child of container.list) {
             if (child instanceof AbilityWidget) {
-                logger.ui.debug(`Found AbilityWidget at index ${i}`);
                 return child.ability;
             }
         }
-
-        // If no AbilityWidget found, log the structure for debugging
-        logger.ui.error('No AbilityWidget found in container. Children types:',
-            container.list.map(child => child.constructor.name));
 
         throw new Error('No AbilityWidget found in container');
     }
