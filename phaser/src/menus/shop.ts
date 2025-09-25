@@ -1,4 +1,4 @@
-import { DeployedGame2API, Game2DerivedState } from "game2-api";
+import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
@@ -56,7 +56,7 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     private onStateChange(state: Game2DerivedState) {
-        logger.gameState.debug(`ShopMenu.onStateChange(): ${JSON.stringify(state)}`);
+        logger.gameState.debug(`ShopMenu.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
         if (this.waitingForSell) {
