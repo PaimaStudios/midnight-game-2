@@ -7,7 +7,7 @@
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { Observable, Subscriber } from "rxjs";
+import { Observable, Subscriber, Subject } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
@@ -21,7 +21,7 @@ export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
 export class MockGame2API implements DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
-    subscriber: Subscriber<Game2DerivedState> | undefined;
+    private stateSubject: Subject<Game2DerivedState>;
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
@@ -30,9 +30,8 @@ export class MockGame2API implements DeployedGame2API {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
-        this.state$ = new Observable<Game2DerivedState>((subscriber) => {
-            this.subscriber = subscriber;
-        });
+        this.stateSubject = new Subject<Game2DerivedState>();
+        this.state$ = this.stateSubject.asObservable();
         this.mockState = {
             activeBattleConfigs: new Map(),
             activeBattleStates: new Map(),
@@ -50,7 +49,7 @@ export class MockGame2API implements DeployedGame2API {
             playerBossProgress: new Map(),
         };
         setTimeout(() => {
-            this.subscriber?.next(this.mockState);
+            this.stateSubject.next(this.mockState);
         }, MOCK_DELAY);
     }
 
@@ -269,7 +268,7 @@ export class MockGame2API implements DeployedGame2API {
                 if (returnBeforeState) {
                     resolve(ret);
                 } else {
-                    this.subscriber?.next(this.mockState);
+                    this.stateSubject.next(this.mockState);
                     setTimeout(() => resolve(ret), delay);
                 }
             } catch (e) {
@@ -277,7 +276,7 @@ export class MockGame2API implements DeployedGame2API {
             }
             if (returnBeforeState) {
                 setTimeout(() => {
-                    this.subscriber?.next(this.mockState);
+                    this.stateSubject.next(this.mockState);
                 }, delay);
             }
         }, delay));
