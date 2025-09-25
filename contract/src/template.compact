@@ -213,10 +213,10 @@ export struct BattleState {
     /// Current round. This allows us to ignore outdated state
     round: Uint<32>;
     deck_indices: Vector<3, Uint<32>>;
-    player_hp: Uint<32>;
-    enemy_hp_0: Uint<32>;
-    enemy_hp_1: Uint<32>;
-    enemy_hp_2: Uint<32>;
+    damage_to_player: Uint<32>;
+    damage_to_enemy_0: Uint<32>;
+    damage_to_enemy_1: Uint<32>;
+    damage_to_enemy_2: Uint<32>;
 }
 
 export struct PlayerLoadout {
@@ -439,10 +439,10 @@ export pure circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): Battle
     return BattleState {
         0,
         random_deck_indices(rng),
-        100,// TODO: source from somewhere - also do we want multiple people?
-        battle.enemies.stats[0].hp,
-        battle.enemies.stats[1].hp,
-        battle.enemies.stats[2].hp
+        0,
+        0,
+        0,
+        0
     };
 }
 
@@ -512,7 +512,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
     const result = combat_round_impl(disclose(battle_id), round_abilities, disclose(ability_targets));
     
     active_battle_states.insert(disclose(battle_id), result);
-    if (result.player_hp == 0) {
+    if (result.damage_to_player >= 100) {
         active_battle_configs.remove(disclose(battle_id));
         active_battle_states.remove(disclose(battle_id));
         
@@ -521,7 +521,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             0,
             none<Field>()
         });
-    } else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+    } else if (result.damage_to_enemy_0 >= config.enemies.stats[0].hp && (config.enemies.count < 2 || result.damage_to_enemy_1 >= config.enemies.stats[1].hp) && (config.enemies.count < 3 || result.damage_to_enemy_2 >= config.enemies.stats[2].hp)) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
@@ -585,9 +585,11 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     INSERT_PLAYER_DAMAGE_CODE_HERE
 
 
-    const new_enemy_dmg_0 = enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0;
-    const new_enemy_dmg_1 = enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0;
-    const new_enemy_dmg_2 = enemy_block_2 < player_damage_2 ? (old_state.enemy_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0;
+    // TODO: figure out a way to handle block without running into negative numbers in non-executed branches throwing bounds checking errors
+    const new_player_damage = player_block < damage_to_player ? (old_state.damage_to_player + damage_to_player/* - player_block*/) as Uint<32> : old_state.damage_to_player;
+    const new_damage_to_enemy_0 = enemy_block_0 < damage_to_enemy_0 ? (old_state.damage_to_enemy_0 + damage_to_enemy_0/* - enemy_block_0*/) as Uint<32> : old_state.damage_to_enemy_0;
+    const new_damage_to_enemy_1 = enemy_block_1 < damage_to_enemy_1 ? (old_state.damage_to_enemy_1 + damage_to_enemy_1/* - enemy_block_1*/) as Uint<32> : old_state.damage_to_enemy_1;
+    const new_damage_to_enemy_2 = enemy_block_2 < damage_to_enemy_2 ? (old_state.damage_to_enemy_2 + damage_to_enemy_2/* - enemy_block_2*/) as Uint<32> : old_state.damage_to_enemy_2;
 
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
@@ -599,10 +601,10 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     return BattleState {
         (old_state.round + 1) as Uint<32>,
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
-        player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
-        new_enemy_dmg_0,
-        new_enemy_dmg_1,
-        new_enemy_dmg_2
+        new_player_damage,
+        new_damage_to_enemy_0,
+        new_damage_to_enemy_1,
+        new_damage_to_enemy_2
     };
 }
 

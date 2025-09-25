@@ -39,7 +39,6 @@ export class SpiritManager {
     }
 
     public createSpirits(state: Game2DerivedState, battle: BattleConfig): SpiritWidget[] {
-        console.log(` ---> createSpirits`);
         // Clean up existing spirits first
         this.cleanupSpirits();
 

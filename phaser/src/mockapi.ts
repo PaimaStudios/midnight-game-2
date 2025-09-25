@@ -114,9 +114,7 @@ export class MockGame2API implements DeployedGame2API {
                         }
                     }
                 }
-                console.log(`battleState.round = ${battleState.round}`);
                 battleState.round += BigInt(1);
-                console.log(`   to ${battleState.round}`);
                 if (ret != undefined) {
                     this.addRewards(ret);
                     // Check if this was a boss battle and mark completion
@@ -132,7 +130,6 @@ export class MockGame2API implements DeployedGame2API {
                     this.mockState.activeBattleConfigs.delete(battle_id);
                     this.mockState.activeBattleStates.delete(battle_id);
                 }
-                console.log(`combat_round state ----> ${this.mockState.activeBattleStates.get(battle_id) == undefined ? 'null' : safeJSONString(this.mockState.activeBattleStates.get(battle_id)!)}`);
                 return ret;
             });
         });
@@ -262,10 +259,8 @@ export class MockGame2API implements DeployedGame2API {
     private async response<T>(body: () => Promise<T>, delay: number = MOCK_DELAY): Promise<T> {
         return new Promise((resolve, reject) => setTimeout(async () => {
             const returnBeforeState = Math.random() > 0.5;
-            console.log(`returnBeforeState = ${returnBeforeState}`);
             try {
                 const ret = await body();
-                console.log(`   post body() state: ${safeJSONString(this.mockState)}`);
                 if (returnBeforeState) {
                     resolve(ret);
                 } else {

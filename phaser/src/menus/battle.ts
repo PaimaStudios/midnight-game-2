@@ -33,6 +33,7 @@ export class ActiveBattle extends Phaser.Scene {
     round: number;
     rewards: BattleRewards | undefined;
     waitingOnAnimations: boolean;
+    initialized: boolean;
     
     // Managers
     private layout: BattleLayout;
@@ -54,6 +55,7 @@ export class ActiveBattle extends Phaser.Scene {
         this.state = state;
         this.round = 0;
         this.waitingOnAnimations = false;
+        this.initialized = false;
         
         // Initialize managers
         this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
@@ -87,6 +89,10 @@ export class ActiveBattle extends Phaser.Scene {
         logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
+
+        if (!this.initialized) {
+            this.initializeSpirits();
+        }
 
         // this possibly comes after the round already returned, so try to handle it if that's the case
         this.handleRoundComplete();
@@ -137,6 +143,7 @@ export class ActiveBattle extends Phaser.Scene {
         // Start targeting phase
         this.spiritManager.startTargeting();
         
+        this.initialized = true;
     }
 
     private async executeCombat() {
@@ -167,12 +174,12 @@ export class ActiveBattle extends Phaser.Scene {
         
         const retryCombatRound = async (): Promise<BattleRewards | undefined> => {
             try {
-                console.log(`retryCombatRound()`);
                 const targets = this.spiritManager.getTargets().map(t => BigInt(t!)) as [bigint, bigint, bigint];
                 const result = await this.api.combat_round(id, targets);
                 if (loaderStarted) {
                     this.scene.resume().stop('Loader');
                 }
+                logger.gameState.debug(`combat_round = ${result != undefined ? safeJSONString(result) : 'undefined'}`);
                 return result;
             } catch (err) {
                 if (loaderStarted) {
@@ -220,9 +227,9 @@ export class ActiveBattle extends Phaser.Scene {
         const combatRoundContinue = !this.waitingOnAnimations && battleState != undefined && battleState.round > this.round;
         // since the combat round ending removes the state we must also check if rewards have been given
         const combatRoundFinished = this.rewards != undefined || combatRoundContinue;
-        console.log(`ActiveBattle.handleRoundComplete(${combatRoundFinished}) ? ${!this.waitingOnAnimations} && ${battleState != undefined} && ${(battleState?.round ?? 0) > this.round} (${battleState?.round} > ${this.round})`);
+        logger.combat.debug(`ActiveBattle.handleRoundComplete(${combatRoundFinished}) ? ${!this.waitingOnAnimations} && ${battleState != undefined} && ${(battleState?.round ?? 0) > this.round} (${battleState?.round} > ${this.round})`);
         if (combatRoundFinished) {
-            this.round = Number(battleState?.round ?? this.round + 1);
+            this.round = Number(battleState?.round ?? (this.round + 1));
             // Synchronize visual actor HP with battle state HP
             
             this.player?.setBlock(0);
