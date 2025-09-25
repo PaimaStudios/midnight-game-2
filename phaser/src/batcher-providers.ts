@@ -91,7 +91,38 @@ export const initializeProviders = async (
 ): Promise<Game2Providers> => {
     logger.info("initializing batcher providers");
     await init();
-    await initThreadPool(navigator.hardwareConcurrency);
+    // Check if we should attempt thread pool initialization for WASM operations
+    // Workers provide better performance but can cause issues in development environments
+    const shouldTryWorkers = (() => {
+        // Skip if Worker is not available
+        if (typeof Worker === 'undefined') {
+            logger.info("Worker not available, skipping thread pool");
+            return false;
+        }
+
+        // Check if workers are explicitly disabled via meta tag (injected by build process)
+        const workersMeta = document.querySelector('meta[name="enable-workers"]');
+        if (workersMeta && workersMeta.getAttribute('content') === 'false') {
+            logger.info("Workers disabled via meta tag");
+            return false;
+        }
+
+        // Enable workers by default for optimal performance
+        logger.info("Workers enabled by default");
+        return true;
+    })();
+
+    if (shouldTryWorkers) {
+        try {
+            const workerCount = Math.min(2, navigator.hardwareConcurrency);
+            await initThreadPool(workerCount);
+            logger.info("Thread pool initialized successfully with", workerCount, "workers");
+        } catch (error) {
+            logger.warn("Failed to initialize thread pool, continuing single-threaded. Error:", error);
+        }
+    } else {
+        logger.info("Thread pool initialization skipped, running single-threaded");
+    }
 
     const batcherAddress = await getBatcherAddress();
 

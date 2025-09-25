@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_BATCHER_MODE_BATCHER_URL: string | undefined;
   // modes: "mock" or "real". lack of this will always ask users
   readonly VITE_API_FORCE_DEPLOY: string | undefined;
+  readonly VITE_DISABLE_WORKERS: string | undefined;
 }
 
 interface ImportMeta {
