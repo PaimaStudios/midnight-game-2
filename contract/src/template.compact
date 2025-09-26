@@ -586,7 +586,6 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
 
 
     // TODO: figure out a way to handle block without running into negative numbers in non-executed branches throwing bounds checking errors
-    const new_player_damage = player_block < damage_to_player ? (old_state.damage_to_player + damage_to_player/* - player_block*/) as Uint<32> : old_state.damage_to_player;
     const new_damage_to_enemy_0 = enemy_block_0 < damage_to_enemy_0 ? (old_state.damage_to_enemy_0 + damage_to_enemy_0/* - enemy_block_0*/) as Uint<32> : old_state.damage_to_enemy_0;
     const new_damage_to_enemy_1 = enemy_block_1 < damage_to_enemy_1 ? (old_state.damage_to_enemy_1 + damage_to_enemy_1/* - enemy_block_1*/) as Uint<32> : old_state.damage_to_enemy_1;
     const new_damage_to_enemy_2 = enemy_block_2 < damage_to_enemy_2 ? (old_state.damage_to_enemy_2 + damage_to_enemy_2/* - enemy_block_2*/) as Uint<32> : old_state.damage_to_enemy_2;
@@ -601,7 +600,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     return BattleState {
         (old_state.round + 1) as Uint<32>,
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
-        new_player_damage,
+        player_block < damage_to_player ? (old_state.damage_to_player + damage_to_player/* - player_block*/) as Uint<32> : old_state.damage_to_player,
         new_damage_to_enemy_0,
         new_damage_to_enemy_1,
         new_damage_to_enemy_2
