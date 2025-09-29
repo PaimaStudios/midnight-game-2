@@ -36,7 +36,7 @@ export class ShopMenu extends Phaser.Scene {
             }, 'Return to Hub');
 
         // Title
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.2, 'Spirit Shop',
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 'Spirit Shop',
             fontStyle(24, { color: Color.White, stroke: Color.Licorice, strokeThickness: 8 })).setOrigin(0.5);
 
         // Button styling

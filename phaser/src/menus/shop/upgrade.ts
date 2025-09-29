@@ -67,10 +67,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.upgradeButton = new Button(
             this,
             GAME_WIDTH / 2,
-            80,
+            GAME_HEIGHT * 0.34,
             150,
-            120,
-            'Upgrade\nSpirit',
+            60,
+            'Upgrade',
             12,
             () => this.performUpgrade()
         ).setEnabled(false);
@@ -86,7 +86,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const slotY = GAME_HEIGHT * 0.35;
         const slotWidth = 120;
         const slotHeight = 160;
-        const titleOffsetY = 120;
+        const titleOffsetY = 100;
 
         // Upgrading slot (left side)
         this.upgradingSlot = this.rexUI.add.roundRectangle(
@@ -104,7 +104,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Add label for upgrading slot
         this.add.text(GAME_WIDTH * 0.3, slotY - titleOffsetY, 'Upgrading Spirit',
-            fontStyle(12, { color: Color.White })).setOrigin(0.5);
+            fontStyle(10, { color: Color.White })).setOrigin(0.5);
 
         // Sacrificing slot (right side)
         this.sacrificingSlot = this.rexUI.add.roundRectangle(
@@ -122,7 +122,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Add label for sacrificing slot
         this.add.text(GAME_WIDTH * 0.7, slotY - titleOffsetY, 'Sacrificing Spirit',
-            fontStyle(12, { color: Color.White })).setOrigin(0.5);
+            fontStyle(10, { color: Color.White })).setOrigin(0.5);
     }
 
     private createSpiritsPanel() {
