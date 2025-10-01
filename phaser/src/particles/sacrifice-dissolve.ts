@@ -12,7 +12,6 @@ export class SacrificeDissolveParticleSystem extends ParticleSystem {
     protected createTexture() {
         const graphics = this.scene.add.graphics();
 
-        // Create a larger, more visible diamond/square for dissolve effect
         graphics.fillStyle(colorToNumber(Color.Violet));
         graphics.fillRect(4, 0, 4, 4); // top
         graphics.fillRect(0, 4, 4, 4); // left

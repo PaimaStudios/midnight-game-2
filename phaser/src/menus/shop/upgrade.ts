@@ -1,5 +1,5 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, pureCircuits } from "game2-contract";
+import { Ability } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
 import { createSpiritAnimations } from "../../animations/spirit";
