@@ -9,6 +9,16 @@ import { TopBar } from "../../widgets/top-bar";
 import { SellSpiritsMenu } from "./sell";
 import { UpgradeSpiritsMenu } from "./upgrade";
 
+// Constants
+const TITLE_Y_RATIO = 0.15;
+const TITLE_FONT_SIZE = 24;
+const TITLE_STROKE_THICKNESS = 8;
+
+const BUTTON_WIDTH = 300;
+const BUTTON_HEIGHT = 80;
+const BUTTON_SPACING = 100;
+const BUTTON_FONT_SIZE = 16;
+
 export class ShopMenu extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
@@ -24,10 +34,8 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     create() {
-        // Background
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
 
-        // Top bar with back navigation
         this.topBar = new TopBar(this, true, this.api, this.state)
             .back(() => {
                 this.scene.remove('TestMenu');
@@ -35,25 +43,25 @@ export class ShopMenu extends Phaser.Scene {
                 this.scene.start('TestMenu');
             }, 'Return to Hub');
 
-        // Title
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 'Spirit Shop',
-            fontStyle(24, { color: Color.White, stroke: Color.Licorice, strokeThickness: 8 })).setOrigin(0.5);
+        this.add.text(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * TITLE_Y_RATIO,
+            'Spirit Shop',
+            fontStyle(TITLE_FONT_SIZE, {
+                color: Color.White,
+                stroke: Color.Licorice,
+                strokeThickness: TITLE_STROKE_THICKNESS
+            })
+        ).setOrigin(0.5);
 
-        // Button styling
-        const buttonWidth = 300;
-        const buttonHeight = 80;
-        const buttonSpacing = 100;
-        const buttonFontSize = 16;
-
-        // Upgrade button
         new Button(
             this,
             GAME_WIDTH / 2,
-            GAME_HEIGHT / 2 - buttonSpacing / 2,
-            buttonWidth,
-            buttonHeight,
+            GAME_HEIGHT / 2 - BUTTON_SPACING / 2,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
             'Upgrade',
-            buttonFontSize,
+            BUTTON_FONT_SIZE,
             () => {
                 logger.ui.info('Navigating to Upgrade Spirits');
                 this.scene.remove('UpgradeSpiritsMenu');
@@ -62,15 +70,14 @@ export class ShopMenu extends Phaser.Scene {
             }
         );
 
-        // Sell button
         new Button(
             this,
             GAME_WIDTH / 2,
-            GAME_HEIGHT / 2 + buttonSpacing / 2,
-            buttonWidth,
-            buttonHeight,
+            GAME_HEIGHT / 2 + BUTTON_SPACING / 2,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
             'Sell',
-            buttonFontSize,
+            BUTTON_FONT_SIZE,
             () => {
                 logger.ui.info('Navigating to Sell Spirits');
                 this.scene.remove('SellSpiritsMenu');

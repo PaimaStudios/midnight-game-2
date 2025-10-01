@@ -71,6 +71,8 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('arrow', 'arrow.png');
         this.load.image('aoe', 'aoe.png');
         this.load.image('hp-bar-shield', 'hp-bar-shield.png');
+        this.load.image('upgrade-star', 'upgrade-star.png');
+        this.load.image('upgrade-star-slot', 'upgrade-star-slot.png');
 
         // Revolving Orb Sprites
         this.load.image('orb-atk-fire', 'orb-atk-fire.png');
