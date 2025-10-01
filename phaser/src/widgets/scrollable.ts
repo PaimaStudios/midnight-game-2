@@ -33,17 +33,19 @@ export class ScrollablePanel {
 
     constructor(
         scene: Phaser.Scene,
-        x: number, 
-        y: number, 
-        width: number, 
+        x: number,
+        y: number,
+        width: number,
         height: number,
         scrollbarEnabled: boolean = true,
+        spacing?: { item?: number, top?: number, bottom?: number }
     ) {
         this.scene = scene;
-        
+
+        const defaultSpacing = { item: 10, top: 10, bottom: 10 };
         const sizer = scene.rexUI.add.sizer({
             orientation: 'x',
-            space: { item: 10, top: 10, bottom: 10 },
+            space: { ...defaultSpacing, ...spacing },
         });
 
         let scrollbarConfig = {};
@@ -65,6 +67,12 @@ export class ScrollablePanel {
             scrollMode: 1,
             panel: {
                 child: sizer,
+            },
+            space: {
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
             },
             align: {
                 panel: 'bottom',

@@ -26,7 +26,6 @@ const INSUFFICIENT_VALUE_TOOLTIP_TEXT = "Spirit value too low for upgrading abil
 // Layout constants
 const STAR_SPACING = 20;
 const STAR_Y_OFFSET = -85;
-const CONTAINER_EXTRA_HEIGHT = Math.abs(STAR_Y_OFFSET) + 20; // Extra height to accommodate stars above
 const SLOT_WIDTH = 120;
 const SLOT_HEIGHT = 160;
 const SLOT_Y_RATIO = 0.35;
@@ -37,8 +36,8 @@ const SLOT_SPIRIT_OFFSET_X = 100;
 const SLOT_PROXIMITY_THRESHOLD = 150;
 
 const PANEL_WIDTH_RATIO = 0.95;
-const PANEL_HEIGHT = 180;
-const PANEL_Y_RATIO = 0.7;
+const PANEL_HEIGHT = 190;
+const PANEL_Y_RATIO = 0.78;
 
 const BUTTON_WIDTH = 150;
 const BUTTON_HEIGHT = 60;
@@ -200,7 +199,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             GAME_WIDTH / 2,
             GAME_HEIGHT * PANEL_Y_RATIO,
             GAME_WIDTH * PANEL_WIDTH_RATIO,
-            PANEL_HEIGHT
+            PANEL_HEIGHT,
+            true,
+            { bottom: 0 }
         );
         this.ui.push(this.spiritPanel.panel);
 
@@ -401,7 +402,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             GAME_WIDTH / 2,
             GAME_HEIGHT * PANEL_Y_RATIO,
             GAME_WIDTH * PANEL_WIDTH_RATIO,
-            PANEL_HEIGHT
+            PANEL_HEIGHT,
+            true,
+            { bottom: 0 }
         );
         this.ui.push(this.spiritPanel.panel);
 
@@ -465,7 +468,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     private addAbilityToPanel(ability: Ability, greyedOut: boolean, tooltipText: string | null) {
         const upgradeLevel = getAbilityUpgradeLevel(ability);
         const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
         abilityContainer.add(abilityWidget);
 
         // Add upgrade stars above the ability card
@@ -597,7 +600,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
 
         const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
         abilityContainer.add(abilityWidget);
 
         // Add upgrade stars above the ability card
