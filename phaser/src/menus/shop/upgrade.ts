@@ -314,13 +314,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         if (slotType === 'upgrading' && this.upgradingSpirit) {
             logger.ui.info('Upgrading slot is occupied, replacing existing spirit');
-            this.returnSpiritToPanel(this.upgradingSpirit);
             this.removeFromUpgradingSlot();
         }
 
         if (slotType === 'sacrificing' && this.sacrificingSpirit) {
             logger.ui.info('Sacrificing slot is occupied, replacing existing spirit');
-            this.returnSpiritToPanel(this.sacrificingSpirit);
             this.removeFromSacrificingSlot();
         }
 
@@ -497,7 +495,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const abilityWidget = new AbilityWidget(this, slotX, slotY, ability);
         this.setupSlotWidgetInteractivity(abilityWidget, () => {
             this.removeFromUpgradingSlot();
-            this.returnSpiritToPanel(ability);
         });
 
         const spiritWidget = new SpiritWidget(this, slotX - SLOT_SPIRIT_OFFSET_X, slotY, ability);
@@ -528,7 +525,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const abilityWidget = new AbilityWidget(this, slotX, slotY, ability);
         this.setupSlotWidgetInteractivity(abilityWidget, () => {
             this.removeFromSacrificingSlot();
-            this.returnSpiritToPanel(ability);
         });
 
         const spiritWidget = new SpiritWidget(this, slotX + SLOT_SPIRIT_OFFSET_X, slotY, ability);
@@ -558,10 +554,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.upgradingSpiritContainer = undefined;
         this.removeSlotSpirit(this.upgradingSlot!);
 
-        // If there was a sacrificing spirit, return it to the panel since it's no longer valid
+        // If there was a sacrificing spirit, remove it since it's no longer valid
         if (this.sacrificingSpirit) {
             this.removeFromSacrificingSlot();
-            this.returnSpiritToPanel(this.sacrificingSpirit);
         }
 
         this.checkUpgradeButtonState();
@@ -594,49 +589,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         });
     }
 
-    private returnSpiritToPanel(ability: Ability) {
-        const isStarting = isStartingAbility(ability);
-        const upgradeLevel = getAbilityUpgradeLevel(ability);
-        const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
-
-        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
-        abilityContainer.add(abilityWidget);
-
-        // Add upgrade stars above the ability card
-        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
-        abilityContainer.add(stars);
-
-        if (isStarting) {
-            abilityWidget.setAlpha(0.5);
-            addTooltip(this, abilityWidget, UNUPGRADEABLE_TOOLTIP_TEXT, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
-        } else if (isFullyUpgraded) {
-            abilityWidget.setAlpha(0.5);
-            addTooltip(this, abilityWidget, FULLY_UPGRADED_TOOLTIP_TEXT, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
-        }
-
-        this.insertSpiritBeforeStartingSpirits(abilityContainer, ability);
-    }
-
-    private insertSpiritBeforeStartingSpirits(abilityContainer: Phaser.GameObjects.Container, ability: Ability) {
-        if (!this.spiritPanel) return;
-
-        const isStarting = isStartingAbility(ability);
-
-        if (isStarting) {
-            this.spiritPanel.addChild(abilityContainer);
-            return;
-        }
-
-        const existingChildren = this.spiritPanel.getChildren();
-        const insertIndex = Math.max(0, existingChildren.length - STARTING_SPIRITS_COUNT);
-
-        const sizer = this.spiritPanel.getPanelElement();
-        const wrappedChild = this.rexUI.add.fixWidthSizer({}).add(abilityContainer);
-
-        (sizer as any).insert(insertIndex, wrappedChild, { expand: true });
-        this.spiritPanel.panel.layout();
-    }
 
     private sortedAbilitiesWithStartingLast(state: Game2DerivedState): Ability[] {
         const abilities = sortedAbilities(state);
