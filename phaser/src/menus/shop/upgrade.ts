@@ -1,5 +1,5 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability } from "game2-contract";
+import { Ability, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
 import { createSpiritAnimations } from "../../animations/spirit";
@@ -21,6 +21,7 @@ const STARTING_SPIRITS_COUNT = 8;
 const UNUPGRADEABLE_TOOLTIP_TEXT = "Starting spirits cannot be used for upgrading";
 const MAX_UPGRADE_LEVEL = 3;
 const FULLY_UPGRADED_TOOLTIP_TEXT = "Spirit is fully upgraded";
+const INSUFFICIENT_VALUE_TOOLTIP_TEXT = "Spirit value too low for upgrading ability";
 
 // Layout constants
 const STAR_SPACING = 20;
@@ -85,6 +86,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
     upgradingSlot: Phaser.GameObjects.GameObject | undefined;
     sacrificingSlot: Phaser.GameObjects.GameObject | undefined;
+    sacrificingSlotTitle: Phaser.GameObjects.Text | undefined;
     upgradingSpirit: Ability | undefined;
     sacrificingSpirit: Ability | undefined;
     upgradingSpiritContainer: Phaser.GameObjects.Container | undefined;
@@ -180,8 +182,16 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.add.existing(this.sacrificingSlot);
         this.sacrificingSlot.setInteractive().setData('slotType', 'sacrificing');
 
-        this.add.text(GAME_WIDTH * SLOT_RIGHT_X_RATIO, slotY - SLOT_TITLE_OFFSET_Y, 'Sacrificing Spirit',
-            fontStyle(10, { color: Color.White })).setStroke(Color.Licorice, 6).setOrigin(0.5);
+        this.sacrificingSlotTitle = this.add.text(
+            GAME_WIDTH * SLOT_RIGHT_X_RATIO,
+            slotY - SLOT_TITLE_OFFSET_Y,
+            'Sacrificing Spirit',
+            fontStyle(10, { color: Color.White })
+        ).setStroke(Color.Licorice, 6).setOrigin(0.5);
+
+        // Initially hide the sacrificing slot and title
+        (this.sacrificingSlot as any).setVisible(false);
+        this.sacrificingSlotTitle.setVisible(false);
     }
 
     private createSpiritsPanel() {
@@ -275,6 +285,32 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             return;
         }
 
+        // Don't allow placing in sacrificing slot if no upgrading spirit is present
+        if (slotType === 'sacrificing' && !this.upgradingSpirit) {
+            logger.ui.warn('Must select an upgrading spirit first');
+            return;
+        }
+
+        // Check value constraints when placing in sacrificing slot
+        if (slotType === 'sacrificing' && this.upgradingSpirit) {
+            const upgradingValue = pureCircuits.ability_value(this.upgradingSpirit);
+            const sacrificingValue = pureCircuits.ability_value(ability);
+            if (sacrificingValue < upgradingValue) {
+                logger.ui.warn('Sacrificing ability value too low');
+                return;
+            }
+        }
+
+        // Check value constraints when placing in upgrading slot (if sacrificing already placed)
+        if (slotType === 'upgrading' && this.sacrificingSpirit) {
+            const upgradingValue = pureCircuits.ability_value(ability);
+            const sacrificingValue = pureCircuits.ability_value(this.sacrificingSpirit);
+            if (sacrificingValue < upgradingValue) {
+                logger.ui.warn('Sacrificing ability value too low for this upgrading spirit');
+                return;
+            }
+        }
+
         if (slotType === 'upgrading' && this.upgradingSpirit) {
             logger.ui.info('Upgrading slot is occupied, replacing existing spirit');
             this.returnSpiritToPanel(this.upgradingSpirit);
@@ -351,48 +387,99 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.state = structuredClone(state);
 
-        // Clear existing spirits from panel
-        const existingChildren = this.spiritPanel?.getChildren() || [];
-        existingChildren.forEach(child => {
-            child.destroy();
-        });
+        this.refreshSpiritsPanel();
+    }
 
-        // Clear the panel by removing all children from the sizer
+    private refreshSpiritsPanel() {
+        // Destroy the old panel and create a new one to avoid layout issues
         if (this.spiritPanel) {
-            const sizer = this.spiritPanel.getPanelElement();
-            const items = (sizer as any).getElement?.('items');
-            if (items && Array.isArray(items)) {
-                items.forEach((item: any) => {
-                    (sizer as any).remove(item);
-                });
-            }
-            this.spiritPanel.panel.layout();
+            this.spiritPanel.panel.destroy();
         }
 
-        const abilities = this.sortedAbilitiesWithStartingLast(state);
+        this.spiritPanel = new ScrollablePanel(
+            this,
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * PANEL_Y_RATIO,
+            GAME_WIDTH * PANEL_WIDTH_RATIO,
+            PANEL_HEIGHT
+        );
+        this.ui.push(this.spiritPanel.panel);
+
+        // Re-setup drag targets for the new panel
+        this.spiritPanel.addDragTargets([this.upgradingSlot!, this.sacrificingSlot!], {
+            onDragOver: (slot) => this.animateSlotEnlarge(slot),
+            onDragOut: (slot) => this.animateSlotShrink(slot)
+        });
+
+        this.spiritPanel.enableDraggable({
+            onMovedChild: () => {},
+            onDragEnd: () => {}
+        });
+
+        const abilities = this.sortedAbilitiesWithStartingLast(this.state);
+
+        // Separate abilities into groups based on usability
+        const usableAbilities: Ability[] = [];
+        const unusableAbilities: Ability[] = [];
+
         for (const ability of abilities) {
             const isStarting = isStartingAbility(ability);
             const upgradeLevel = getAbilityUpgradeLevel(ability);
             const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
+            const hasInsufficientValue = this.upgradingSpirit !== undefined &&
+                pureCircuits.ability_value(ability) < pureCircuits.ability_value(this.upgradingSpirit);
 
-            const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
-            abilityContainer.add(abilityWidget);
+            if (isStarting || isFullyUpgraded || hasInsufficientValue) {
+                unusableAbilities.push(ability);
+            } else {
+                usableAbilities.push(ability);
+            }
+        }
 
-            // Add upgrade stars above the ability card
-            const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
-            abilityContainer.add(stars);
+        // Add usable abilities first
+        for (const ability of usableAbilities) {
+            this.addAbilityToPanel(ability, false, null);
+        }
 
+        // Add unusable abilities at the end
+        for (const ability of unusableAbilities) {
+            const isStarting = isStartingAbility(ability);
+            const upgradeLevel = getAbilityUpgradeLevel(ability);
+            const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
+            const hasInsufficientValue = this.upgradingSpirit !== undefined &&
+                pureCircuits.ability_value(ability) < pureCircuits.ability_value(this.upgradingSpirit);
+
+            let tooltipText: string | null = null;
             if (isStarting) {
-                abilityWidget.setAlpha(0.5);
-                addTooltip(this, abilityWidget, UNUPGRADEABLE_TOOLTIP_TEXT, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                tooltipText = UNUPGRADEABLE_TOOLTIP_TEXT;
             } else if (isFullyUpgraded) {
-                abilityWidget.setAlpha(0.5);
-                addTooltip(this, abilityWidget, FULLY_UPGRADED_TOOLTIP_TEXT, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                tooltipText = FULLY_UPGRADED_TOOLTIP_TEXT;
+            } else if (hasInsufficientValue) {
+                tooltipText = INSUFFICIENT_VALUE_TOOLTIP_TEXT;
             }
 
-            this.spiritPanel?.addChild(abilityContainer);
+            this.addAbilityToPanel(ability, true, tooltipText);
         }
+    }
+
+    private addAbilityToPanel(ability: Ability, greyedOut: boolean, tooltipText: string | null) {
+        const upgradeLevel = getAbilityUpgradeLevel(ability);
+        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
+        abilityContainer.add(abilityWidget);
+
+        // Add upgrade stars above the ability card
+        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
+        abilityContainer.add(stars);
+
+        if (greyedOut) {
+            abilityWidget.setAlpha(0.5);
+            if (tooltipText) {
+                addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+            }
+        }
+
+        this.spiritPanel?.addChild(abilityContainer);
     }
 
 
@@ -419,6 +506,13 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.ui.push(abilityWidget, spiritWidget);
         this.checkUpgradeButtonState();
+
+        // Show sacrificing slot now that upgrading spirit is present
+        (this.sacrificingSlot as any)?.setVisible(true);
+        this.sacrificingSlotTitle?.setVisible(true);
+
+        // Refresh panel to update greyed out abilities based on new upgrading spirit value
+        this.refreshSpiritsPanel();
     }
 
     private placeSpiritInSacrificingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
@@ -460,7 +554,21 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.upgradingSpirit = undefined;
         this.upgradingSpiritContainer = undefined;
         this.removeSlotSpirit(this.upgradingSlot!);
+
+        // If there was a sacrificing spirit, return it to the panel since it's no longer valid
+        if (this.sacrificingSpirit) {
+            this.removeFromSacrificingSlot();
+            this.returnSpiritToPanel(this.sacrificingSpirit);
+        }
+
         this.checkUpgradeButtonState();
+
+        // Hide sacrificing slot since no upgrading spirit is present
+        (this.sacrificingSlot as any)?.setVisible(false);
+        this.sacrificingSlotTitle?.setVisible(false);
+
+        // Refresh panel to remove greyed out state from abilities
+        this.refreshSpiritsPanel();
     }
 
     private removeFromSacrificingSlot() {
