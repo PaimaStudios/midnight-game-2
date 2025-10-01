@@ -13,6 +13,8 @@ import { ScrollablePanel } from "../../widgets/scrollable";
 import { TopBar } from "../../widgets/top-bar";
 import { addTooltip } from "../../widgets/tooltip";
 import { ShopMenu } from "./shop";
+import { UpgradeSparkleParticleSystem } from "../../particles/upgrade-sparkle";
+import { SacrificeDissolveParticleSystem } from "../../particles/sacrifice-dissolve";
 
 // Constants
 const STARTING_SPIRITS_COUNT = 8;
@@ -569,9 +571,91 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             return;
         }
 
+        // Play upgrade animations
+        this.playUpgradeAnimation();
+        this.playSacrificeAnimation();
+
         // Placeholder for upgrade functionality - will be implemented in part 2
         logger.ui.info('Upgrade button clicked - functionality to be implemented');
         this.errorText?.setText('Upgrade functionality coming soon!');
+    }
+
+    private playUpgradeAnimation() {
+        if (!this.upgradingSlot) return;
+
+        const slotX = (this.upgradingSlot as any).x;
+        const slotY = (this.upgradingSlot as any).y;
+
+        // Create golden sparkle/upgrade particles
+        const particles = new UpgradeSparkleParticleSystem(this, slotX, slotY);
+        particles.setDepth(100); // Ensure particles are on top
+        particles.burst();
+
+        // Intense flash and scale effect on the slot
+        this.tweens.add({
+            targets: this.upgradingSlot,
+            alpha: { from: 1, to: 0.2 },
+            scale: { from: 1, to: 1.4 },
+            duration: 250,
+            yoyo: true,
+            repeat: 3,
+            ease: 'Bounce.easeOut',
+        });
+
+        // Add a bright flash overlay
+        const flash = this.add.circle(slotX, slotY, 80, 0xFFFFFF, 0.8);
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            scale: 3,
+            duration: 600,
+            ease: 'Cubic.easeOut',
+            onComplete: () => flash.destroy(),
+        });
+
+        // Stop particles after animation
+        this.time.delayedCall(1500, () => {
+            particles.destroy();
+        });
+    }
+
+    private playSacrificeAnimation() {
+        if (!this.sacrificingSlot) return;
+
+        const slotX = (this.sacrificingSlot as any).x;
+        const slotY = (this.sacrificingSlot as any).y;
+
+        // Create dark/purple dissolve particles
+        const particles = new SacrificeDissolveParticleSystem(this, slotX, slotY);
+        particles.setDepth(100); // Ensure particles are on top
+        particles.burst();
+
+        // Intense fade and shrink effect on the slot
+        this.tweens.add({
+            targets: this.sacrificingSlot,
+            alpha: { from: 1, to: 0.1 },
+            scale: { from: 1, to: 0.6 },
+            duration: 350,
+            yoyo: true,
+            repeat: 3,
+            ease: 'Sine.easeInOut',
+        });
+
+        // Add a dark purple pulse overlay
+        const pulse = this.add.circle(slotX, slotY, 80, 0x8B00FF, 0.7);
+        this.tweens.add({
+            targets: pulse,
+            alpha: 0,
+            scale: 2.5,
+            duration: 800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => pulse.destroy(),
+        });
+
+        // Stop particles after animation
+        this.time.delayedCall(1500, () => {
+            particles.destroy();
+        });
     }
 
     private getAbilityFromContainer(container: Phaser.GameObjects.Container): Ability {
