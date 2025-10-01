@@ -1,5 +1,5 @@
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability } from "game2-contract";
+import { Ability, pureCircuits } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
 import { createSpiritAnimations } from "../../animations/spirit";
@@ -23,6 +23,7 @@ const FULLY_UPGRADED_TOOLTIP_TEXT = "Spirit is fully upgraded";
 // Layout constants
 const STAR_SPACING = 20;
 const STAR_Y_OFFSET = -85;
+const CONTAINER_EXTRA_HEIGHT = Math.abs(STAR_Y_OFFSET) + 20; // Extra height to accommodate stars above
 const SLOT_WIDTH = 120;
 const SLOT_HEIGHT = 160;
 const SLOT_Y_RATIO = 0.35;
@@ -33,8 +34,8 @@ const SLOT_SPIRIT_OFFSET_X = 100;
 const SLOT_PROXIMITY_THRESHOLD = 150;
 
 const PANEL_WIDTH_RATIO = 0.95;
-const PANEL_HEIGHT = 200;
-const PANEL_Y_RATIO = 0.8;
+const PANEL_HEIGHT = 280;
+const PANEL_Y_RATIO = 0.82;
 
 const BUTTON_WIDTH = 150;
 const BUTTON_HEIGHT = 60;
@@ -87,6 +88,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     upgradingSpiritContainer: Phaser.GameObjects.Container | undefined;
     sacrificingSpiritContainer: Phaser.GameObjects.Container | undefined;
     upgradeButton: Button | undefined;
+    upgradeCostLabel: Phaser.GameObjects.Text | undefined;
+    upgradeCostAmount: Phaser.GameObjects.Text | undefined;
 
     spiritPanel: ScrollablePanel | undefined;
 
@@ -124,6 +127,21 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             BUTTON_FONT_SIZE,
             () => this.performUpgrade()
         ).setEnabled(false);
+
+        const costY = GAME_HEIGHT * BUTTON_Y_RATIO + BUTTON_HEIGHT / 2;
+        this.upgradeCostLabel = this.add.text(
+            GAME_WIDTH / 2 - 55,
+            costY,
+            'Cost: ',
+            fontStyle(10, { color: Color.White })
+        ).setVisible(false).setStroke(Color.Licorice, 4);
+
+        this.upgradeCostAmount = this.add.text(
+            GAME_WIDTH / 2 + 10,
+            costY,
+            '',
+            fontStyle(10, { color: Color.Yellow })
+        ).setVisible(false).setStroke(Color.Licorice, 4);
 
         this.onStateChange(this.state);
     }
@@ -356,7 +374,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
 
             const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + 20);
+            const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
             abilityContainer.add(abilityWidget);
 
             // Add upgrade stars above the ability card
@@ -469,7 +487,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
 
         const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + 20);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height + CONTAINER_EXTRA_HEIGHT);
         abilityContainer.add(abilityWidget);
 
         // Add upgrade stars above the ability card
@@ -526,6 +544,16 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     private checkUpgradeButtonState() {
         const canUpgrade = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
         this.upgradeButton?.setEnabled(canUpgrade);
+
+        if (canUpgrade && this.upgradingSpirit && this.sacrificingSpirit) {
+            const cost = 100; // Placeholder fixed cost for now
+            this.upgradeCostLabel?.setVisible(true);
+            this.upgradeCostAmount?.setText(`${cost}`);
+            this.upgradeCostAmount?.setVisible(true);
+        } else {
+            this.upgradeCostLabel?.setVisible(false);
+            this.upgradeCostAmount?.setVisible(false);
+        }
     }
 
     private performUpgrade() {
