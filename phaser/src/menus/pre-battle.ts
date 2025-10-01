@@ -51,6 +51,7 @@ export class StartBattleMenu extends Phaser.Scene {
     inactiveAbilityPanel: ScrollablePanel | undefined;
     battleConfig: BattleConfig | undefined;
     waitingOnState: boolean;
+    stateChangeEvent: Phaser.Events.EventEmitter | undefined;
 
     constructor(api: DeployedGame2API, biome: BIOME_ID, isQuest: boolean, state: Game2DerivedState, difficulty: number = 1) {
         super('StartBattleMenu');
@@ -189,7 +190,7 @@ export class StartBattleMenu extends Phaser.Scene {
                     this.scene.pause().launch('Loader');
                     this.loader = this.scene.get('Loader') as Loader;
                     this.loader.setText("Submitting Proof");
-                    this.events.on('stateChange', (state: Game2DerivedState) => {
+                    this.stateChangeEvent = this.events.on('stateChange', (state: Game2DerivedState) => {
                         this.state = state;
                         this.waitingOnState = false;
                         this.tryStartBattle();
@@ -229,6 +230,7 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.scene.stop('DungeonScene');
                 this.scene.remove('DungeonScene');
             }
+            this.stateChangeEvent?.destroy();
             this.scene.remove('ActiveBattle');
             this.scene.add('ActiveBattle', new ActiveBattle(this.api, this.battleConfig, this.state));
             this.scene.start('ActiveBattle');

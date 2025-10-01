@@ -3,7 +3,7 @@
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { BattleConfig, pureCircuits, BOSS_TYPE } from "game2-contract";
+import { BattleConfig, pureCircuits, BOSS_TYPE, BattleRewards } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
@@ -30,6 +30,10 @@ export class ActiveBattle extends Phaser.Scene {
     abilityIcons: AbilityWidget[];
     spirits: SpiritWidget[];
     background!: Phaser.GameObjects.GameObject;
+    round: number;
+    rewards: BattleRewards | undefined;
+    waitingOnAnimations: boolean;
+    initialized: boolean;
     
     // Managers
     private layout: BattleLayout;
@@ -49,6 +53,9 @@ export class ActiveBattle extends Phaser.Scene {
         this.abilityIcons = [];
         this.spirits = [];
         this.state = state;
+        this.round = 0;
+        this.waitingOnAnimations = false;
+        this.initialized = false;
         
         // Initialize managers
         this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
@@ -82,6 +89,13 @@ export class ActiveBattle extends Phaser.Scene {
         logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
         this.state = structuredClone(state);
+
+        if (!this.initialized) {
+            this.initializeSpirits();
+        }
+
+        // this possibly comes after the round already returned, so try to handle it if that's the case
+        this.handleRoundComplete();
     }
 
     private initializeSpirits() {
@@ -129,6 +143,7 @@ export class ActiveBattle extends Phaser.Scene {
         // Start targeting phase
         this.spiritManager.startTargeting();
         
+        this.initialized = true;
     }
 
     private async executeCombat() {
@@ -157,13 +172,14 @@ export class ActiveBattle extends Phaser.Scene {
         const clonedState = structuredClone(this.state!);
         let loaderStarted = false;
         
-        const retryCombatRound = async (): Promise<any> => {
+        const retryCombatRound = async (): Promise<BattleRewards | undefined> => {
             try {
                 const targets = this.spiritManager.getTargets().map(t => BigInt(t!)) as [bigint, bigint, bigint];
-                const result = await (this.api as any).combat_round(id, targets);
+                const result = await this.api.combat_round(id, targets);
                 if (loaderStarted) {
                     this.scene.resume().stop('Loader');
                 }
+                logger.gameState.debug(`combat_round = ${result != undefined ? safeJSONString(result) : 'undefined'}`);
                 return result;
             } catch (err) {
                 if (loaderStarted) {
@@ -175,57 +191,70 @@ export class ActiveBattle extends Phaser.Scene {
                 return retryCombatRound();
             }
         };
+
         const apiPromise = retryCombatRound();
-        
+
         // Combat logic to use selected targets
-        const uiPromise = this.runCombatLogic(id, clonedState);
+        const uiPromise = this.runUICombatLogic(id, clonedState);
         
         // Wait for both API and UI to finish
         const [circuit, ui] = await Promise.all([apiPromise, uiPromise]);
+
+        this.rewards = circuit;
         
-        // Reset for next round or end battle
-        this.handleCombatComplete(circuit, ui);
+        // Reset for next round or end battle (if state has been updated)
+        this.handleRoundComplete();
     }
 
-    private runCombatLogic(id: bigint, clonedState: Game2DerivedState) {
+    private runUICombatLogic(id: bigint, clonedState: Game2DerivedState) {
         const targetsCopy = this.spiritManager.getTargets().map(target => target!) as number[];
+
+        this.waitingOnAnimations = true;
         
         // Update animation manager references and use its callbacks
         this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
         
         // Use the imported combat logic with targets
-        return combat_round_logic(id, clonedState, targetsCopy, this.combatAnimationManager.createCombatCallbacks());
+        return combat_round_logic(id, clonedState, targetsCopy, this.combatAnimationManager.createCombatCallbacks())
+            .then((rewards) => {
+                this.waitingOnAnimations = false;
+                return rewards;
+            });
     }
 
-    private handleCombatComplete(circuit: any, ui: any) {
-        // Synchronize visual actor HP with battle state HP
-        
-        this.player?.setBlock(0);
-        this.enemyManager.clearBlocks();
-        this.uiStateManager.destroyAbilityIcons();
-        
-        logger.combat.info(`------------------ BATTLE DONE --- BOTH UI AND LOGIC ----------------------`);
-        logger.combat.debug(`UI REWARDS: ${safeJSONString(ui ?? { none: 'none' })}`);
-        logger.combat.debug(`CIRCUIT REWARDS: ${safeJSONString(circuit ?? { none: 'none' })}`);
-        
-        if (circuit != undefined) {
-            // Battle is over, show end-of-battle screen
-            this.spiritManager.cleanupSpirits();
-
-            // Boss completion is now tracked in the contract state automatically
-
-            this.uiStateManager.showBattleEndScreen(circuit, this.state);
-        } else {
-            // Battle continues, reset targeting state for next round
-            // First, refresh spirits for the new round (abilities might have changed)
-            this.spirits = this.spiritManager.refreshSpiritsForNextRound(this.state, this.battle);
-            this.abilityIcons = this.uiStateManager.refreshAbilityIconsForNextRound(this.state, this.battle);
+    private handleRoundComplete() {
+        const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
+        const combatRoundContinue = !this.waitingOnAnimations && battleState != undefined && battleState.round > this.round;
+        // since the combat round ending removes the state we must also check if rewards have been given
+        const combatRoundFinished = this.rewards != undefined || combatRoundContinue;
+        logger.combat.debug(`ActiveBattle.handleRoundComplete(${combatRoundFinished}) ? ${!this.waitingOnAnimations} && ${battleState != undefined} && ${(battleState?.round ?? 0) > this.round} (${battleState?.round} > ${this.round})`);
+        if (combatRoundFinished) {
+            this.round = Number(battleState?.round ?? (this.round + 1));
+            // Synchronize visual actor HP with battle state HP
             
-            // Update manager references to the new spirits
-            this.spiritManager.updateTargetingReferences(this.spirits, this.enemies);
-            this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
+            this.player?.setBlock(0);
+            this.enemyManager.clearBlocks();
+            this.uiStateManager.destroyAbilityIcons();
             
-            this.resetSpirits();
+            if (this.rewards != undefined) {
+                // Battle is over, show end-of-battle screen
+                this.spiritManager.cleanupSpirits();
+
+                // Boss completion is now tracked in the contract state automatically
+
+                this.uiStateManager.showBattleEndScreen(this.rewards, this.state);
+            } else {
+                // Battle continues, reset targeting state for next round
+                // First, refresh spirits for the new round (abilities might have changed)
+                this.spirits = this.spiritManager.refreshSpiritsForNextRound(this.state, this.battle);
+                this.abilityIcons = this.uiStateManager.refreshAbilityIconsForNextRound(this.state, this.battle);
+                
+                // Update manager references to the new spirits
+                this.spiritManager.updateTargetingReferences(this.spirits, this.enemies);
+                this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
+                
+                this.resetSpirits();
+            }
         }
     }
 
