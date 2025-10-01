@@ -544,17 +544,35 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private checkUpgradeButtonState() {
-        const canUpgrade = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
-        this.upgradeButton?.setEnabled(canUpgrade);
+        const bothSpiritsSelected = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
 
-        if (canUpgrade && this.upgradingSpirit && this.sacrificingSpirit) {
+        if (bothSpiritsSelected && this.upgradingSpirit && this.sacrificingSpirit) {
             const cost = 100; // Placeholder fixed cost for now
+            const currentGold = this.state.player?.gold ?? BigInt(0);
+            const hasEnoughGold = currentGold >= BigInt(cost);
+
             this.upgradeCostLabel?.setVisible(true);
             this.upgradeCostAmount?.setText(`${cost}`);
             this.upgradeCostAmount?.setVisible(true);
+
+            // Change cost color based on affordability
+            if (hasEnoughGold) {
+                this.upgradeCostAmount?.setColor(Color.Yellow);
+            } else {
+                this.upgradeCostAmount?.setColor(Color.Red);
+            }
+
+            // Enable button only if player has enough gold
+            this.upgradeButton?.setEnabled(hasEnoughGold);
+
+            // Add/remove tooltip based on gold availability
+            if (!hasEnoughGold && this.upgradeButton) {
+                addTooltip(this, this.upgradeButton, `Not enough gold! Need ${cost}, have ${currentGold}`, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+            }
         } else {
             this.upgradeCostLabel?.setVisible(false);
             this.upgradeCostAmount?.setVisible(false);
+            this.upgradeButton?.setEnabled(false);
         }
     }
 
