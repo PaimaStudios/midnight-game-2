@@ -443,13 +443,18 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
 
         for (const wrappedItem of items) {
+            // Fast path: use cached values to avoid expensive lookups and calculations
             const container = this.unwrapContainer(wrappedItem);
             if (!container) continue;
 
-            const abilityWidget = this.findAbilityWidget(container);
+            const abilityWidget = (container as any).__abilityWidget as AbilityWidget;
             if (!abilityWidget) continue;
 
-            const { isUnusable } = this.getAbilityUsability(abilityWidget.ability, upgradingValue);
+            // Use cached values for instant comparison (no bigint calculations)
+            const isStarting = (container as any).__isStarting as boolean;
+            const abilityValue = (container as any).__abilityValue as bigint;
+
+            const isUnusable = isStarting || (upgradingValue !== undefined && abilityValue < upgradingValue);
             abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
         }
     }
@@ -519,6 +524,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, containerHeight);
         abilityContainer.add(abilityWidget);
         abilityContainer.add(stars);
+
+        // Cache references on the container for fast access (avoid expensive lookups)
+        (abilityContainer as any).__abilityWidget = abilityWidget;
+        (abilityContainer as any).__abilityValue = pureCircuits.ability_value(ability);
+        (abilityContainer as any).__isStarting = isStartingAbility(ability);
 
         return { container: abilityContainer, abilityWidget, stars };
     }
