@@ -11,7 +11,7 @@ import { isStartingAbility, sortedAbilities } from "../pre-battle";
 import { addScaledImage } from "../../utils/scaleImage";
 import { ScrollablePanel } from "../../widgets/scrollable";
 import { TopBar } from "../../widgets/top-bar";
-import { addTooltip } from "../../widgets/tooltip";
+import { addTooltip, Tooltip } from "../../widgets/tooltip";
 import { ShopMenu } from "./shop";
 import { UpgradeSparkleParticleSystem } from "../../particles/upgrade-sparkle";
 import { SacrificeDissolveParticleSystem } from "../../particles/sacrifice-dissolve";
@@ -93,6 +93,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     upgradeButton: Button | undefined;
     upgradeCostLabel: Phaser.GameObjects.Text | undefined;
     upgradeCostAmount: Phaser.GameObjects.Text | undefined;
+    upgradeButtonTooltip: Tooltip | undefined;
 
     spiritPanel: ScrollablePanel | undefined;
 
@@ -386,11 +387,12 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.state = structuredClone(state);
 
-        this.refreshSpiritsPanel();
+        // Only rebuild panel on state changes (e.g., after API calls)
+        this.rebuildSpiritsPanel();
     }
 
-    private refreshSpiritsPanel() {
-        // Destroy the old panel and create a new one to avoid layout issues
+    private rebuildSpiritsPanel() {
+        // Destroy the old panel and create a new one (only for state changes)
         if (this.spiritPanel) {
             this.spiritPanel.panel.destroy();
         }
@@ -430,23 +432,20 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
     // Efficiently update panel item states without rebuilding
     private updatePanelItemStates() {
-        if (!this.spiritPanel) return;
+        const items = this.getPanelItems();
+        if (!items) return;
 
-        const children = this.spiritPanel.getChildren();
         const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
 
-        for (const child of children) {
-            const ability = this.getAbilityFromContainer(child as Phaser.GameObjects.Container);
-            const { isUnusable } = this.getAbilityUsability(ability, upgradingValue);
+        for (const wrappedItem of items) {
+            const container = this.unwrapContainer(wrappedItem);
+            if (!container) continue;
 
-            // Find the AbilityWidget within the container
-            const abilityWidget = this.findAbilityWidget(child as Phaser.GameObjects.Container);
-            if (abilityWidget) {
-                abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
+            const abilityWidget = this.findAbilityWidget(container);
+            if (!abilityWidget) continue;
 
-                // Note: Tooltips cannot be easily removed, but alpha change provides visual feedback
-                // For full tooltip support, would need to track and manage tooltip references
-            }
+            const { isUnusable } = this.getAbilityUsability(abilityWidget.ability, upgradingValue);
+            abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
         }
     }
 
@@ -484,73 +483,80 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         return null;
     }
 
-    // Returns a spirit to the panel, sorted after disabled spirits
+    // Helper to get panel items directly (avoiding expensive getChildren())
+    private getPanelItems(): any[] | null {
+        if (!this.spiritPanel) return null;
+        const sizer = this.spiritPanel.getPanelElement();
+        const items = (sizer as any).getElement?.('items');
+        return items && Array.isArray(items) ? items : null;
+    }
+
+    // Helper to unwrap a container from a wrapped item
+    private unwrapContainer(wrappedItem: any): Phaser.GameObjects.Container | null {
+        const children = wrappedItem.getAll();
+        return children.length > 0 ? children[0] as Phaser.GameObjects.Container : null;
+    }
+
+    // Helper to create ability container with stars for panel (always at 0,0)
+    private createAbilityContainerWithStars(ability: Ability): {
+        container: Phaser.GameObjects.Container,
+        abilityWidget: AbilityWidget,
+        stars: Phaser.GameObjects.Image[]
+    } {
+        const upgradeLevel = getAbilityUpgradeLevel(ability);
+        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
+        abilityContainer.add(abilityWidget);
+
+        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
+        abilityContainer.add(stars);
+
+        return { container: abilityContainer, abilityWidget, stars };
+    }
+
+    // Helper to get slot position
+    private getSlotPosition(slot: Phaser.GameObjects.GameObject): { x: number, y: number } {
+        return { x: (slot as any).x, y: (slot as any).y };
+    }
+
+    // Returns a spirit to the panel, maintaining starting abilities at the end
     private returnSpiritToPanel(ability: Ability) {
         if (!this.spiritPanel) return;
 
-        const children = this.spiritPanel.getChildren();
-        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
+        const { container } = this.createAbilityContainerWithStars(ability);
 
-        // Determine if the returned spirit should be greyed out
-        const { isUnusable, tooltipText } = this.getAbilityUsability(ability, upgradingValue);
+        // Insert before starting abilities if this is not a starting ability
+        if (!isStartingAbility(ability)) {
+            const items = this.getPanelItems();
+            if (items) {
+                let insertIndex = items.length;
 
-        // Find insertion point: after all enabled spirits, before disabled spirits
-        // OR if this spirit is unusable, at the very end
-        let insertIndex = children.length;
+                for (let i = 0; i < items.length; i++) {
+                    const itemContainer = this.unwrapContainer(items[i]);
+                    if (!itemContainer) continue;
 
-        if (!isUnusable) {
-            // Find the first disabled spirit
-            for (let i = 0; i < children.length; i++) {
-                const childAbility = this.getAbilityFromContainer(children[i] as Phaser.GameObjects.Container);
-                const childUsability = this.getAbilityUsability(childAbility, upgradingValue);
-
-                if (childUsability.isUnusable) {
-                    insertIndex = i;
-                    break;
+                    const widget = this.findAbilityWidget(itemContainer);
+                    if (widget && isStartingAbility(widget.ability)) {
+                        insertIndex = i;
+                        break;
+                    }
                 }
+
+                const sizer = this.spiritPanel.getPanelElement();
+                const wrappedChild = this.rexUI.add.fixWidthSizer({}).add(container);
+                (sizer as any).insert(insertIndex, wrappedChild, { expand: true });
+                this.spiritPanel.panel.layout();
+                return;
             }
         }
 
-        // Create the ability container with stars
-        const upgradeLevel = getAbilityUpgradeLevel(ability);
-        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
-        abilityContainer.add(abilityWidget);
-
-        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
-        abilityContainer.add(stars);
-
-        if (isUnusable) {
-            abilityWidget.setAlpha(0.5);
-            if (tooltipText) {
-                addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
-            }
-        }
-
-        // Insert at the calculated position using the public addChild method
-        // Since we can't insert at a specific index easily, we'll use a workaround
-        // by leveraging the internal structure
-        const sizer = this.spiritPanel.getPanelElement();
-        const wrappedChild = this.wrapElementForPanel(abilityContainer);
-
-        (sizer as any).insert(insertIndex, wrappedChild, { expand: true });
-        this.spiritPanel.panel.layout();
+        // If it's a starting ability or we couldn't find the insertion point, just append
+        this.spiritPanel.addChild(container);
     }
 
-    // Helper to wrap an element for the panel (mirrors ScrollablePanel's private method)
-    private wrapElementForPanel(element: Phaser.GameObjects.GameObject): Phaser.GameObjects.GameObject {
-        return this.rexUI.add.fixWidthSizer({}).add(element);
-    }
 
     private addAbilityToPanel(ability: Ability, greyedOut: boolean, tooltipText: string | null) {
-        const upgradeLevel = getAbilityUpgradeLevel(ability);
-        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
-        abilityContainer.add(abilityWidget);
-
-        // Add upgrade stars above the ability card
-        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
-        abilityContainer.add(stars);
+        const { container, abilityWidget } = this.createAbilityContainerWithStars(ability);
 
         if (greyedOut) {
             abilityWidget.setAlpha(0.5);
@@ -559,62 +565,58 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             }
         }
 
-        this.spiritPanel?.addChild(abilityContainer);
+        this.spiritPanel?.addChild(container);
     }
 
 
 
-    private placeSpiritInUpgradingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
-        this.upgradingSpirit = ability;
-        this.upgradingSpiritContainer = spiritContainer;
+    private placeSpiritInSlot(
+        slotType: 'upgrading' | 'sacrificing',
+        spiritContainer: Phaser.GameObjects.Container,
+        ability: Ability
+    ) {
+        const isUpgrading = slotType === 'upgrading';
+        const slot = isUpgrading ? this.upgradingSlot! : this.sacrificingSlot!;
+        const { x: slotX, y: slotY } = this.getSlotPosition(slot);
 
-        const slotX = (this.upgradingSlot as any).x;
-        const slotY = (this.upgradingSlot as any).y;
+        // Store spirit reference
+        if (isUpgrading) {
+            this.upgradingSpirit = ability;
+            this.upgradingSpiritContainer = spiritContainer;
+        } else {
+            this.sacrificingSpirit = ability;
+            this.sacrificingSpiritContainer = spiritContainer;
+        }
 
+        // Create widgets at slot position (not using helper since we need absolute positioning)
         const abilityWidget = new AbilityWidget(this, slotX, slotY, ability);
         this.setupSlotWidgetInteractivity(abilityWidget, () => {
-            this.removeFromUpgradingSlot();
+            isUpgrading ? this.removeFromUpgradingSlot() : this.removeFromSacrificingSlot();
         });
 
-        const spiritWidget = new SpiritWidget(this, slotX - SLOT_SPIRIT_OFFSET_X, slotY, ability);
+        const spiritOffsetX = isUpgrading ? -SLOT_SPIRIT_OFFSET_X : SLOT_SPIRIT_OFFSET_X;
+        const spiritWidget = new SpiritWidget(this, slotX + spiritOffsetX, slotY, ability);
 
-        // Add upgrade stars above the ability widget
         const upgradeLevel = getAbilityUpgradeLevel(ability);
         const stars = createUpgradeStars(this, slotX, slotY, upgradeLevel);
-        this.ui.push(...stars);
 
-        this.ui.push(abilityWidget, spiritWidget);
+        this.ui.push(abilityWidget, spiritWidget, ...stars);
         this.checkUpgradeButtonState();
 
-        // Show sacrificing slot now that upgrading spirit is present
-        (this.sacrificingSlot as any)?.setVisible(true);
-        this.sacrificingSlotTitle?.setVisible(true);
+        // Show sacrificing slot when upgrading spirit is placed
+        if (isUpgrading) {
+            (this.sacrificingSlot as any)?.setVisible(true);
+            this.sacrificingSlotTitle?.setVisible(true);
+            this.updatePanelItemStates();
+        }
+    }
 
-        // Update existing panel items to show greyed out state
-        this.updatePanelItemStates();
+    private placeSpiritInUpgradingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
+        this.placeSpiritInSlot('upgrading', spiritContainer, ability);
     }
 
     private placeSpiritInSacrificingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
-        this.sacrificingSpirit = ability;
-        this.sacrificingSpiritContainer = spiritContainer;
-
-        const slotX = (this.sacrificingSlot as any).x;
-        const slotY = (this.sacrificingSlot as any).y;
-
-        const abilityWidget = new AbilityWidget(this, slotX, slotY, ability);
-        this.setupSlotWidgetInteractivity(abilityWidget, () => {
-            this.removeFromSacrificingSlot();
-        });
-
-        const spiritWidget = new SpiritWidget(this, slotX + SLOT_SPIRIT_OFFSET_X, slotY, ability);
-
-        // Add upgrade stars above the ability widget
-        const upgradeLevel = getAbilityUpgradeLevel(ability);
-        const stars = createUpgradeStars(this, slotX, slotY, upgradeLevel);
-        this.ui.push(...stars);
-
-        this.ui.push(abilityWidget, spiritWidget);
-        this.checkUpgradeButtonState();
+        this.placeSpiritInSlot('sacrificing', spiritContainer, ability);
     }
 
     private setupSlotWidgetInteractivity(widget: AbilityWidget, onClick: () => void) {
@@ -651,7 +653,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             this.returnSpiritToPanel(spiritToReturn);
         }
 
-        // Update existing panel items to remove greyed out state
+        // Update panel to remove greyed out state from all spirits
         this.updatePanelItemStates();
     }
 
@@ -723,12 +725,22 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
             // Add/remove tooltip based on gold availability
             if (!hasEnoughGold && this.upgradeButton) {
-                addTooltip(this, this.upgradeButton, `Not enough gold! Need ${cost}, have ${currentGold}`, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                // Destroy old tooltip if it exists
+                this.upgradeButtonTooltip?.destroy();
+                this.upgradeButtonTooltip = addTooltip(this, this.upgradeButton, `Not enough gold! Need ${cost}, have ${currentGold}`, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+            } else {
+                // Remove tooltip if we have enough gold
+                this.upgradeButtonTooltip?.destroy();
+                this.upgradeButtonTooltip = undefined;
             }
         } else {
             this.upgradeCostLabel?.setVisible(false);
             this.upgradeCostAmount?.setVisible(false);
             this.upgradeButton?.setEnabled(false);
+
+            // Remove tooltip when spirits are removed
+            this.upgradeButtonTooltip?.destroy();
+            this.upgradeButtonTooltip = undefined;
         }
     }
 
@@ -754,82 +766,63 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.errorText?.setText('Upgrade functionality coming soon!');
     }
 
-    private playUpgradeAnimation() {
-        if (!this.upgradingSlot) return;
+    private playSlotAnimation(
+        slot: Phaser.GameObjects.GameObject,
+        particleSystem: UpgradeSparkleParticleSystem | SacrificeDissolveParticleSystem,
+        slotTween: { alphaTo: number, scaleTo: number, duration: number, ease: string },
+        flashColor: number,
+        flashDuration: number
+    ) {
+        const { x, y } = this.getSlotPosition(slot);
 
-        const slotX = (this.upgradingSlot as any).x;
-        const slotY = (this.upgradingSlot as any).y;
+        particleSystem.setDepth(100);
+        particleSystem.burst();
 
-        // Create golden sparkle/upgrade particles
-        const particles = new UpgradeSparkleParticleSystem(this, slotX, slotY);
-        particles.setDepth(100); // Ensure particles are on top
-        particles.burst();
-
-        // Intense flash and scale effect on the slot
         this.tweens.add({
-            targets: this.upgradingSlot,
-            alpha: { from: 1, to: 0.2 },
-            scale: { from: 1, to: 1.4 },
-            duration: 250,
+            targets: slot,
+            alpha: { from: 1, to: slotTween.alphaTo },
+            scale: { from: 1, to: slotTween.scaleTo },
+            duration: slotTween.duration,
             yoyo: true,
             repeat: 3,
-            ease: 'Bounce.easeOut',
+            ease: slotTween.ease,
         });
 
-        // Add a bright flash overlay
-        const flash = this.add.circle(slotX, slotY, 80, 0xFFFFFF, 0.8);
+        const flash = this.add.circle(x, y, 80, flashColor, flashColor === 0xFFFFFF ? 0.8 : 0.7);
         this.tweens.add({
             targets: flash,
             alpha: 0,
-            scale: 3,
-            duration: 600,
+            scale: flashColor === 0xFFFFFF ? 3 : 2.5,
+            duration: flashDuration,
             ease: 'Cubic.easeOut',
             onComplete: () => flash.destroy(),
         });
 
-        // Stop particles after animation
-        this.time.delayedCall(1500, () => {
-            particles.destroy();
-        });
+        this.time.delayedCall(1500, () => particleSystem.destroy());
+    }
+
+    private playUpgradeAnimation() {
+        if (!this.upgradingSlot) return;
+        const { x, y } = this.getSlotPosition(this.upgradingSlot);
+        this.playSlotAnimation(
+            this.upgradingSlot,
+            new UpgradeSparkleParticleSystem(this, x, y),
+            { alphaTo: 0.2, scaleTo: 1.4, duration: 250, ease: 'Bounce.easeOut' },
+            0xFFFFFF,
+            600
+        );
     }
 
     private playSacrificeAnimation() {
         if (!this.sacrificingSlot) return;
-
-        const slotX = (this.sacrificingSlot as any).x;
-        const slotY = (this.sacrificingSlot as any).y;
-
-        // Create dark/purple dissolve particles
-        const particles = new SacrificeDissolveParticleSystem(this, slotX, slotY);
-        particles.setDepth(100); // Ensure particles are on top
-        particles.burst();
-
-        // Intense fade and shrink effect on the slot
-        this.tweens.add({
-            targets: this.sacrificingSlot,
-            alpha: { from: 1, to: 0.1 },
-            scale: { from: 1, to: 0.6 },
-            duration: 350,
-            yoyo: true,
-            repeat: 3,
-            ease: 'Sine.easeInOut',
-        });
-
-        // Add a dark purple pulse overlay
-        const pulse = this.add.circle(slotX, slotY, 80, 0x8B00FF, 0.7);
-        this.tweens.add({
-            targets: pulse,
-            alpha: 0,
-            scale: 2.5,
-            duration: 800,
-            ease: 'Cubic.easeOut',
-            onComplete: () => pulse.destroy(),
-        });
-
-        // Stop particles after animation
-        this.time.delayedCall(1500, () => {
-            particles.destroy();
-        });
+        const { x, y } = this.getSlotPosition(this.sacrificingSlot);
+        this.playSlotAnimation(
+            this.sacrificingSlot,
+            new SacrificeDissolveParticleSystem(this, x, y),
+            { alphaTo: 0.1, scaleTo: 0.6, duration: 350, ease: 'Sine.easeInOut' },
+            0x8B00FF,
+            800
+        );
     }
 
     private getAbilityFromContainer(container: Phaser.GameObjects.Container): Ability {
