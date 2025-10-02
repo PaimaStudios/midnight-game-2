@@ -111,6 +111,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.ui = [];
     }
 
+    // ========================================
+    // Lifecycle Methods
+    // ========================================
+
     create() {
         this.errorText = this.add.text(82, GAME_HEIGHT * 0.5, '', fontStyle(12, { color: Color.Red })).setStroke(Color.Licorice, 6);
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-shop').setDepth(-10);
@@ -158,6 +162,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     shutdown() {
         this.subscription?.unsubscribe();
     }
+
+    // ========================================
+    // UI Creation
+    // ========================================
 
     private createUpgradeSlots() {
         const slotY = GAME_HEIGHT * SLOT_Y_RATIO;
@@ -211,10 +219,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         );
         this.ui.push(this.spiritPanel.panel);
 
-        this.spiritPanel.enableDraggable({
-            onMovedChild: (panel, child) => {},
-            onDragEnd: () => {}
-        });
+        this.spiritPanel.enableDraggable({});
 
         this.spiritPanel.addDragTargets([this.upgradingSlot!, this.sacrificingSlot!], {
             onDragOver: (slot) => this.animateSlotEnlarge(slot),
@@ -223,6 +228,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.setupSlotDropZones();
     }
+
+    // ========================================
+    // Drag & Drop Handling
+    // ========================================
 
     private setupSlotDropZones() {
         this.upgradingSlot?.setInteractive().setData('drop', true);
@@ -387,6 +396,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
     }
 
+    // ========================================
+    // State Management
+    // ========================================
+
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`UpgradeSpiritsMenu.onStateChange(): ${safeJSONString(state)}`);
 
@@ -459,6 +472,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
     }
 
+    // ========================================
+    // Helper Methods
+    // ========================================
+
     // Helper to determine if an ability is usable and why
     private getAbilityUsability(ability: Ability, upgradingValue?: bigint): { isUnusable: boolean, tooltipText: string | null } {
         const isStarting = isStartingAbility(ability);
@@ -481,17 +498,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         return { isUnusable, tooltipText };
     }
 
-    // Helper to find AbilityWidget in a container
-    private findAbilityWidget(container: Phaser.GameObjects.Container): AbilityWidget | null {
-        if (!container.list) return null;
-
-        for (const child of container.list) {
-            if (child instanceof AbilityWidget) {
-                return child;
-            }
-        }
-        return null;
-    }
 
     // Helper to get panel items directly (avoiding expensive getChildren())
     private getPanelItems(): any[] | null {
@@ -588,7 +594,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.spiritPanel?.addChild(container);
     }
 
-
+    // ========================================
+    // Spirit Placement & Removal
+    // ========================================
 
     private placeSpiritInSlot(
         slotType: SlotType,
@@ -725,6 +733,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         return [...nonStartingAbilities, ...startingAbilities];
     }
 
+    // ========================================
+    // Button & Upgrade Logic
+    // ========================================
+
     private checkUpgradeButtonState() {
         const bothSpiritsSelected = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
 
@@ -789,6 +801,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         logger.ui.info('Upgrade button clicked - functionality to be implemented');
         this.errorText?.setText('Upgrade functionality coming soon!');
     }
+
+    // ========================================
+    // Animation Methods
+    // ========================================
 
     private playSlotAnimation(
         slot: Phaser.GameObjects.GameObject,
