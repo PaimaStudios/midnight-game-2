@@ -134,6 +134,14 @@ export interface DeployedGame2API {
      */
     sell_ability: (ability: Ability) => Promise<void>;
 
+    /**
+     * Upgrade an ability, sacrificing the second one.
+     * 
+     * @param ability The ability to upgrade
+     * @param sacrifice The ability to sacrifice. Must have score >= the upgraded ability
+     * @returns ability id of the upgraded ability
+     */
+    upgrade_ability: (ability: Ability, sacrifice: Ability) => Promise<bigint>;
 
     // TODO: add an admin-only API or not?
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
@@ -368,6 +376,20 @@ export class Game2API implements DeployedGame2API {
                 blockHeight: txData.public.blockHeight,
             },
         });
+    }
+
+    async upgrade_ability(ability: Ability, sacrifice: Ability): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.upgrade_ability(ability, sacrifice);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'upgrade_ability',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+
+        return txData.private.result;
     }
 
     async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
