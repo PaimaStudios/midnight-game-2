@@ -417,50 +417,129 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             onDragEnd: () => {}
         });
 
+        // Get sorted abilities once
         const abilities = this.sortedAbilitiesWithStartingLast(this.state);
+        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
 
-        // Separate abilities into groups based on usability
-        const usableAbilities: Ability[] = [];
-        const unusableAbilities: Ability[] = [];
-
+        // Single pass through abilities
         for (const ability of abilities) {
-            const isStarting = isStartingAbility(ability);
-            const upgradeLevel = getAbilityUpgradeLevel(ability);
-            const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
-            const hasInsufficientValue = this.upgradingSpirit !== undefined &&
-                pureCircuits.ability_value(ability) < pureCircuits.ability_value(this.upgradingSpirit);
+            const { isUnusable, tooltipText } = this.getAbilityUsability(ability, upgradingValue);
+            this.addAbilityToPanel(ability, isUnusable, tooltipText);
+        }
+    }
 
-            if (isStarting || isFullyUpgraded || hasInsufficientValue) {
-                unusableAbilities.push(ability);
-            } else {
-                usableAbilities.push(ability);
+    // Efficiently update panel item states without rebuilding
+    private updatePanelItemStates() {
+        if (!this.spiritPanel) return;
+
+        const children = this.spiritPanel.getChildren();
+        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
+
+        for (const child of children) {
+            const ability = this.getAbilityFromContainer(child as Phaser.GameObjects.Container);
+            const { isUnusable } = this.getAbilityUsability(ability, upgradingValue);
+
+            // Find the AbilityWidget within the container
+            const abilityWidget = this.findAbilityWidget(child as Phaser.GameObjects.Container);
+            if (abilityWidget) {
+                abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
+
+                // Note: Tooltips cannot be easily removed, but alpha change provides visual feedback
+                // For full tooltip support, would need to track and manage tooltip references
+            }
+        }
+    }
+
+    // Helper to determine if an ability is usable and why
+    private getAbilityUsability(ability: Ability, upgradingValue?: bigint): { isUnusable: boolean, tooltipText: string | null } {
+        const isStarting = isStartingAbility(ability);
+        const upgradeLevel = getAbilityUpgradeLevel(ability);
+        const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
+        const hasInsufficientValue = upgradingValue !== undefined &&
+            pureCircuits.ability_value(ability) < upgradingValue;
+
+        const isUnusable = isStarting || isFullyUpgraded || hasInsufficientValue;
+
+        let tooltipText: string | null = null;
+        if (isStarting) {
+            tooltipText = UNUPGRADEABLE_TOOLTIP_TEXT;
+        } else if (isFullyUpgraded) {
+            tooltipText = FULLY_UPGRADED_TOOLTIP_TEXT;
+        } else if (hasInsufficientValue) {
+            tooltipText = INSUFFICIENT_VALUE_TOOLTIP_TEXT;
+        }
+
+        return { isUnusable, tooltipText };
+    }
+
+    // Helper to find AbilityWidget in a container
+    private findAbilityWidget(container: Phaser.GameObjects.Container): AbilityWidget | null {
+        if (!container.list) return null;
+
+        for (const child of container.list) {
+            if (child instanceof AbilityWidget) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    // Returns a spirit to the panel, sorted after disabled spirits
+    private returnSpiritToPanel(ability: Ability) {
+        if (!this.spiritPanel) return;
+
+        const children = this.spiritPanel.getChildren();
+        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
+
+        // Determine if the returned spirit should be greyed out
+        const { isUnusable, tooltipText } = this.getAbilityUsability(ability, upgradingValue);
+
+        // Find insertion point: after all enabled spirits, before disabled spirits
+        // OR if this spirit is unusable, at the very end
+        let insertIndex = children.length;
+
+        if (!isUnusable) {
+            // Find the first disabled spirit
+            for (let i = 0; i < children.length; i++) {
+                const childAbility = this.getAbilityFromContainer(children[i] as Phaser.GameObjects.Container);
+                const childUsability = this.getAbilityUsability(childAbility, upgradingValue);
+
+                if (childUsability.isUnusable) {
+                    insertIndex = i;
+                    break;
+                }
             }
         }
 
-        // Add usable abilities first
-        for (const ability of usableAbilities) {
-            this.addAbilityToPanel(ability, false, null);
-        }
+        // Create the ability container with stars
+        const upgradeLevel = getAbilityUpgradeLevel(ability);
+        const abilityWidget = new AbilityWidget(this, 0, 0, ability);
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
+        abilityContainer.add(abilityWidget);
 
-        // Add unusable abilities at the end
-        for (const ability of unusableAbilities) {
-            const isStarting = isStartingAbility(ability);
-            const upgradeLevel = getAbilityUpgradeLevel(ability);
-            const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
-            const hasInsufficientValue = this.upgradingSpirit !== undefined &&
-                pureCircuits.ability_value(ability) < pureCircuits.ability_value(this.upgradingSpirit);
+        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
+        abilityContainer.add(stars);
 
-            let tooltipText: string | null = null;
-            if (isStarting) {
-                tooltipText = UNUPGRADEABLE_TOOLTIP_TEXT;
-            } else if (isFullyUpgraded) {
-                tooltipText = FULLY_UPGRADED_TOOLTIP_TEXT;
-            } else if (hasInsufficientValue) {
-                tooltipText = INSUFFICIENT_VALUE_TOOLTIP_TEXT;
+        if (isUnusable) {
+            abilityWidget.setAlpha(0.5);
+            if (tooltipText) {
+                addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
             }
-
-            this.addAbilityToPanel(ability, true, tooltipText);
         }
+
+        // Insert at the calculated position using the public addChild method
+        // Since we can't insert at a specific index easily, we'll use a workaround
+        // by leveraging the internal structure
+        const sizer = this.spiritPanel.getPanelElement();
+        const wrappedChild = this.wrapElementForPanel(abilityContainer);
+
+        (sizer as any).insert(insertIndex, wrappedChild, { expand: true });
+        this.spiritPanel.panel.layout();
+    }
+
+    // Helper to wrap an element for the panel (mirrors ScrollablePanel's private method)
+    private wrapElementForPanel(element: Phaser.GameObjects.GameObject): Phaser.GameObjects.GameObject {
+        return this.rexUI.add.fixWidthSizer({}).add(element);
     }
 
     private addAbilityToPanel(ability: Ability, greyedOut: boolean, tooltipText: string | null) {
@@ -511,8 +590,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         (this.sacrificingSlot as any)?.setVisible(true);
         this.sacrificingSlotTitle?.setVisible(true);
 
-        // Refresh panel to update greyed out abilities based on new upgrading spirit value
-        this.refreshSpiritsPanel();
+        // Update existing panel items to show greyed out state
+        this.updatePanelItemStates();
     }
 
     private placeSpiritInSacrificingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
@@ -550,6 +629,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private removeFromUpgradingSlot() {
+        const spiritToReturn = this.upgradingSpirit;
+
         this.upgradingSpirit = undefined;
         this.upgradingSpiritContainer = undefined;
         this.removeSlotSpirit(this.upgradingSlot!);
@@ -565,15 +646,27 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         (this.sacrificingSlot as any)?.setVisible(false);
         this.sacrificingSlotTitle?.setVisible(false);
 
-        // Refresh panel to remove greyed out state from abilities
-        this.refreshSpiritsPanel();
+        // Return the spirit to the panel
+        if (spiritToReturn) {
+            this.returnSpiritToPanel(spiritToReturn);
+        }
+
+        // Update existing panel items to remove greyed out state
+        this.updatePanelItemStates();
     }
 
     private removeFromSacrificingSlot() {
+        const spiritToReturn = this.sacrificingSpirit;
+
         this.sacrificingSpirit = undefined;
         this.sacrificingSpiritContainer = undefined;
         this.removeSlotSpirit(this.sacrificingSlot!);
         this.checkUpgradeButtonState();
+
+        // Return the spirit to the panel
+        if (spiritToReturn) {
+            this.returnSpiritToPanel(spiritToReturn);
+        }
     }
 
     private removeSlotSpirit(slot: Phaser.GameObjects.GameObject) {
