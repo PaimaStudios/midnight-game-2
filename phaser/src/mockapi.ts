@@ -74,6 +74,11 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
         return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
             const battleConfig = configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
@@ -136,6 +141,11 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
         return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             const quest = {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
@@ -200,13 +210,33 @@ export class MockGame2API implements DeployedGame2API {
     public async sell_ability(ability: Ability): Promise<void> {
         return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
-            const oldCount = this.mockState.playerAbilities.get(id)!;
-            if (oldCount > BigInt(1)) {
-                this.mockState.playerAbilities.set(id, oldCount - BigInt(1));
-            } else {
-                this.mockState.playerAbilities.delete(id);
-            }
+            this.removePlayerAbility(id);
             this.mockState.player!.gold += pureCircuits.ability_value(ability);
+        });
+    }
+
+    public async upgrade_ability(ability: Ability, sacrifice: Ability): Promise<bigint> {
+        return this.response(async () => {
+            if (pureCircuits.ability_score(sacrifice) < pureCircuits.ability_score(ability)) {
+                throw new Error("Sacrificed ability must have score equal or greater to the ability to upgrade");
+            }
+            if (ability.upgrade_level >= 3) {
+                throw new Error("Ability can't be upgraded any more");
+            }
+            const ability_id = pureCircuits.derive_ability_id(ability);
+            const sacrifice_id = pureCircuits.derive_ability_id(sacrifice);
+            this.removePlayerAbility(ability_id);
+            this.removePlayerAbility(sacrifice_id);
+            const cost = pureCircuits.upgrade_ability_cost(ability);
+            if (this.mockState.player!.gold < cost) {
+                throw new Error("Insufficient gold for upgrade");
+            }
+            this.mockState.player!.gold -= cost;
+            const upgraded = pureCircuits.compute_upgraded_ability(ability);
+            const upgraded_id = pureCircuits.derive_ability_id(upgraded);
+            this.mockState.allAbilities.set(upgraded_id, upgraded);
+            this.mockState.playerAbilities.set(upgraded_id, this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0));
+            return upgraded_id;
         });
     }
 
@@ -253,6 +283,18 @@ export class MockGame2API implements DeployedGame2API {
         this.mockState.allAbilities.set(abilityId, ability);
         this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
         return abilityId;
+    }
+
+    private removePlayerAbility(id: bigint) {
+        const count = this.mockState.playerAbilities.get(id) ?? BigInt(0);
+        if (count < 1) {
+            throw new Error("Must own ability");
+        }
+        if (count > BigInt(1)) {
+            this.mockState.playerAbilities.set(id, count - BigInt(1));
+        } else {
+            this.mockState.playerAbilities.delete(id);
+        }
     }
 
     private async response<T>(body: () => Promise<T>, delay: number = MOCK_DELAY): Promise<T> {
