@@ -41,8 +41,8 @@ const SLOT_SPIRIT_OFFSET_X = 100;
 const SLOT_PROXIMITY_THRESHOLD = 150;
 
 const PANEL_WIDTH_RATIO = 0.95;
-const PANEL_HEIGHT = 190;
-const PANEL_Y_RATIO = 0.78;
+const PANEL_HEIGHT = 175;
+const PANEL_Y_RATIO = 0.75;
 
 const BUTTON_WIDTH = 150;
 const BUTTON_HEIGHT = 60;
@@ -510,10 +510,14 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     } {
         const upgradeLevel = getAbilityUpgradeLevel(ability);
         const abilityWidget = new AbilityWidget(this, 0, 0, ability);
-        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
-        abilityContainer.add(abilityWidget);
 
         const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
+
+        // Calculate container bounds to include both widget and stars
+        const containerHeight = abilityWidget.height + Math.abs(STAR_Y_OFFSET) / 2;
+
+        const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, containerHeight);
+        abilityContainer.add(abilityWidget);
         abilityContainer.add(stars);
 
         return { container: abilityContainer, abilityWidget, stars };
