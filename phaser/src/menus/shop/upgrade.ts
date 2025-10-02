@@ -111,10 +111,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         this.ui = [];
     }
 
-    // ========================================
-    // Lifecycle Methods
-    // ========================================
-
     create() {
         this.errorText = this.add.text(82, GAME_HEIGHT * 0.5, '', fontStyle(12, { color: Color.Red })).setStroke(Color.Licorice, 6);
         addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-shop').setDepth(-10);
@@ -162,10 +158,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     shutdown() {
         this.subscription?.unsubscribe();
     }
-
-    // ========================================
-    // UI Creation
-    // ========================================
 
     private createUpgradeSlots() {
         const slotY = GAME_HEIGHT * SLOT_Y_RATIO;
@@ -228,10 +220,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.setupSlotDropZones();
     }
-
-    // ========================================
-    // Drag & Drop Handling
-    // ========================================
 
     private setupSlotDropZones() {
         this.upgradingSlot?.setInteractive().setData('drop', true);
@@ -396,10 +384,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
     }
 
-    // ========================================
-    // State Management
-    // ========================================
-
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`UpgradeSpiritsMenu.onStateChange(): ${safeJSONString(state)}`);
 
@@ -471,10 +455,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
         }
     }
-
-    // ========================================
-    // Helper Methods
-    // ========================================
 
     // Helper to determine if an ability is usable and why
     private getAbilityUsability(ability: Ability, upgradingValue?: bigint): { isUnusable: boolean, tooltipText: string | null } {
@@ -593,10 +573,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.spiritPanel?.addChild(container);
     }
-
-    // ========================================
-    // Spirit Placement & Removal
-    // ========================================
 
     private placeSpiritInSlot(
         slotType: SlotType,
@@ -733,10 +709,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         return [...nonStartingAbilities, ...startingAbilities];
     }
 
-    // ========================================
-    // Button & Upgrade Logic
-    // ========================================
-
     private checkUpgradeButtonState() {
         const bothSpiritsSelected = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
 
@@ -801,10 +773,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         logger.ui.info('Upgrade button clicked - functionality to be implemented');
         this.errorText?.setText('Upgrade functionality coming soon!');
     }
-
-    // ========================================
-    // Animation Methods
-    // ========================================
 
     private playSlotAnimation(
         slot: Phaser.GameObjects.GameObject,
