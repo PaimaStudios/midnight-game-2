@@ -543,19 +543,20 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         if (!this.spiritPanel) return;
 
         const { container } = this.createAbilityContainerWithStars(ability);
+        const isStarting = (container as any).__isStarting as boolean;
 
         // Insert before starting abilities if this is not a starting ability
-        if (!isStartingAbility(ability)) {
+        if (!isStarting) {
             const items = this.getPanelItems();
             if (items) {
                 let insertIndex = items.length;
 
+                // Use cached __isStarting for fast lookup (no function calls or widget searches)
                 for (let i = 0; i < items.length; i++) {
                     const itemContainer = this.unwrapContainer(items[i]);
                     if (!itemContainer) continue;
 
-                    const widget = this.findAbilityWidget(itemContainer);
-                    if (widget && isStartingAbility(widget.ability)) {
+                    if ((itemContainer as any).__isStarting === true) {
                         insertIndex = i;
                         break;
                     }
