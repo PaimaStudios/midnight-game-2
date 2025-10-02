@@ -16,6 +16,12 @@ import { ShopMenu } from "./shop";
 import { UpgradeSparkleParticleSystem } from "../../particles/upgrade-sparkle";
 import { SacrificeDissolveParticleSystem } from "../../particles/sacrifice-dissolve";
 
+// Enums
+enum SlotType {
+    Upgrading = 'upgrading',
+    Sacrificing = 'sacrificing'
+}
+
 // Constants
 const STARTING_SPIRITS_COUNT = 8;
 const UNUPGRADEABLE_TOOLTIP_TEXT = "Starting spirits cannot be used for upgrading";
@@ -166,7 +172,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             colorToNumber(Color.Blue)
         );
         this.add.existing(this.upgradingSlot);
-        this.upgradingSlot.setInteractive().setData('slotType', 'upgrading');
+        this.upgradingSlot.setInteractive().setData('slotType', SlotType.Upgrading);
 
         this.add.text(GAME_WIDTH * SLOT_LEFT_X_RATIO, slotY - SLOT_TITLE_OFFSET_Y, 'Upgrading Spirit',
             fontStyle(10, { color: Color.White })).setStroke(Color.Licorice, 6).setOrigin(0.5);
@@ -180,7 +186,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             colorToNumber(Color.Red)
         );
         this.add.existing(this.sacrificingSlot);
-        this.sacrificingSlot.setInteractive().setData('slotType', 'sacrificing');
+        this.sacrificingSlot.setInteractive().setData('slotType', SlotType.Sacrificing);
 
         this.sacrificingSlotTitle = this.add.text(
             GAME_WIDTH * SLOT_RIGHT_X_RATIO,
@@ -236,7 +242,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
                     if (Phaser.Geom.Rectangle.Contains(upgradingBounds, dragEndX, dragEndY)) {
                         logger.ui.debug('Drag ended over upgrading slot');
-                        this.handleSpiritDropOnSlot('upgrading', gameObject);
+                        this.handleSpiritDropOnSlot(SlotType.Upgrading, gameObject);
                         this.animateSlotShrink(this.upgradingSlot);
                         return;
                     }
@@ -248,7 +254,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
                     if (Phaser.Geom.Rectangle.Contains(sacrificingBounds, dragEndX, dragEndY)) {
                         logger.ui.debug('Drag ended over sacrificing slot');
-                        this.handleSpiritDropOnSlot('sacrificing', gameObject);
+                        this.handleSpiritDropOnSlot(SlotType.Sacrificing, gameObject);
                         this.animateSlotShrink(this.sacrificingSlot);
                         return;
                     }
@@ -261,7 +267,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         });
     }
 
-    private handleSpiritDropOnSlot(slotType: 'upgrading' | 'sacrificing', draggedObject: any) {
+    private handleSpiritDropOnSlot(slotType: SlotType, draggedObject: any) {
         logger.ui.info(`Spirit dropped on ${slotType} slot`);
         logger.ui.debug('Dropped object type:', draggedObject.constructor.name);
 
@@ -288,13 +294,13 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
 
         // Don't allow placing in sacrificing slot if no upgrading spirit is present
-        if (slotType === 'sacrificing' && !this.upgradingSpirit) {
+        if (slotType === SlotType.Sacrificing && !this.upgradingSpirit) {
             logger.ui.warn('Must select an upgrading spirit first');
             return;
         }
 
         // Check value constraints when placing in sacrificing slot
-        if (slotType === 'sacrificing' && this.upgradingSpirit) {
+        if (slotType === SlotType.Sacrificing && this.upgradingSpirit) {
             const upgradingValue = pureCircuits.ability_value(this.upgradingSpirit);
             const sacrificingValue = pureCircuits.ability_value(ability);
             if (sacrificingValue < upgradingValue) {
@@ -304,7 +310,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
 
         // Check value constraints when placing in upgrading slot (if sacrificing already placed)
-        if (slotType === 'upgrading' && this.sacrificingSpirit) {
+        if (slotType === SlotType.Upgrading && this.sacrificingSpirit) {
             const upgradingValue = pureCircuits.ability_value(ability);
             const sacrificingValue = pureCircuits.ability_value(this.sacrificingSpirit);
             if (sacrificingValue < upgradingValue) {
@@ -313,29 +319,29 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             }
         }
 
-        if (slotType === 'upgrading' && this.upgradingSpirit) {
+        if (slotType === SlotType.Upgrading && this.upgradingSpirit) {
             logger.ui.info('Upgrading slot is occupied, replacing existing spirit');
             this.removeFromUpgradingSlot();
         }
 
-        if (slotType === 'sacrificing' && this.sacrificingSpirit) {
+        if (slotType === SlotType.Sacrificing && this.sacrificingSpirit) {
             logger.ui.info('Sacrificing slot is occupied, replacing existing spirit');
             this.removeFromSacrificingSlot();
         }
 
-        if (slotType === 'upgrading' && this.sacrificingSpiritContainer === spiritContainer) {
+        if (slotType === SlotType.Upgrading && this.sacrificingSpiritContainer === spiritContainer) {
             logger.ui.warn('Cannot use the same spirit instance for both slots');
             return;
         }
 
-        if (slotType === 'sacrificing' && this.upgradingSpiritContainer === spiritContainer) {
+        if (slotType === SlotType.Sacrificing && this.upgradingSpiritContainer === spiritContainer) {
             logger.ui.warn('Cannot use the same spirit instance for both slots');
             return;
         }
 
         this.removeFromScrollablePanel(spiritContainer);
 
-        if (slotType === 'upgrading') {
+        if (slotType === SlotType.Upgrading) {
             this.placeSpiritInUpgradingSlot(spiritContainer, ability);
         } else {
             this.placeSpiritInSacrificingSlot(spiritContainer, ability);
@@ -571,11 +577,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
 
     private placeSpiritInSlot(
-        slotType: 'upgrading' | 'sacrificing',
+        slotType: SlotType,
         spiritContainer: Phaser.GameObjects.Container,
         ability: Ability
     ) {
-        const isUpgrading = slotType === 'upgrading';
+        const isUpgrading = slotType === SlotType.Upgrading;
         const slot = isUpgrading ? this.upgradingSlot! : this.sacrificingSlot!;
         const { x: slotX, y: slotY } = this.getSlotPosition(slot);
 
@@ -612,11 +618,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private placeSpiritInUpgradingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
-        this.placeSpiritInSlot('upgrading', spiritContainer, ability);
+        this.placeSpiritInSlot(SlotType.Upgrading, spiritContainer, ability);
     }
 
     private placeSpiritInSacrificingSlot(spiritContainer: Phaser.GameObjects.Container, ability: Ability) {
-        this.placeSpiritInSlot('sacrificing', spiritContainer, ability);
+        this.placeSpiritInSlot(SlotType.Sacrificing, spiritContainer, ability);
     }
 
     private setupSlotWidgetInteractivity(widget: AbilityWidget, onClick: () => void) {
@@ -627,7 +633,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             .on('pointerout', () => {
                 (this.game.canvas as HTMLCanvasElement).style.cursor = 'default';
             })
-            .on('pointerdown', onClick);
+            .on('pointerdown', () => {
+                onClick();
+                // Reset cursor after click since widget will be destroyed
+                (this.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+            });
     }
 
     private removeFromUpgradingSlot() {
