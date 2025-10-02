@@ -23,7 +23,6 @@ enum SlotType {
 }
 
 // Constants
-const STARTING_SPIRITS_COUNT = 8;
 const UNUPGRADEABLE_TOOLTIP_TEXT = "Starting spirits cannot be used for upgrading";
 const MAX_UPGRADE_LEVEL = 3;
 const FULLY_UPGRADED_TOOLTIP_TEXT = "Spirit is fully upgraded";
