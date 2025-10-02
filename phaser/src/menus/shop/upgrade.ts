@@ -107,7 +107,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
     create() {
         this.errorText = this.add.text(82, GAME_HEIGHT * 0.5, '', fontStyle(12, { color: Color.Red })).setStroke(Color.Licorice, 6);
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-shop').setDepth(-10);
         createSpiritAnimations(this);
 
         this.topBar = new TopBar(this, true, this.api, this.state)

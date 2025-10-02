@@ -99,6 +99,7 @@ export class TestMenu extends Phaser.Scene {
 
         // Backgrounds
         this.load.image('bg-hub1', 'bg-hub1.png');
+        this.load.image('bg-shop', 'bg-shop.png');
         this.load.image('bg-grass', 'bg-grass.png');
         this.load.image('bg-desert', 'bg-desert.png');
         this.load.image('bg-tundra', 'bg-tundra.png');

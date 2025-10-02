@@ -18,6 +18,10 @@ import { ShopMenu } from "./shop";
 const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be sold";
 
 // Layout constants
+const TITLE_Y_RATIO = 0.1;
+const TITLE_FONT_SIZE = 24;
+const TITLE_STROKE_THICKNESS = 8;
+
 const PANEL_WIDTH_RATIO = 0.95;
 const PANEL_HEIGHT = 350;
 const PANEL_Y_RATIO = 0.6;
@@ -53,8 +57,19 @@ export class SellSpiritsMenu extends Phaser.Scene {
     }
 
     create() {
-        this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
+
+        this.add.text(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * TITLE_Y_RATIO,
+            'Sell Spirits',
+            fontStyle(TITLE_FONT_SIZE, {
+                color: Color.White,
+                stroke: Color.Licorice,
+                strokeThickness: TITLE_STROKE_THICKNESS
+            })
+        ).setOrigin(0.5);
+
+        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-shop').setDepth(-10);
         createSpiritAnimations(this);
 
         this.topBar = new TopBar(this, true, this.api, this.state)
@@ -63,6 +78,8 @@ export class SellSpiritsMenu extends Phaser.Scene {
                 this.scene.add('ShopMenu', new ShopMenu(this.api, this.state));
                 this.scene.start('ShopMenu');
             }, 'Back to Shop');
+        
+        this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
 
         this.onStateChange(this.state);
     }

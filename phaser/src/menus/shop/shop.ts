@@ -34,8 +34,6 @@ export class ShopMenu extends Phaser.Scene {
     }
 
     create() {
-        addScaledImage(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-grass').setDepth(-10);
-
         this.topBar = new TopBar(this, true, this.api, this.state)
             .back(() => {
                 this.scene.remove('TestMenu');
