@@ -210,15 +210,7 @@ export class MockGame2API implements DeployedGame2API {
     public async sell_ability(ability: Ability): Promise<void> {
         return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
-            if ((this.mockState.playerAbilities.get(id) ?? BigInt(0)) < 1) {
-                throw new Error("Must own ability");
-            }
-            const oldCount = this.mockState.playerAbilities.get(id)!;
-            if (oldCount > BigInt(1)) {
-                this.mockState.playerAbilities.set(id, oldCount - BigInt(1));
-            } else {
-                this.mockState.playerAbilities.delete(id);
-            }
+            this.removePlayerAbility(id);
             this.mockState.player!.gold += pureCircuits.ability_value(ability);
         });
     }
@@ -231,14 +223,20 @@ export class MockGame2API implements DeployedGame2API {
             if (ability.upgrade_level >= 3) {
                 throw new Error("Ability can't be upgraded any more");
             }
-            if ((this.mockState.playerAbilities.get(pureCircuits.derive_ability_id(ability)) ?? BigInt(0)) < 1) {
-                throw new Error("Must own ability");
+            const ability_id = pureCircuits.derive_ability_id(ability);
+            const sacrifice_id = pureCircuits.derive_ability_id(sacrifice);
+            this.removePlayerAbility(ability_id);
+            this.removePlayerAbility(sacrifice_id);
+            const cost = pureCircuits.upgrade_ability_cost(ability);
+            if (this.mockState.player!.gold < cost) {
+                throw new Error("Insufficient gold for upgrade");
             }
-            if ((this.mockState.playerAbilities.get(pureCircuits.derive_ability_id(sacrifice)) ?? BigInt(0)) < 1) {
-                throw new Error("Must own sacrifice ability");
-            }
+            this.mockState.player!.gold -= cost;
             const upgraded = pureCircuits.compute_upgraded_ability(ability);
-            return pureCircuits.derive_ability_id(upgraded);
+            const upgraded_id = pureCircuits.derive_ability_id(upgraded);
+            this.mockState.allAbilities.set(upgraded_id, upgraded);
+            this.mockState.playerAbilities.set(upgraded_id, this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0));
+            return upgraded_id;
         });
     }
 
@@ -285,6 +283,18 @@ export class MockGame2API implements DeployedGame2API {
         this.mockState.allAbilities.set(abilityId, ability);
         this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
         return abilityId;
+    }
+
+    private removePlayerAbility(id: bigint) {
+        const count = this.mockState.playerAbilities.get(id) ?? BigInt(0);
+        if (count < 1) {
+            throw new Error("Must own ability");
+        }
+        if (count > BigInt(1)) {
+            this.mockState.playerAbilities.set(id, count - BigInt(1));
+        } else {
+            this.mockState.playerAbilities.delete(id);
+        }
     }
 
     private async response<T>(body: () => Promise<T>, delay: number = MOCK_DELAY): Promise<T> {

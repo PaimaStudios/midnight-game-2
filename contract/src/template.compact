@@ -276,8 +276,16 @@ export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     const score = ability_score(ability);
     const sacrifice_score = ability_score(sacrifice);
+    const upgrade_cost = upgrade_ability_cost(disclose(ability));
+
+    assert(players.lookup(player_id).gold >= upgrade_cost, "Insufficient gold for upgrade");
 
     assert(score <= sacrifice_score, "Sacrificed ability must have score equal or greater to the ability to upgrade");
+
+    players.insert(player_id, Player {
+        (players.lookup(player_id).gold - upgrade_cost) as Uint<32>,
+        players.lookup(player_id).rng
+    });
 
     player_remove_ability(player_id, derive_ability_id(disclose(ability)));
 
@@ -296,6 +304,12 @@ export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
     player_add_ability(player_id, upgraded_id);
 
     return upgraded_id;
+}
+
+export pure circuit upgrade_ability_cost(ability: Ability): Uint<32> {
+    // TODO: use this or another method?
+    // just here separately for API reasons
+    return ability_value(ability);
 }
 
 circuit player_add_ability(player_id: Field, ability_id: Field): [] {
