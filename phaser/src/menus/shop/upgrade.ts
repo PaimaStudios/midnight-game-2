@@ -297,8 +297,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Check value constraints when placing in sacrificing slot
         if (slotType === SlotType.Sacrificing && this.upgradingSpirit) {
-            const upgradingValue = pureCircuits.ability_value(this.upgradingSpirit);
-            const sacrificingValue = pureCircuits.ability_value(ability);
+            const upgradingValue = pureCircuits.ability_score(this.upgradingSpirit);
+            const sacrificingValue = pureCircuits.ability_score(ability);
             if (sacrificingValue < upgradingValue) {
                 logger.ui.warn('Sacrificing ability value too low');
                 return;
@@ -307,8 +307,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Check value constraints when placing in upgrading slot (if sacrificing already placed)
         if (slotType === SlotType.Upgrading && this.sacrificingSpirit) {
-            const upgradingValue = pureCircuits.ability_value(ability);
-            const sacrificingValue = pureCircuits.ability_value(this.sacrificingSpirit);
+            const upgradingValue = pureCircuits.ability_score(ability);
+            const sacrificingValue = pureCircuits.ability_score(this.sacrificingSpirit);
             if (sacrificingValue < upgradingValue) {
                 logger.ui.warn('Sacrificing ability value too low for this upgrading spirit');
                 return;
@@ -423,7 +423,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Get sorted abilities once
         const abilities = this.sortedAbilitiesWithStartingLast(this.state);
-        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
+        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_score(this.upgradingSpirit) : undefined;
 
         // Single pass through abilities
         for (const ability of abilities) {
@@ -437,7 +437,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const items = this.getPanelItems();
         if (!items) return;
 
-        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_value(this.upgradingSpirit) : undefined;
+        const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_score(this.upgradingSpirit) : undefined;
 
         for (const wrappedItem of items) {
             // Fast path: use cached values to avoid expensive lookups and calculations
@@ -462,7 +462,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const upgradeLevel = getAbilityUpgradeLevel(ability);
         const isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
         const hasInsufficientValue = upgradingValue !== undefined &&
-            pureCircuits.ability_value(ability) < upgradingValue;
+            pureCircuits.ability_score(ability) < upgradingValue;
 
         const isUnusable = isStarting || isFullyUpgraded || hasInsufficientValue;
 
@@ -513,7 +513,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         // Cache references on the container for fast access (avoid expensive lookups)
         (abilityContainer as any).__abilityWidget = abilityWidget;
-        (abilityContainer as any).__abilityValue = pureCircuits.ability_value(ability);
+        (abilityContainer as any).__abilityValue = pureCircuits.ability_score(ability);
         (abilityContainer as any).__isStarting = isStartingAbility(ability);
 
         return { container: abilityContainer, abilityWidget, stars };
