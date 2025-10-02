@@ -74,6 +74,11 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
         return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
             const battleConfig = configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
@@ -136,6 +141,11 @@ export class MockGame2API implements DeployedGame2API {
 
     public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
         return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             const quest = {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
@@ -200,6 +210,9 @@ export class MockGame2API implements DeployedGame2API {
     public async sell_ability(ability: Ability): Promise<void> {
         return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
+            if ((this.mockState.playerAbilities.get(id) ?? BigInt(0)) < 1) {
+                throw new Error("Must own ability");
+            }
             const oldCount = this.mockState.playerAbilities.get(id)!;
             if (oldCount > BigInt(1)) {
                 this.mockState.playerAbilities.set(id, oldCount - BigInt(1));
@@ -207,6 +220,25 @@ export class MockGame2API implements DeployedGame2API {
                 this.mockState.playerAbilities.delete(id);
             }
             this.mockState.player!.gold += pureCircuits.ability_value(ability);
+        });
+    }
+
+    public async upgrade_ability(ability: Ability, sacrifice: Ability): Promise<bigint> {
+        return this.response(async () => {
+            if (pureCircuits.ability_score(sacrifice) < pureCircuits.ability_score(ability)) {
+                throw new Error("Sacrificed ability must have score equal or greater to the ability to upgrade");
+            }
+            if (ability.upgrade_level >= 3) {
+                throw new Error("Ability can't be upgraded any more");
+            }
+            if ((this.mockState.playerAbilities.get(pureCircuits.derive_ability_id(ability)) ?? BigInt(0)) < 1) {
+                throw new Error("Must own ability");
+            }
+            if ((this.mockState.playerAbilities.get(pureCircuits.derive_ability_id(sacrifice)) ?? BigInt(0)) < 1) {
+                throw new Error("Must own sacrifice ability");
+            }
+            const upgraded = pureCircuits.compute_upgraded_ability(ability);
+            return pureCircuits.derive_ability_id(upgraded);
         });
     }
 
