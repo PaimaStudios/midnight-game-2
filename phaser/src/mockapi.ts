@@ -235,7 +235,7 @@ export class MockGame2API implements DeployedGame2API {
             const upgraded = pureCircuits.compute_upgraded_ability(ability);
             const upgraded_id = pureCircuits.derive_ability_id(upgraded);
             this.mockState.allAbilities.set(upgraded_id, upgraded);
-            this.mockState.playerAbilities.set(upgraded_id, this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0));
+            this.mockState.playerAbilities.set(upgraded_id, (this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0)) + BigInt(1));
             return upgraded_id;
         });
     }
