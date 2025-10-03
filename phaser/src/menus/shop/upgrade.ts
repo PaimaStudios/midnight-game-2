@@ -139,14 +139,14 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         const costY = GAME_HEIGHT * BUTTON_Y_RATIO + BUTTON_HEIGHT / 2;
         this.upgradeCostLabel = this.add.text(
-            GAME_WIDTH / 2 - 55,
+            GAME_WIDTH / 2 - 80, 
             costY,
             'Cost: ',
             fontStyle(10, { color: Color.White })
         ).setVisible(false).setStroke(Color.Licorice, 4);
 
         this.upgradeCostAmount = this.add.text(
-            GAME_WIDTH / 2 + 10,
+            GAME_WIDTH / 2 - 15,
             costY,
             '',
             fontStyle(10, { color: Color.Yellow })
