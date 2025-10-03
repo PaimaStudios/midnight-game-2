@@ -53,10 +53,8 @@ const TOOLTIP_WIDTH = 300;
 const TOOLTIP_HEIGHT = 400;
 
 // Helper function to get ability upgrade level
-// TODO: This should read from the actual ability data once upgrade levels are tracked
 function getAbilityUpgradeLevel(ability: Ability): number {
-    // Placeholder: returns 0 for now, will be connected to real data later
-    return 0;
+    return Number(ability.upgrade_level);
 }
 
 // Helper function to create star indicators above an ability
@@ -101,6 +99,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     upgradeButtonTooltip: Tooltip | undefined;
 
     spiritPanel: ScrollablePanel | undefined;
+
+    pendingUpgradedAbilityId: bigint | undefined;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
         super("UpgradeSpiritsMenu");
@@ -389,7 +389,49 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.state = structuredClone(state);
 
-        // Only rebuild panel on state changes (e.g., after API calls)
+        // Check if we're waiting for an upgraded ability to appear in state
+        if (this.pendingUpgradedAbilityId !== undefined) {
+            const upgradedAbility = state.allAbilities.get(this.pendingUpgradedAbilityId);
+            if (upgradedAbility !== undefined) {
+                // Both circuit call and state update are complete!
+                logger.ui.info('Upgrade complete - upgraded ability found in state');
+                this.pendingUpgradedAbilityId = undefined;
+
+                // Hide loader if it's showing
+                if (this.loader !== undefined) {
+                    this.scene.resume().stop('Loader');
+                    this.loader = undefined;
+                }
+
+                // Play upgrade animations now that upgrade is complete
+                this.playUpgradeAnimation();
+                this.playSacrificeAnimation();
+
+                // Clear the slots
+                this.upgradingSpirit = undefined;
+                this.sacrificingSpirit = undefined;
+                this.upgradingSpiritContainer = undefined;
+                this.sacrificingSpiritContainer = undefined;
+
+                // Hide sacrificing slot
+                (this.sacrificingSlot as any)?.setVisible(false);
+                this.sacrificingSlotTitle?.setVisible(false);
+
+                // Clear slot UI
+                if (this.upgradingSlot) {
+                    this.removeSlotSpirit(this.upgradingSlot);
+                }
+                if (this.sacrificingSlot) {
+                    this.removeSlotSpirit(this.sacrificingSlot);
+                }
+
+                this.checkUpgradeButtonState();
+            } else {
+                logger.ui.debug('State updated but upgraded ability not yet in allAbilities');
+            }
+        }
+
+        // Rebuild panel on state changes (e.g., after API calls)
         this.rebuildSpiritsPanel();
     }
 
@@ -418,7 +460,27 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
         this.spiritPanel.enableDraggable({
             onMovedChild: () => {},
-            onDragEnd: () => {}
+            onDragEnd: () => {},
+            onDragStart: (child: any) => {
+                // Get the container from the dragged child
+                const container = this.extractSpiritContainer(child);
+                if (!container) return;
+
+                // Check if this spirit is unusable
+                const isStarting = (container as any).__isStarting as boolean;
+                const isFullyUpgraded = (container as any).__isFullyUpgraded as boolean;
+                const abilityValue = (container as any).__abilityValue as bigint;
+                const upgradingValue = this.upgradingSpirit ? pureCircuits.ability_score(this.upgradingSpirit) : undefined;
+                const hasInsufficientValue = upgradingValue !== undefined && abilityValue < upgradingValue;
+
+                const isUnusable = isStarting || isFullyUpgraded || hasInsufficientValue;
+
+                // Cancel drag if spirit is unusable
+                if (isUnusable) {
+                    logger.ui.warn('Cannot drag unusable spirit');
+                    return false;
+                }
+            }
         });
 
         // Get sorted abilities once
@@ -449,10 +511,37 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
             // Use cached values for instant comparison (no bigint calculations)
             const isStarting = (container as any).__isStarting as boolean;
+            const isFullyUpgraded = (container as any).__isFullyUpgraded as boolean;
             const abilityValue = (container as any).__abilityValue as bigint;
 
-            const isUnusable = isStarting || (upgradingValue !== undefined && abilityValue < upgradingValue);
+            const hasInsufficientValue = upgradingValue !== undefined && abilityValue < upgradingValue;
+            const isUnusable = isStarting || isFullyUpgraded || hasInsufficientValue;
+
+            // Update visual state
             abilityWidget.setAlpha(isUnusable ? 0.5 : 1);
+
+            // Update tooltip
+            let tooltipText: string | null = null;
+            if (isStarting) {
+                tooltipText = UNUPGRADEABLE_TOOLTIP_TEXT;
+            } else if (isFullyUpgraded) {
+                tooltipText = FULLY_UPGRADED_TOOLTIP_TEXT;
+            } else if (hasInsufficientValue) {
+                tooltipText = INSUFFICIENT_VALUE_TOOLTIP_TEXT;
+            }
+
+            // Destroy old tooltip if it exists
+            const oldTooltip = (container as any).__tooltip;
+            if (oldTooltip) {
+                oldTooltip.destroy();
+                (container as any).__tooltip = undefined;
+            }
+
+            // Add new tooltip if needed
+            if (tooltipText) {
+                const tooltip = addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                (container as any).__tooltip = tooltip;
+            }
         }
     }
 
@@ -515,6 +604,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         (abilityContainer as any).__abilityWidget = abilityWidget;
         (abilityContainer as any).__abilityValue = pureCircuits.ability_score(ability);
         (abilityContainer as any).__isStarting = isStartingAbility(ability);
+        (abilityContainer as any).__isFullyUpgraded = upgradeLevel >= MAX_UPGRADE_LEVEL;
+        (abilityContainer as any).__tooltip = undefined; // Will be set when tooltip is added
 
         return { container: abilityContainer, abilityWidget, stars };
     }
@@ -524,25 +615,26 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         return { x: (slot as any).x, y: (slot as any).y };
     }
 
-    // Returns a spirit to the panel, maintaining starting abilities at the end
+    // Returns a spirit to the panel, maintaining starting abilities and fully upgraded at the end
     private returnSpiritToPanel(ability: Ability) {
         if (!this.spiritPanel) return;
 
         const { container } = this.createAbilityContainerWithStars(ability);
         const isStarting = (container as any).__isStarting as boolean;
+        const isFullyUpgraded = (container as any).__isFullyUpgraded as boolean;
 
-        // Insert before starting abilities if this is not a starting ability
-        if (!isStarting) {
+        // Insert before disabled abilities (fully upgraded and starting) if this is usable
+        if (!isStarting && !isFullyUpgraded) {
             const items = this.getPanelItems();
             if (items) {
                 let insertIndex = items.length;
 
-                // Use cached __isStarting for fast lookup (no function calls or widget searches)
+                // Use cached values for fast lookup (no function calls or widget searches)
                 for (let i = 0; i < items.length; i++) {
                     const itemContainer = this.unwrapContainer(items[i]);
                     if (!itemContainer) continue;
 
-                    if ((itemContainer as any).__isStarting === true) {
+                    if ((itemContainer as any).__isFullyUpgraded === true || (itemContainer as any).__isStarting === true) {
                         insertIndex = i;
                         break;
                     }
@@ -556,7 +648,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             }
         }
 
-        // If it's a starting ability or we couldn't find the insertion point, just append
+        // If it's a disabled ability or we couldn't find the insertion point, just append
         this.spiritPanel.addChild(container);
     }
 
@@ -567,7 +659,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         if (greyedOut) {
             abilityWidget.setAlpha(0.5);
             if (tooltipText) {
-                addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                const tooltip = addTooltip(this, abilityWidget, tooltipText, TOOLTIP_WIDTH, TOOLTIP_HEIGHT);
+                (container as any).__tooltip = tooltip;
             }
         }
 
@@ -639,8 +732,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private removeFromUpgradingSlot() {
-        const spiritToReturn = this.upgradingSpirit;
-
         this.upgradingSpirit = undefined;
         this.upgradingSpiritContainer = undefined;
         this.removeSlotSpirit(this.upgradingSlot!);
@@ -656,13 +747,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         (this.sacrificingSlot as any)?.setVisible(false);
         this.sacrificingSlotTitle?.setVisible(false);
 
-        // Return the spirit to the panel
-        if (spiritToReturn) {
-            this.returnSpiritToPanel(spiritToReturn);
-        }
-
-        // Update panel to remove greyed out state from all spirits
-        this.updatePanelItemStates();
+        // Rebuild the entire panel to restore interactive state and proper ordering
+        this.rebuildSpiritsPanel();
     }
 
     private removeFromSacrificingSlot() {
@@ -695,27 +781,30 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
     private sortedAbilitiesWithStartingLast(state: Game2DerivedState): Ability[] {
         const abilities = sortedAbilities(state);
-        const nonStartingAbilities: Ability[] = [];
+        const usableAbilities: Ability[] = [];
+        const fullyUpgradedAbilities: Ability[] = [];
         const startingAbilities: Ability[] = [];
 
         for (const ability of abilities) {
             if (isStartingAbility(ability)) {
                 startingAbilities.push(ability);
+            } else if (getAbilityUpgradeLevel(ability) >= MAX_UPGRADE_LEVEL) {
+                fullyUpgradedAbilities.push(ability);
             } else {
-                nonStartingAbilities.push(ability);
+                usableAbilities.push(ability);
             }
         }
 
-        return [...nonStartingAbilities, ...startingAbilities];
+        return [...usableAbilities, ...fullyUpgradedAbilities, ...startingAbilities];
     }
 
     private checkUpgradeButtonState() {
         const bothSpiritsSelected = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
 
         if (bothSpiritsSelected && this.upgradingSpirit && this.sacrificingSpirit) {
-            const cost = 100; // Placeholder fixed cost for now
+            const cost = pureCircuits.upgrade_ability_cost(this.upgradingSpirit);
             const currentGold = this.state.player?.gold ?? BigInt(0);
-            const hasEnoughGold = currentGold >= BigInt(cost);
+            const hasEnoughGold = currentGold >= cost;
 
             this.upgradeCostLabel?.setVisible(true);
             this.upgradeCostAmount?.setText(`${cost}`);
@@ -752,9 +841,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         }
     }
 
-    private performUpgrade() {
-        if (!this.upgradingSpirit) {
-            logger.ui.error('No upgrading spirit selected');
+    private async performUpgrade() {
+        if (!this.upgradingSpirit || !this.sacrificingSpirit) {
+            logger.ui.error('Both spirits must be selected');
             return;
         }
 
@@ -765,13 +854,65 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             return;
         }
 
-        // Play upgrade animations
-        this.playUpgradeAnimation();
-        this.playSacrificeAnimation();
+        // Disable button and show loader during upgrade
+        this.upgradeButton?.setEnabled(false);
+        this.scene.pause().launch('Loader');
+        this.loader = this.scene.get('Loader') as Loader;
+        this.loader.setText("Submitting Proof");
 
-        // Placeholder for upgrade functionality - will be implemented in part 2
-        logger.ui.info('Upgrade button clicked - functionality to be implemented');
-        this.errorText?.setText('Upgrade functionality coming soon!');
+        try {
+            logger.ui.info('Calling upgrade_ability contract method');
+            const upgradedAbilityId = await this.api.upgrade_ability(this.upgradingSpirit, this.sacrificingSpirit);
+            logger.ui.info('Upgrade circuit complete, waiting for state update');
+
+            this.loader?.setText("Waiting on chain update");
+
+            // Store the upgraded ability ID to wait for it in onStateChange
+            this.pendingUpgradedAbilityId = upgradedAbilityId;
+
+            // Check if the ability already exists in the current state (state updated first)
+            const upgradedAbility = this.state.allAbilities.get(upgradedAbilityId);
+            if (upgradedAbility !== undefined) {
+                // State already updated! Clear immediately
+                logger.ui.info('Upgrade complete - upgraded ability already in state');
+                this.pendingUpgradedAbilityId = undefined;
+
+                this.scene.resume().stop('Loader');
+                this.loader = undefined;
+
+                // Play upgrade animations now that upgrade is complete
+                this.playUpgradeAnimation();
+                this.playSacrificeAnimation();
+
+                // Clear the slots
+                this.upgradingSpirit = undefined;
+                this.sacrificingSpirit = undefined;
+                this.upgradingSpiritContainer = undefined;
+                this.sacrificingSpiritContainer = undefined;
+
+                // Hide sacrificing slot
+                (this.sacrificingSlot as any)?.setVisible(false);
+                this.sacrificingSlotTitle?.setVisible(false);
+
+                // Clear slot UI
+                if (this.upgradingSlot) {
+                    this.removeSlotSpirit(this.upgradingSlot);
+                }
+                if (this.sacrificingSlot) {
+                    this.removeSlotSpirit(this.sacrificingSlot);
+                }
+
+                this.checkUpgradeButtonState();
+            }
+            // Otherwise, onStateChange will handle cleanup when state updates
+        } catch (error) {
+            logger.ui.error('Upgrade failed:', error);
+            this.errorText?.setText(`Upgrade failed: ${error}`);
+            this.upgradeButton?.setEnabled(true);
+            this.pendingUpgradedAbilityId = undefined;
+            this.scene.resume().stop('Loader');
+            this.loader = undefined;
+        }
     }
 
     private playSlotAnimation(

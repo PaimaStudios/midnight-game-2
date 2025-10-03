@@ -193,12 +193,13 @@ export class ScrollablePanel {
     // enableDraggable
     //
     // Adds draggable functionality to the scrollable panel.
-    // maxElements: The maximum number of elements allowed on the panel. 
+    // maxElements: The maximum number of elements allowed on the panel.
     //              Additional elements dragged to the panel will not succeed, and will return to their previous panel.
+    // onDragStart: Called when drag starts. Return false to cancel the drag.
     //
     public enableDraggable(options?: {
         onMovedChild?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
-        onDragStart?: (child: Phaser.GameObjects.GameObject) => void,
+        onDragStart?: (child: Phaser.GameObjects.GameObject) => void | boolean | false,
         onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
         onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
         onDoubleClick?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
@@ -238,7 +239,7 @@ export class ScrollablePanel {
                 if (onDoubleClick) {
                     const currentTime = Date.now();
                     const lastClickTime = child.getData('lastClickTime') || 0;
-                    
+
                     const DOUBLE_CLICK_THRESHOLD = 300; // 300ms threshold for double-click
                     if (currentTime - lastClickTime < DOUBLE_CLICK_THRESHOLD) {
                         // Double-click detected
@@ -267,9 +268,6 @@ export class ScrollablePanel {
                             child.clearMask();
 
                             this.onChildDragStart(child);
-                            if (onDragStart) {
-                                onDragStart(this.unwrapElement(child));
-                            }
                         })
                         .on('drag', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
                             // Check drag targets for hover effects
@@ -348,6 +346,20 @@ export class ScrollablePanel {
                             
                             this.arrangeItems(currentSizer);
                         });
+                }
+
+                // Check if drag should be allowed via onDragStart callback
+                if (onDragStart) {
+                    const result = onDragStart(this.unwrapElement(child));
+                    if (result === false) {
+                        logger.ui.debug('Drag prevented by onDragStart returning false');
+                        // Make sure drag state is clean if we're preventing the drag
+                        if (child.drag && child.drag.isDragging) {
+                            logger.ui.debug('Resetting stuck drag state');
+                            // The drag object might be in a bad state, so let's not initiate
+                        }
+                        return; // Don't initiate the drag
+                    }
                 }
 
                 // Enable interactive before try-dragging
