@@ -57,26 +57,6 @@ function getAbilityUpgradeLevel(ability: Ability): number {
     return Number(ability.upgrade_level);
 }
 
-// Helper function to create star indicators above an ability
-function createUpgradeStars(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    upgradeLevel: number
-): Phaser.GameObjects.Image[] {
-    const stars: Phaser.GameObjects.Image[] = [];
-    const starStartX = -(MAX_UPGRADE_LEVEL - 1) * STAR_SPACING / 2;
-
-    for (let i = 0; i < MAX_UPGRADE_LEVEL; i++) {
-        const starX = x + starStartX + i * STAR_SPACING;
-        const starImage = i < upgradeLevel ? 'upgrade-star' : 'upgrade-star-slot';
-        const star = addScaledImage(scene, starX, y + STAR_Y_OFFSET, starImage);
-        stars.push(star);
-    }
-
-    return stars;
-}
-
 export class UpgradeSpiritsMenu extends Phaser.Scene {
     api: DeployedGame2API;
     subscription: Subscription;
@@ -591,7 +571,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const upgradeLevel = getAbilityUpgradeLevel(ability);
         const abilityWidget = new AbilityWidget(this, 0, 0, ability);
 
-        const stars = createUpgradeStars(this, 0, 0, upgradeLevel);
+        const stars = this.createUpgradeStars(0, 0, upgradeLevel);
 
         // Calculate container bounds to include both widget and stars
         const containerHeight = abilityWidget.height + Math.abs(STAR_Y_OFFSET) / 2;
@@ -613,6 +593,29 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     // Helper to get slot position
     private getSlotPosition(slot: Phaser.GameObjects.GameObject): { x: number, y: number } {
         return { x: (slot as any).x, y: (slot as any).y };
+    }
+
+
+    // Helper function to create star indicators above an ability
+    private createUpgradeStars(
+        x: number,
+        y: number,
+        upgradeLevel: number
+    ): Phaser.GameObjects.Image[] {
+        const stars: Phaser.GameObjects.Image[] = [];
+        const starStartX = -(MAX_UPGRADE_LEVEL - 1) * STAR_SPACING / 2;
+
+        const starBackground = addScaledImage(this, x, y + STAR_Y_OFFSET, 'upgrade-star-background');
+        stars.push(starBackground);
+        
+        for (let i = 0; i < MAX_UPGRADE_LEVEL; i++) {
+            const starX = x + starStartX + i * STAR_SPACING;
+            const starImage = i < upgradeLevel ? 'upgrade-star' : 'upgrade-star-slot';
+            const star = addScaledImage(this, starX, y + STAR_Y_OFFSET, starImage);
+            stars.push(star);
+        }
+
+        return stars;
     }
 
     // Returns a spirit to the panel, maintaining starting abilities and fully upgraded at the end
@@ -695,7 +698,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const spiritWidget = new SpiritWidget(this, slotX + spiritOffsetX, slotY, ability);
 
         const upgradeLevel = getAbilityUpgradeLevel(ability);
-        const stars = createUpgradeStars(this, slotX, slotY, upgradeLevel);
+        const stars = this.createUpgradeStars(slotX, slotY, upgradeLevel);
 
         this.ui.push(abilityWidget, spiritWidget, ...stars);
         this.checkUpgradeButtonState();
