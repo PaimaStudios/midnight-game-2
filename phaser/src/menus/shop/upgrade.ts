@@ -15,6 +15,7 @@ import { addTooltip, Tooltip } from "../../widgets/tooltip";
 import { ShopMenu } from "./shop";
 import { UpgradeSparkleParticleSystem } from "../../particles/upgrade-sparkle";
 import { SacrificeDissolveParticleSystem } from "../../particles/sacrifice-dissolve";
+import { UpgradeSuccessScreen } from "./upgrade-success";
 
 // Enums
 enum SlotType {
@@ -81,6 +82,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     spiritPanel: ScrollablePanel | undefined;
 
     pendingUpgradedAbilityId: bigint | undefined;
+    showingSuccessScreen: boolean = false;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
         super("UpgradeSpiritsMenu");
@@ -383,9 +385,27 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                     this.loader = undefined;
                 }
 
-                // Play upgrade animations now that upgrade is complete
-                this.playUpgradeAnimation();
-                this.playSacrificeAnimation();
+                // Show upgrade success screen first
+                this.showingSuccessScreen = true;
+                this.scene.pause();
+
+                // Remove old success screen if it exists
+                const existingSuccessScreen = this.scene.get('UpgradeSuccessScreen');
+                if (existingSuccessScreen) {
+                    this.scene.remove('UpgradeSuccessScreen');
+                }
+
+                // Add and start fresh success screen
+                this.scene.add('UpgradeSuccessScreen', new UpgradeSuccessScreen(upgradedAbility), true);
+
+                // Play upgrade animations after success screen is closed
+                this.scene.get('UpgradeSuccessScreen')?.events.once('shutdown', () => {
+                    this.showingSuccessScreen = false;
+                    this.playUpgradeAnimation();
+                    this.playSacrificeAnimation();
+                    // Rebuild panel to refresh grayed-out states
+                    this.rebuildSpiritsPanel();
+                });
 
                 // Clear the slots
                 this.upgradingSpirit = undefined;
@@ -416,6 +436,11 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     }
 
     private rebuildSpiritsPanel() {
+        // Don't rebuild if showing success screen (scene is paused/invalid)
+        if (this.showingSuccessScreen) {
+            return;
+        }
+
         // Destroy the old panel and create a new one (only for state changes)
         if (this.spiritPanel) {
             this.spiritPanel.panel.destroy();
@@ -883,9 +908,27 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                 this.scene.resume().stop('Loader');
                 this.loader = undefined;
 
-                // Play upgrade animations now that upgrade is complete
-                this.playUpgradeAnimation();
-                this.playSacrificeAnimation();
+                // Show upgrade success screen first
+                this.showingSuccessScreen = true;
+                this.scene.pause();
+
+                // Remove old success screen if it exists
+                const existingSuccessScreen = this.scene.get('UpgradeSuccessScreen');
+                if (existingSuccessScreen) {
+                    this.scene.remove('UpgradeSuccessScreen');
+                }
+
+                // Add and start fresh success screen
+                this.scene.add('UpgradeSuccessScreen', new UpgradeSuccessScreen(upgradedAbility), true);
+
+                // Play upgrade animations after success screen is closed
+                this.scene.get('UpgradeSuccessScreen')?.events.once('shutdown', () => {
+                    this.showingSuccessScreen = false;
+                    this.playUpgradeAnimation();
+                    this.playSacrificeAnimation();
+                    // Rebuild panel to refresh grayed-out states
+                    this.rebuildSpiritsPanel();
+                });
 
                 // Clear the slots
                 this.upgradingSpirit = undefined;
