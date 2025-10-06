@@ -921,6 +921,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                 // Add and start fresh success screen
                 this.scene.add('UpgradeSuccessScreen', new UpgradeSuccessScreen(upgradedAbility), true);
 
+                this.sound.play('upgrade-success', { volume: 1.0 });
+
                 // Play upgrade animations after success screen is closed
                 this.scene.get('UpgradeSuccessScreen')?.events.once('shutdown', () => {
                     this.showingSuccessScreen = false;

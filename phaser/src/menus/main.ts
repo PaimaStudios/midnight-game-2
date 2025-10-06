@@ -122,6 +122,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.audio('battle-def', 'sfx/battle-def.wav');
         this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
         this.load.audio('button-press-1', 'sfx/button-press-1.wav');
+        this.load.audio('upgrade-success', 'sfx/upgrade-success.wav');
         
         // Music
         this.load.audio('menu-music', 'music/menu.wav');
