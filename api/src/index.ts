@@ -425,7 +425,7 @@ export class Game2API implements DeployedGame2API {
      * {@link DeployedGame2Contract}; or rejects with a deployment error.
      */
     static async deploy(providers: Game2Providers, logger?: Logger): Promise<Game2API> {
-        logger?.info('deployContract');
+        logger?.info('Calling `deploy` to deploy a new game contract');
 
         const deployedGame2Contract: FoundContract<Game2Contract> = await deployContract(providers, {
             privateStateId: 'game2PrivateState',
