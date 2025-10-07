@@ -34,7 +34,7 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
 
     const coyote: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const coyoteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt4), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
-    const coyoteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const coyoteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
     const pyramid: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
     const pyramidStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
