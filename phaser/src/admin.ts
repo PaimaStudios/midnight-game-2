@@ -8,6 +8,9 @@ import { logger } from './logger';
 
 export async function registerStartingContent(api: DeployedGame2API): Promise<void> {
     // Define enemy stats for different power levels
+
+
+    // BOSSES
     const dragon: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
     const dragonStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(450), attack: BigInt(22), block: BigInt(22), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
     const dragonElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(600), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
@@ -16,6 +19,16 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const enigmaStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(65), attack: BigInt(45), block: BigInt(45), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const enigmaElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(85), attack: BigInt(60), block: BigInt(60), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
+    const abominable: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(400), attack: BigInt(20), block: BigInt(20), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const abominableStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(600), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const abominableElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(800), attack: BigInt(40), block: BigInt(40), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+
+    // MINIBOSSES
+    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const iceGolemStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(120), attack: BigInt(8), block: BigInt(22), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const iceGolemElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(160), attack: BigInt(12), block: BigInt(30), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+
+    // NORMAL ENEMIES
     const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(/*10*/5), block: BigInt(5), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(45), attack: BigInt(15), block: BigInt(8), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(60), attack: BigInt(20), block: BigInt(12), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
@@ -24,21 +37,17 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const fireSpriteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(38), attack: BigInt(30), block: BigInt(3), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.IMMUNE), ice_def: BigInt(Def.EFFECTIVE) };
     const fireSpriteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(50), attack: BigInt(40), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.IMMUNE), ice_def: BigInt(Def.EFFECTIVE) };
 
-    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const iceGolemStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(120), attack: BigInt(8), block: BigInt(22), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const iceGolemElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(160), attack: BigInt(12), block: BigInt(30), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(25), attack: BigInt(25), block: BigInt(0), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowmanStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(38), attack: BigInt(35), block: BigInt(2), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowmanElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(50), attack: BigInt(50), block: BigInt(4), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
 
-    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(25), attack: BigInt(25), block: BigInt(0), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const snowmanStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(38), attack: BigInt(35), block: BigInt(2), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const snowmanElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(50), attack: BigInt(50), block: BigInt(4), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const coyote: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const coyoteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const coyoteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
-    const coyote: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
-    const coyoteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt4), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
-    const coyoteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
-
-    const pyramid: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(5), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
-    const pyramidStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(5), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
-    const pyramidElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(5), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramid: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramidStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramidElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
 
     // Define all level configurations
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
@@ -56,7 +65,8 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
 
     const levels: [Level, EnemiesConfig][] = [
         [grass1, makeEnemiesConfig([dragon])],
-        [desert1, makeEnemiesConfig([enigma])]
+        [desert1, makeEnemiesConfig([enigma])],
+        [tundra1, makeEnemiesConfig([abominable])],
     ];
     const enemyConfigs: [Level, EnemiesConfig][] = [
         [grass1, makeEnemiesConfig([goblin, goblin, goblin])],
@@ -80,9 +90,9 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             [desert3, makeEnemiesConfig([enigmaElite])],
 
             // Tundra
-            [tundra1, makeEnemiesConfig([enigma])],
-            [tundra2, makeEnemiesConfig([enigmaStrong])],
-            [tundra3, makeEnemiesConfig([enigmaElite])],
+            [tundra1, makeEnemiesConfig([abominable])],
+            [tundra2, makeEnemiesConfig([abominableStrong])],
+            [tundra3, makeEnemiesConfig([abominableElite])],
 
             // Cave
             [cave1, makeEnemiesConfig([dragon])],
