@@ -38,7 +38,7 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
 
     const pyramid: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
     const pyramidStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
-    const pyramidElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramidElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(5), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
 
     // Define all level configurations
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
