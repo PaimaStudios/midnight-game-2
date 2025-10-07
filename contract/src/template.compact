@@ -29,6 +29,7 @@ export struct Ability {
     on_energy: Vector<3, Maybe<Effect>>,
     // which type of energy to generate
     generate_color: Maybe<Uint<0..2>>,
+    upgrade_level: Uint<0..3>,
 }
 
 export enum BOSS_TYPE {
@@ -91,7 +92,8 @@ export pure circuit ability_base_phys(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>()
+        none<Uint<0..2>>(),
+        0
     };
 }
 
@@ -103,7 +105,8 @@ export pure circuit ability_base_block(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>()
+        none<Uint<0..2>>(),
+        0
     };
 }
 
@@ -115,7 +118,8 @@ export pure circuit ability_base_fire_aoe(): Ability {
             true
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>()
+        none<Uint<0..2>>(),
+        0
     };
 }
 
@@ -127,7 +131,8 @@ export pure circuit ability_base_ice(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>()
+        none<Uint<0..2>>(),
+        0
     };
 }
 
@@ -210,11 +215,13 @@ export pure circuit derive_quest_id(quest: QuestConfig): Field {
 }
 
 export struct BattleState {
+    /// Current round. This allows us to ignore outdated state
+    round: Uint<32>;
     deck_indices: Vector<3, Uint<32>>;
-    player_hp: Uint<32>;
-    enemy_hp_0: Uint<32>;
-    enemy_hp_1: Uint<32>;
-    enemy_hp_2: Uint<32>;
+    damage_to_player: Uint<32>;
+    damage_to_enemy_0: Uint<32>;
+    damage_to_enemy_1: Uint<32>;
+    damage_to_enemy_2: Uint<32>;
 }
 
 export struct PlayerLoadout {
@@ -237,9 +244,7 @@ export circuit register_new_player(): [] {
 circuit verify_loadout(loadout: PlayerLoadout): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     for (const ability_id of loadout.abilities) {
-        const available = player_abilities.lookup(player_id).lookup(ability_id);
-        assert(available >= 1, "Invalid loadout");
-        player_abilities.lookup(player_id).insert(ability_id, available - 1);
+        player_remove_ability(player_id, ability_id);
     }
 }
 
@@ -247,7 +252,7 @@ circuit verify_loadout(loadout: PlayerLoadout): [] {
 circuit return_loadout(loadout: PlayerLoadout): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     for (const ability_id of loadout.abilities) {
-        player_abilities.lookup(player_id).insert(ability_id, (player_abilities.lookup(player_id).lookup(ability_id) + 1) as Uint<32>);
+        player_add_ability(player_id, ability_id);
     }
 }
 
@@ -259,16 +264,88 @@ export pure circuit ability_value(ability: Ability): Uint<32> {
 export circuit sell_ability(ability: Ability): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     const ability_id = derive_ability_id(disclose(ability));
-    const available = player_abilities.lookup(player_id).lookup(ability_id);
-    assert(available >= 1, "Player does not own ability");
     assert(ability_id != ability_base_block_id && ability_id != ability_base_phys_id, "Can't sell base abilities");
-    player_abilities.lookup(player_id).insert(ability_id, available - 1);
+    player_remove_ability(player_id, ability_id);
     players.insert(player_id, Player {
         (players.lookup(player_id).gold + ability_value(disclose(ability))) as Uint<32>,
         players.lookup(player_id).rng
     });
 }
 
+export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
+    const player_id = derive_player_pub_key(disclose(player_secret_key()));
+    const score = ability_score(ability);
+    const sacrifice_score = ability_score(sacrifice);
+    const upgrade_cost = upgrade_ability_cost(disclose(ability));
+
+    assert(players.lookup(player_id).gold >= upgrade_cost, "Insufficient gold for upgrade");
+
+    assert(score <= sacrifice_score, "Sacrificed ability must have score equal or greater to the ability to upgrade");
+
+    players.insert(player_id, Player {
+        (players.lookup(player_id).gold - upgrade_cost) as Uint<32>,
+        players.lookup(player_id).rng
+    });
+
+    player_remove_ability(player_id, derive_ability_id(disclose(ability)));
+
+    player_remove_ability(player_id, derive_ability_id(disclose(sacrifice)));
+
+    assert(ability.upgrade_level < 3, "Ability can't be upgraded any more");
+
+    // TODO: look into dynamic witnesses to do the actual implementations that don't just double
+    // also maybe randomize parts e.g. to add generation or new triggers?
+    // we can do this when byte indexing is fixed
+
+    const upgraded = compute_upgraded_ability(disclose(ability));
+    const upgraded_id = derive_ability_id(upgraded);
+
+    all_abilities.insert(upgraded_id, upgraded);
+    player_add_ability(player_id, upgraded_id);
+
+    return upgraded_id;
+}
+
+export pure circuit upgrade_ability_cost(ability: Ability): Uint<32> {
+    // TODO: use this or another method?
+    // just here separately for API reasons
+    return ability_value(ability);
+}
+
+circuit player_add_ability(player_id: Field, ability_id: Field): [] {
+    const count = player_abilities.lookup(player_id).member(ability_id) ? player_abilities.lookup(player_id).lookup(ability_id) : 0;
+    player_abilities.lookup(player_id).insert(ability_id, (count + 1) as Uint<32>);
+}
+
+circuit player_remove_ability(player_id: Field, ability_id: Field): [] {
+    const count = player_abilities.lookup(player_id).member(ability_id) ? player_abilities.lookup(player_id).lookup(ability_id) : 0;
+    assert(count >= 1, "Must own ability to remove it");
+    if (count > 1) {
+        player_abilities.lookup(player_id).insert(ability_id, (count + 1) as Uint<32>);
+    } else {
+        player_abilities.lookup(player_id).remove(ability_id);
+    }
+}
+
+export pure circuit compute_upgraded_ability(ability: Ability): Ability {
+    return Ability {
+        effect: compute_upgraded_effect(ability.effect),
+        on_energy: [compute_upgraded_effect(ability.on_energy[0]), compute_upgraded_effect(ability.on_energy[1]), compute_upgraded_effect(ability.on_energy[2])],
+        generate_color: ability.generate_color,
+        upgrade_level: (ability.upgrade_level + 1) as Uint<0..3>,
+    };
+}
+
+pure circuit compute_upgraded_effect(effect: Maybe<Effect>): Maybe<Effect> {
+    if (effect.is_some) {
+        return some<Effect>(Effect {
+            effect_type: effect.value.effect_type,
+            amount: (2 * effect.value.amount) as Uint<32>,
+            is_aoe: effect.value.is_aoe,
+        });
+    }
+    return none<Effect>();
+}
 
 
 export pure circuit filler_enemy_stats(): EnemyStats {
@@ -315,7 +392,8 @@ export pure circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32
             trigger2 ? some<Effect>(random_effect(0/*rng[6]*/, trigger_factor)) : none<Effect>(),
             trigger3 ? some<Effect>(random_effect(0/*rng[7]*/, trigger_factor)) : none<Effect>()
         ],
-        color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>()
+        color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>(),
+        0
     };
 }
 
@@ -435,11 +513,12 @@ pure circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
 
 export pure circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
     return BattleState {
+        0,
         random_deck_indices(rng),
-        100,// TODO: source from somewhere - also do we want multiple people?
-        battle.enemies.stats[0].hp,
-        battle.enemies.stats[1].hp,
-        battle.enemies.stats[2].hp
+        0,
+        0,
+        0,
+        0
     };
 }
 
@@ -509,7 +588,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
     const result = combat_round_impl(disclose(battle_id), round_abilities, disclose(ability_targets));
     
     active_battle_states.insert(disclose(battle_id), result);
-    if (result.player_hp == 0) {
+    if (result.damage_to_player >= 100) {
         active_battle_configs.remove(disclose(battle_id));
         active_battle_states.remove(disclose(battle_id));
         
@@ -518,7 +597,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             0,
             none<Field>()
         });
-    }/* else if (result.enemy_hp_0 == 0 && result.enemy_hp_1 == 0 && result.enemy_hp_2 == 0) {
+    } else if (result.damage_to_enemy_0 >= config.enemies.stats[0].hp && (config.enemies.count < 2 || result.damage_to_enemy_1 >= config.enemies.stats[1].hp) && (config.enemies.count < 3 || result.damage_to_enemy_2 >= config.enemies.stats[2].hp)) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
         
@@ -531,7 +610,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             if (!all_abilities.member(reward_ability_id)) {
                 all_abilities.insert(reward_ability_id, reward_ability);
             }
-            player_abilities.lookup(player_pub_key).insert(reward_ability_id, (player_abilities.lookup(player_pub_key).lookup(reward_ability_id) + 1) as Uint<32>);
+            player_add_ability(player_pub_key, reward_ability_id);
         }
 
         // Mark boss completion if this was a boss battle
@@ -555,7 +634,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         active_battle_states.remove(disclose(battle_id));
 
         return some<BattleRewards>(reward);
-    }*/
+    }
     return none<BattleRewards>();
 }
 
@@ -582,9 +661,10 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     INSERT_PLAYER_DAMAGE_CODE_HERE
 
 
-    const new_enemy_dmg_0 = enemy_block_0 < player_damage_0 ? (old_state.enemy_hp_0 + player_damage_0 - enemy_block_0) as Uint<32> : 0;
-    const new_enemy_dmg_1 = enemy_block_1 < player_damage_1 ? (old_state.enemy_hp_1 + player_damage_1 - enemy_block_1) as Uint<32> : 0;
-    const new_enemy_dmg_2 = enemy_block_2 < player_damage_2 ? (old_state.enemy_hp_2 + player_damage_2 - enemy_block_2) as Uint<32> : 0;
+    // TODO: figure out a way to handle block without running into negative numbers in non-executed branches throwing bounds checking errors
+    const new_damage_to_enemy_0 = enemy_block_0 < damage_to_enemy_0 ? (old_state.damage_to_enemy_0 + damage_to_enemy_0/* - enemy_block_0*/) as Uint<32> : old_state.damage_to_enemy_0;
+    const new_damage_to_enemy_1 = enemy_block_1 < damage_to_enemy_1 ? (old_state.damage_to_enemy_1 + damage_to_enemy_1/* - enemy_block_1*/) as Uint<32> : old_state.damage_to_enemy_1;
+    const new_damage_to_enemy_2 = enemy_block_2 < damage_to_enemy_2 ? (old_state.damage_to_enemy_2 + damage_to_enemy_2/* - enemy_block_2*/) as Uint<32> : old_state.damage_to_enemy_2;
 
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
@@ -594,11 +674,12 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     // CODE-GENERATION END
 
     return BattleState {
+        (old_state.round + 1) as Uint<32>,
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
-        player_block < enemy_damage ? (old_state.player_hp + enemy_damage - player_block) as Uint<32> : 0,
-        new_enemy_dmg_0,
-        new_enemy_dmg_1,
-        new_enemy_dmg_2
+        player_block < damage_to_player ? (old_state.damage_to_player + damage_to_player/* - player_block*/) as Uint<32> : old_state.damage_to_player,
+        new_damage_to_enemy_0,
+        new_damage_to_enemy_1,
+        new_damage_to_enemy_2
     };
 }
 

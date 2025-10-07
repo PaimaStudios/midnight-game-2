@@ -7,7 +7,7 @@
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { Observable, Subscriber } from "rxjs";
+import { Observable, Subscriber, Subject } from "rxjs";
 import { combat_round_logic } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
@@ -21,7 +21,7 @@ export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
 export class MockGame2API implements DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
-    subscriber: Subscriber<Game2DerivedState> | undefined;
+    private stateSubject: Subject<Game2DerivedState>;
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
@@ -30,9 +30,8 @@ export class MockGame2API implements DeployedGame2API {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
-        this.state$ = new Observable<Game2DerivedState>((subscriber) => {
-            this.subscriber = subscriber;
-        });
+        this.stateSubject = new Subject<Game2DerivedState>();
+        this.state$ = this.stateSubject.asObservable();
         this.mockState = {
             activeBattleConfigs: new Map(),
             activeBattleStates: new Map(),
@@ -50,12 +49,12 @@ export class MockGame2API implements DeployedGame2API {
             playerBossProgress: new Map(),
         };
         setTimeout(() => {
-            this.subscriber?.next(this.mockState);
+            this.stateSubject.next(this.mockState);
         }, MOCK_DELAY);
     }
 
     public register_new_player(): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             this.mockState.player = {
                 gold: BigInt(0),
                 rng: randomBytes(32)
@@ -74,7 +73,12 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
-        return this.response(() => {
+        return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             logger.gameState.debug(`from ${this.mockState.activeBattleConfigs.size}`);
             const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
             const battleConfig = configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
@@ -114,6 +118,7 @@ export class MockGame2API implements DeployedGame2API {
                         }
                     }
                 }
+                battleState.round += BigInt(1);
                 if (ret != undefined) {
                     this.addRewards(ret);
                     // Check if this was a boss battle and mark completion
@@ -135,7 +140,12 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
-        return this.response(() => {
+        return this.response(async () => {
+            for (const ability_id of loadout.abilities) {
+                if ((this.mockState.playerAbilities.get(ability_id) ?? BigInt(0)) < 1) {
+                    throw new Error("Must own ability");
+                }
+            }
             const quest = {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
@@ -151,7 +161,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
-        return this.response(() => {
+        return this.response(async () => {
             // Check if already marked as ready
             let isReady = this.questReadiness.get(quest_id) ?? false;
             
@@ -171,7 +181,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
-        return this.response(() => {
+        return this.response(async () => {
             // Use the stored readiness state instead of new random
             if (this.questReadiness.get(quest_id) ?? false) {
                 const quest = this.mockState.quests.get(quest_id)!;
@@ -188,13 +198,7 @@ export class MockGame2API implements DeployedGame2API {
 
                 const battleId = pureCircuits.derive_battle_id(battle_config);
 
-                this.mockState.activeBattleStates.set(battleId, {
-                    deck_indices: [BigInt(0), BigInt(1), BigInt(2)],
-                    player_hp: BigInt(100),
-                    enemy_hp_0: battle_config.enemies.stats[0].hp,
-                    enemy_hp_1: battle_config.enemies.stats[1].hp,
-                    enemy_hp_2: battle_config.enemies.stats[2].hp,
-                });
+                this.mockState.activeBattleStates.set(battleId, pureCircuits.init_battlestate(BigInt(Phaser.Math.Between(0, 255)), battle_config));
                 this.mockState.activeBattleConfigs.set(battleId, battle_config);
 
                 return battleId;
@@ -204,20 +208,40 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async sell_ability(ability: Ability): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
-            const oldCount = this.mockState.playerAbilities.get(id)!;
-            if (oldCount > BigInt(1)) {
-                this.mockState.playerAbilities.set(id, oldCount - BigInt(1));
-            } else {
-                this.mockState.playerAbilities.delete(id);
-            }
+            this.removePlayerAbility(id);
             this.mockState.player!.gold += pureCircuits.ability_value(ability);
         });
     }
 
+    public async upgrade_ability(ability: Ability, sacrifice: Ability): Promise<bigint> {
+        return this.response(async () => {
+            if (pureCircuits.ability_score(sacrifice) < pureCircuits.ability_score(ability)) {
+                throw new Error("Sacrificed ability must have score equal or greater to the ability to upgrade");
+            }
+            if (ability.upgrade_level >= 3) {
+                throw new Error("Ability can't be upgraded any more");
+            }
+            const ability_id = pureCircuits.derive_ability_id(ability);
+            const sacrifice_id = pureCircuits.derive_ability_id(sacrifice);
+            this.removePlayerAbility(ability_id);
+            this.removePlayerAbility(sacrifice_id);
+            const cost = pureCircuits.upgrade_ability_cost(ability);
+            if (this.mockState.player!.gold < cost) {
+                throw new Error("Insufficient gold for upgrade");
+            }
+            this.mockState.player!.gold -= cost;
+            const upgraded = pureCircuits.compute_upgraded_ability(ability);
+            const upgraded_id = pureCircuits.derive_ability_id(upgraded);
+            this.mockState.allAbilities.set(upgraded_id, upgraded);
+            this.mockState.playerAbilities.set(upgraded_id, (this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0)) + BigInt(1));
+            return upgraded_id;
+        });
+    }
+
     public async admin_level_new(level: Level, boss: EnemiesConfig): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             let bossesByBiome = this.mockState.bosses.get(level.biome);
             if (bossesByBiome == undefined) {
                 bossesByBiome = new Map();
@@ -228,7 +252,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     public async admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void> {
-        return this.response(() => {
+        return this.response(async () => {
             let byBiome = this.mockState.levels.get(level.biome);
             if (byBiome == undefined) {
                 byBiome = new Map();
@@ -261,15 +285,27 @@ export class MockGame2API implements DeployedGame2API {
         return abilityId;
     }
 
-    private response<T>(body: () => T, delay: number = MOCK_DELAY): Promise<T> {
-        return new Promise((resolve, reject) => setTimeout(() => {
+    private removePlayerAbility(id: bigint) {
+        const count = this.mockState.playerAbilities.get(id) ?? BigInt(0);
+        if (count < 1) {
+            throw new Error("Must own ability");
+        }
+        if (count > BigInt(1)) {
+            this.mockState.playerAbilities.set(id, count - BigInt(1));
+        } else {
+            this.mockState.playerAbilities.delete(id);
+        }
+    }
+
+    private async response<T>(body: () => Promise<T>, delay: number = MOCK_DELAY): Promise<T> {
+        return new Promise((resolve, reject) => setTimeout(async () => {
             const returnBeforeState = Math.random() > 0.5;
             try {
-                const ret = body();
+                const ret = await body();
                 if (returnBeforeState) {
                     resolve(ret);
                 } else {
-                    this.subscriber?.next(this.mockState);
+                    this.stateSubject.next(this.mockState);
                     setTimeout(() => resolve(ret), delay);
                 }
             } catch (e) {
@@ -277,7 +313,7 @@ export class MockGame2API implements DeployedGame2API {
             }
             if (returnBeforeState) {
                 setTimeout(() => {
-                    this.subscriber?.next(this.mockState);
+                    this.stateSubject.next(this.mockState);
                 }, delay);
             }
         }, delay));
