@@ -33,17 +33,19 @@ export class ScrollablePanel {
 
     constructor(
         scene: Phaser.Scene,
-        x: number, 
-        y: number, 
-        width: number, 
+        x: number,
+        y: number,
+        width: number,
         height: number,
         scrollbarEnabled: boolean = true,
+        spacing?: { item?: number, top?: number, bottom?: number }
     ) {
         this.scene = scene;
-        
+
+        const defaultSpacing = { item: 10, top: 10, bottom: 10 };
         const sizer = scene.rexUI.add.sizer({
             orientation: 'x',
-            space: { item: 10, top: 10, bottom: 10 },
+            space: { ...defaultSpacing, ...spacing },
         });
 
         let scrollbarConfig = {};
@@ -65,6 +67,12 @@ export class ScrollablePanel {
             scrollMode: 1,
             panel: {
                 child: sizer,
+            },
+            space: {
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
             },
             align: {
                 panel: 'bottom',
@@ -185,12 +193,13 @@ export class ScrollablePanel {
     // enableDraggable
     //
     // Adds draggable functionality to the scrollable panel.
-    // maxElements: The maximum number of elements allowed on the panel. 
+    // maxElements: The maximum number of elements allowed on the panel.
     //              Additional elements dragged to the panel will not succeed, and will return to their previous panel.
+    // onDragStart: Called when drag starts. Return false to cancel the drag.
     //
     public enableDraggable(options?: {
         onMovedChild?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
-        onDragStart?: (child: Phaser.GameObjects.GameObject) => void,
+        onDragStart?: (child: Phaser.GameObjects.GameObject) => void | boolean,
         onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
         onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
         onDoubleClick?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
@@ -230,7 +239,7 @@ export class ScrollablePanel {
                 if (onDoubleClick) {
                     const currentTime = Date.now();
                     const lastClickTime = child.getData('lastClickTime') || 0;
-                    
+
                     const DOUBLE_CLICK_THRESHOLD = 300; // 300ms threshold for double-click
                     if (currentTime - lastClickTime < DOUBLE_CLICK_THRESHOLD) {
                         // Double-click detected
@@ -259,9 +268,6 @@ export class ScrollablePanel {
                             child.clearMask();
 
                             this.onChildDragStart(child);
-                            if (onDragStart) {
-                                onDragStart(this.unwrapElement(child));
-                            }
                         })
                         .on('drag', (pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
                             // Check drag targets for hover effects
@@ -340,6 +346,20 @@ export class ScrollablePanel {
                             
                             this.arrangeItems(currentSizer);
                         });
+                }
+
+                // Check if drag should be allowed via onDragStart callback
+                if (onDragStart) {
+                    const result = onDragStart(this.unwrapElement(child));
+                    if (result === false) {
+                        logger.ui.debug('Drag prevented by onDragStart returning false');
+                        // Make sure drag state is clean if we're preventing the drag
+                        if (child.drag && child.drag.isDragging) {
+                            logger.ui.debug('Resetting stuck drag state');
+                            // The drag object might be in a bad state, so let's not initiate
+                        }
+                        return; // Don't initiate the drag
+                    }
                 }
 
                 // Enable interactive before try-dragging

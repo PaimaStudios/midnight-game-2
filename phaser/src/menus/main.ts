@@ -13,7 +13,7 @@ import { Subscription } from "rxjs";
 import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Color, colorToNumber } from "../constants/colors";
-import { ShopMenu } from "./shop";
+import { ShopMenu } from "./shop/shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
@@ -71,6 +71,9 @@ export class TestMenu extends Phaser.Scene {
         this.load.image('arrow', 'arrow.png');
         this.load.image('aoe', 'aoe.png');
         this.load.image('hp-bar-shield', 'hp-bar-shield.png');
+        this.load.image('upgrade-star', 'upgrade-star.png');
+        this.load.image('upgrade-star-slot', 'upgrade-star-slot.png');
+        this.load.image('upgrade-star-background', 'upgrade-star-background.png');
 
         // Revolving Orb Sprites
         this.load.image('orb-atk-fire', 'orb-atk-fire.png');
@@ -97,6 +100,7 @@ export class TestMenu extends Phaser.Scene {
 
         // Backgrounds
         this.load.image('bg-hub1', 'bg-hub1.png');
+        this.load.image('bg-shop', 'bg-shop.png');
         this.load.image('bg-grass', 'bg-grass.png');
         this.load.image('bg-desert', 'bg-desert.png');
         this.load.image('bg-tundra', 'bg-tundra.png');
@@ -118,6 +122,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.audio('battle-def', 'sfx/battle-def.wav');
         this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
         this.load.audio('button-press-1', 'sfx/button-press-1.wav');
+        this.load.audio('upgrade-success', 'sfx/upgrade-success.wav');
         
         // Music
         this.load.audio('menu-music', 'music/menu.wav');
