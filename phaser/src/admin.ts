@@ -81,6 +81,7 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     if (import.meta.env.VITE_API_FORCE_DEPLOY == 'mock') {
         levels.push(
             // Grasslands        
+            [grass1, makeEnemiesConfig([dragon])],
             [grass2, makeEnemiesConfig([dragonStrong])],
             [grass3, makeEnemiesConfig([dragonElite])],
 

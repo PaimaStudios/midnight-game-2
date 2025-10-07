@@ -17,7 +17,8 @@ const ENEMY_TEXTURES = [
 
 const BOSS_TEXTURES = [
     'enemy-boss-dragon',
-    'enemy-boss-enigma'
+    'enemy-boss-enigma',
+    'enemy-boss-abominable'
 ];
 
 type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
