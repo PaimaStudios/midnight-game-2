@@ -32,7 +32,7 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: num
     [SPRITE_SHEET_ENEMIES.PYRAMID]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7] },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6, attackFrames: [6, 7, 8, 8, 9, 6] },
-    [SPRITE_SHEET_ENEMIES.BOSS_ABOMINABLE]: { idleFrames: 5, attackFrames: [5, 6, 7, 7, 8, 8, 8, 8, 9, 10, 11, 11, 11] },
+    [SPRITE_SHEET_ENEMIES.BOSS_ABOMINABLE]: { idleFrames: 5, attackFrames: [5, 6, 7, 7, 8, 9, 10, 11, 11, 11] },
 };
 
 const defaultFameConfig = { idleFrames: 2 };
