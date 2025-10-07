@@ -199,7 +199,7 @@ export class ScrollablePanel {
     //
     public enableDraggable(options?: {
         onMovedChild?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
-        onDragStart?: (child: Phaser.GameObjects.GameObject) => void | boolean | false,
+        onDragStart?: (child: Phaser.GameObjects.GameObject) => void | boolean,
         onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
         onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
         onDoubleClick?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
