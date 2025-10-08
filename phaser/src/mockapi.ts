@@ -8,7 +8,7 @@ import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, Subscriber, Subject } from "rxjs";
-import { combat_round_logic } from "./battle/logic";
+import { combat_round_logic, initBattlestate, randomAbility } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
 
@@ -90,7 +90,7 @@ export class MockGame2API implements DeployedGame2API {
             };
             const id = pureCircuits.derive_battle_id(battle);
             logger.gameState.info(`new battle: ${id}`);
-            this.mockState.activeBattleStates.set(id, pureCircuits.init_battlestate(BigInt(Phaser.Math.Between(0, 255)), battle));
+            this.mockState.activeBattleStates.set(id, initBattlestate(Phaser.Math.Between(0, 255), battle));
             this.mockState.activeBattleConfigs.set(id, battle);
             return battle;
         });
@@ -198,7 +198,7 @@ export class MockGame2API implements DeployedGame2API {
 
                 const battleId = pureCircuits.derive_battle_id(battle_config);
 
-                this.mockState.activeBattleStates.set(battleId, pureCircuits.init_battlestate(BigInt(Phaser.Math.Between(0, 255)), battle_config));
+                this.mockState.activeBattleStates.set(battleId, initBattlestate(Phaser.Math.Between(0, 255), battle_config));
                 this.mockState.activeBattleConfigs.set(battleId, battle_config);
 
                 return battleId;
@@ -278,7 +278,7 @@ export class MockGame2API implements DeployedGame2API {
     }
 
     private givePlayerRandomAbility(difficulty: bigint): bigint {
-        const ability = pureCircuits.random_ability(Array.from(randomBytes(32)).map(BigInt), difficulty);
+        const ability = randomAbility(randomBytes(32), difficulty);
         const abilityId = pureCircuits.derive_ability_id(ability);
         this.mockState.allAbilities.set(abilityId, ability);
         this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));

@@ -1,5 +1,9 @@
+/**
+ * Contains re-implementations of contract logic in cases where we either need dynamic call-back
+ * or the circuit is just impure due to division witnesses
+ */
 import { Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits } from "game2-contract";
+import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits, BattleConfig, BattleState } from "game2-contract";
 import { logger } from '../main';
 
 export type CombatCallbacks = {
@@ -71,7 +75,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                     reward_factor += pureCircuits.boss_type_reward_factor(stats[i].boss_type);
                 }
                 if (reward_factor > 0) {
-                    const ability = pureCircuits.random_ability(Array.from(gameState.player!.rng).map(BigInt), battleConfig.level.difficulty * reward_factor);
+                    const ability = randomAbility(gameState.player!.rng, battleConfig.level.difficulty * reward_factor);
                     const abilityId = pureCircuits.derive_ability_id(ability);
                     // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
                     // if we don't return it, we need to match the logic here with the contract
@@ -176,4 +180,65 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         handleEndOfRound();
     });
+}
+
+// due to use of div/mod witnesseswe can't export these as a pure circuit so we re-do it here for speed
+export function randomAbility(rng: Uint8Array, difficulty: bigint): Ability {
+    const color = rng[0] % 6;
+    const trigger1 = color != 0 && (rng[1] % 3) == 0;
+    const trigger2 = color != 1 && (rng[2] % 3) == 0;
+    const trigger3 = color != 2 && (rng[3] % 3) == 0;
+    const main_factor = difficulty * BigInt((trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1));
+    const main_effect = randomEffect(rng[4], main_factor);
+    const trigger_factor = BigInt(2) * difficulty;
+    return {
+        effect: { is_some: true, value: main_effect },
+        on_energy: [
+            { is_some: trigger1, value: randomEffect(rng[5], trigger_factor) },
+            { is_some: trigger1, value: randomEffect(rng[6], trigger_factor) },
+            { is_some: trigger1, value: randomEffect(rng[7], trigger_factor) },
+        ],
+        generate_color: { is_some: color <= 2, value: BigInt(color % 3) },
+        upgrade_level: BigInt(0),
+    };
+}
+
+export function randomEffect(rng: number, factor: bigint): Effect {
+    const effect_type = (rng % 4) as EFFECT_TYPE;
+    const is_aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
+    const block_factor = BigInt(effect_type != EFFECT_TYPE.block ? 1 : 5);
+    const final_factor = factor * block_factor * BigInt(is_aoe ? 1 : 2);
+    const amount = final_factor + BigInt(rng % Number(final_factor));
+    return {
+        effect_type,
+        amount,
+        is_aoe
+    };
+}
+
+function randomDeckIndices(rng: number): number[] {
+    const mod_6 = rng % 6;
+    if (mod_6 == 0) {
+        return [0, 1, 2];
+    } else if (mod_6 == 1) {
+        return [0, 2, 1];
+    } else if (mod_6 == 2) {
+        return [1, 0, 2];
+    } else if (mod_6 == 3) {
+        return [1, 2, 0];
+    } else if (mod_6 == 4) {
+        return [2, 0, 1];
+    }
+    return [2, 1, 0];
+}
+
+export function initBattlestate(rng: number, battle: BattleConfig): BattleState {
+    return {
+        round: BigInt(0),
+        deck_indices: randomDeckIndices(rng).map(BigInt),
+        damage_to_player: BigInt(0),
+        damage_to_enemy_0: BigInt(0),
+        damage_to_enemy_1: BigInt(0),
+        damage_to_enemy_2: BigInt(0)
+    };
 }

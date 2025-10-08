@@ -145,6 +145,27 @@ constructor() {
     players.resetToDefault();
 }
 
+// raw witness to do division/mod
+// do not use directly - output must be validated
+// please call div() and mod() circuits instead
+witness divMod(x: Uint<32>, y: Uint<32>): [Uint<32>, Uint<32>];
+
+export circuit div(x: Uint<32>, y: Uint<32>): Uint<32> {
+    const res = disclose(divMod(x, y));
+    const quotient = res[0];
+    const remainder = res[1];
+    assert(remainder < y && x == y * quotient + remainder, "Invalid divMod witness impl");
+    return quotient;
+}
+
+export circuit mod(x: Uint<32>, y: Uint<32>): Uint<32> {
+    const res = disclose(divMod(x, y));
+    const quotient = res[0];
+    const remainder = res[1];
+    assert(remainder < y && x == y * quotient + remainder, "Invalid divMod witness impl");
+    return remainder;
+}
+
 // used to compute player ID. secret witness only known to the player.
 witness player_secret_key(): Bytes<32>;
 
@@ -377,32 +398,40 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     return quest_id;
 }
 
-export pure circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
-    const color = rng_mod_6(0/*rng[0]*/);
-    const trigger1 = color != 0 && rng_mod_3(0/*rng[1]*/) == 0;
-    const trigger2 = color != 1 && rng_mod_3(0/*rng[2]*/) == 0;
-    const trigger3 = color != 2 && rng_mod_3(0/*rng[3]*/) == 0;
+// until compact 0.26 working with bytes to vec data is broken (compiles but crashes at runtime)
+// so we mock this out on-chain just using a generator element for the Z_256 group that looks semi-random
+ledger mock_rng_val: Uint<8>;
+circuit mock_rng_byte(): Uint<8> {
+    mock_rng_val = (add_mod(mock_rng_val, 23, 256)) as Uint<8>;
+    return mock_rng_val;
+}
+
+circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
+    const color = mod(mock_rng_byte()/*rng[0]*/, 6);
+    const trigger1 = color != 0 && mod(mock_rng_byte()/*rng[1]*/, 3) == 0;
+    const trigger2 = color != 1 && mod(mock_rng_byte()/*rng[2]*/, 3) == 0;
+    const trigger3 = color != 2 && mod(mock_rng_byte()/*rng[3]*/, 3) == 0;
     const main_factor = difficulty * (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1);
-    const main_effect = random_effect(0/*rng[4]*/, main_factor as Uint<32>);
+    const main_effect = random_effect(mock_rng_byte()/*rng[4]*/, main_factor as Uint<32>);
     const trigger_factor = (2 * difficulty) as Uint<32>;
     return Ability {
         some<Effect>(main_effect),
         [
-            trigger1 ? some<Effect>(random_effect(0/*rng[5]*/, trigger_factor)) : none<Effect>(),
-            trigger2 ? some<Effect>(random_effect(0/*rng[6]*/, trigger_factor)) : none<Effect>(),
-            trigger3 ? some<Effect>(random_effect(0/*rng[7]*/, trigger_factor)) : none<Effect>()
+            trigger1 ? some<Effect>(random_effect(mock_rng_byte()/*rng[5]*/, trigger_factor)) : none<Effect>(),
+            trigger2 ? some<Effect>(random_effect(mock_rng_byte()/*rng[6]*/, trigger_factor)) : none<Effect>(),
+            trigger3 ? some<Effect>(random_effect(mock_rng_byte()/*rng[7]*/, trigger_factor)) : none<Effect>()
         ],
         color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>(),
         0
     };
 }
 
-pure circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
-    const effect_type = cast_to_effect_type(rng_mod_4(rng) as Uint<0..4>);
+circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
+    const effect_type = cast_to_effect_type(mod(rng, 4) as Uint<0..4>);
     const aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
     const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 5;
     const final_factor = factor * block_factor * (aoe ? 1 : 2);
-    const amount = final_factor + rng_mod(rng, final_factor as INSERT_RNG_MOD_INPUT_TYPE);
+    const amount = final_factor + mod(rng, final_factor as Uint<32>);
     return Effect {
         effect_type,
         amount as Uint<32>,
@@ -458,7 +487,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
         quest.loadout
     };
     const battle_id = derive_battle_id(battle_config);
-    active_battle_states.insert(battle_id, init_battlestate(0/*rng[0]*/, battle_config));
+    active_battle_states.insert(battle_id, init_battlestate(mock_rng_byte()/*rng[0]*/, battle_config));
     active_battle_configs.insert(battle_id, battle_config);
 
     quests.remove(disclose(quest_id));
@@ -483,20 +512,20 @@ export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleCon
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const battle = BattleConfig {
         disclose(level),
-        get_random_enemy_config(0/*rng[0]*/, level),
+        get_random_enemy_config(mock_rng_byte()/*rng[0]*/, level),
         player_pub_key,
         disclose(loadout)
     };
     const battle_id = derive_battle_id(disclose(battle));
-    active_battle_states.insert(disclose(battle_id), init_battlestate(2/*rng[1]*/, disclose(battle)));
+    active_battle_states.insert(disclose(battle_id), init_battlestate(mock_rng_byte()/*rng[1]*/, disclose(battle)));
     active_battle_configs.insert(disclose(battle_id), disclose(battle));
 
     return battle;
 }
 
 // is there a simple way to programatically do this more efficiently (circuit size)?
-pure circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
-    const mod_6 = rng_mod_6(rng);
+circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
+    const mod_6 = mod(rng, 6);
     if (mod_6 == 0) {
         return [0 as Uint<8>, 1 as Uint<8>, 2 as Uint<8>];
     } else if (mod_6 == 1) {
@@ -511,7 +540,7 @@ pure circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
     return [2 as Uint<8>, 1 as Uint<8>, 0 as Uint<8>];
 }
 
-export pure circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
+circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
     return BattleState {
         0,
         random_deck_indices(rng),
@@ -710,7 +739,7 @@ circuit get_player_rng(): Bytes<32> {
 }
 
 circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {
-    const index = 0;//rng_mod(rng, levels.lookup(level).size() as INSERT_RNG_MOD_INPUT_TYPE);
+    const index = mod(mock_rng_byte()/*rng*/, levels.lookup(level).size() as Uint<32>);
     return levels.lookup(level).lookup(index);
 }
 
@@ -739,12 +768,9 @@ export circuit admin_level_new(level: Level, boss: EnemiesConfig): [] {
 
 export circuit admin_level_add_config(level: Level, enemies: EnemiesConfig): [] {
     admin_verify();
-    assert(levels.lookup(level).size() < INSERT_MAX_RNG_MOD_DEFS, "rng_mod() not defined for this many configs");
     levels.lookup(level).insert(levels.lookup(level).size(), disclose(enemies));
 }
 
 circuit admin_verify(): [] {
     assert(derive_player_pub_key(disclose(player_secret_key())) == deployer, "Admin auth failed");
 }
-
-INSERT_RNG_MOD_CIRCUIT_HERE

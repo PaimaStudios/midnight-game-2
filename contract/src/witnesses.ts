@@ -38,7 +38,7 @@ export const createGame2PrivateState = (secretKey: Uint8Array) => ({
  * and a Uint8Array (because the contract declared a return value of Bytes[32],
  * and that's a Uint8Array in TypeScript).
  *
- * The player_sk witness does not need the ledger or contractAddress
+ * The player_secret_key witness does not need the ledger or contractAddress
  * from the WitnessContext, so it uses the parameter notation that puts
  * only the binding for the privateState in scope.
  */
@@ -47,4 +47,14 @@ export const witnesses = {
     privateState,
     privateState.secretKey,
   ],
+  divMod: (
+    context: WitnessContext<Ledger, Game2PrivateState>,
+    x: bigint, 
+    y: bigint): [Game2PrivateState, [bigint, bigint]] => {
+    const xn = Number(x);
+    const yn = Number(y);
+    const remainder = xn % yn;
+    const quotient = Math.floor(xn / yn);
+    return [context.privateState, [BigInt(quotient), BigInt(remainder)]];
+  }
 };
