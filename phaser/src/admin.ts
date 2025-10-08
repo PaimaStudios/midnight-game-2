@@ -65,14 +65,9 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
 
     const levels: [Level, EnemiesConfig][] = [
         [grass1, makeEnemiesConfig([dragon])],
-        [desert1, makeEnemiesConfig([enigma])],
-        [tundra1, makeEnemiesConfig([abominable])],
     ];
     const enemyConfigs: [Level, EnemiesConfig][] = [
         [grass1, makeEnemiesConfig([goblin, goblin, goblin])],
-        [desert1, makeEnemiesConfig([fireSprite, fireSprite])],
-        [tundra1, makeEnemiesConfig([snowman, snowman, snowman])],
-        [cave1, makeEnemiesConfig([goblin, fireSprite, goblin])],
     ];
     // TODO: until https://github.com/PaimaStudios/midnight-game-2/issues/77 is resolved
     // it is prohibitively slow to register all content every single time you test the game
