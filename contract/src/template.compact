@@ -148,10 +148,10 @@ constructor() {
 // raw witness to do division/mod
 // do not use directly - output must be validated
 // please call div() and mod() circuits instead
-witness divMod(x: Uint<32>, y: Uint<32>): [Uint<32>, Uint<32>];
+witness _divMod(x: Uint<32>, y: Uint<32>): [Uint<32>, Uint<32>];
 
 export circuit div(x: Uint<32>, y: Uint<32>): Uint<32> {
-    const res = disclose(divMod(x, y));
+    const res = disclose(_divMod(x, y));
     const quotient = res[0];
     const remainder = res[1];
     assert(remainder < y && x == y * quotient + remainder, "Invalid divMod witness impl");
@@ -159,7 +159,7 @@ export circuit div(x: Uint<32>, y: Uint<32>): Uint<32> {
 }
 
 export circuit mod(x: Uint<32>, y: Uint<32>): Uint<32> {
-    const res = disclose(divMod(x, y));
+    const res = disclose(_divMod(x, y));
     const quotient = res[0];
     const remainder = res[1];
     assert(remainder < y && x == y * quotient + remainder, "Invalid divMod witness impl");

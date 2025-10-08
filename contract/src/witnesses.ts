@@ -47,7 +47,7 @@ export const witnesses = {
     privateState,
     privateState.secretKey,
   ],
-  divMod: (
+  _divMod: (
     context: WitnessContext<Ledger, Game2PrivateState>,
     x: bigint, 
     y: bigint): [Game2PrivateState, [bigint, bigint]] => {
