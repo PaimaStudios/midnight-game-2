@@ -12,11 +12,14 @@ export const ENEMY_ANIMATION_DURATIONS = {
 
 export enum SPRITE_SHEET_ENEMIES {
     GOBLIN = 'goblin',
-    SNOWMAN = 'snowman',
+    PYRAMID = 'pyramid',
     FIRE_SPRITE = 'fire-sprite',
     ICE_GOLEM = 'ice-golem',
+    COYOTE = 'coyote',
+    SNOWMAN = 'snowman',
     BOSS_DRAGON = 'boss-dragon',
     BOSS_ENIGMA = 'boss-enigma',
+    BOSS_ABOMINABLE = 'boss-abominable',
 }
 
 // Configuration for enemy frame counts
@@ -25,15 +28,19 @@ const ENEMY_FRAME_CONFIG: Record<string, { idleFrames: number; attackFrames: num
     [SPRITE_SHEET_ENEMIES.SNOWMAN]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.FIRE_SPRITE]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.ICE_GOLEM]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.COYOTE]: { idleFrames: 2, attackFrames: [2] },
+    [SPRITE_SHEET_ENEMIES.PYRAMID]: { idleFrames: 2, attackFrames: [2] },
     [SPRITE_SHEET_ENEMIES.BOSS_DRAGON]: { idleFrames: 6, attackFrames: [6, 7] },
     [SPRITE_SHEET_ENEMIES.BOSS_ENIGMA]: { idleFrames: 6, attackFrames: [6, 7, 8, 8, 9, 6] },
+    [SPRITE_SHEET_ENEMIES.BOSS_ABOMINABLE]: { idleFrames: 5, attackFrames: [5, 6, 7, 7, 8, 9, 10, 11, 11, 11] },
 };
 
 const defaultFameConfig = { idleFrames: 2 };
 
 export function createEnemyAnimations(scene: Phaser.Scene): void {
     // Check if animations already exist to avoid duplicate warnings
-    if (scene.anims.exists('goblin-idle')) {
+    const firstEnemyType = Object.values(SPRITE_SHEET_ENEMIES)[0];
+    if (scene.anims.exists(`${firstEnemyType}-idle`)) {
         return; // Animations already created
     }
     
