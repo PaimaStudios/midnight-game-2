@@ -690,7 +690,7 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
     INSERT_PLAYER_DAMAGE_CODE_HERE
 
 
-    // we need to write these that way using boolean multiplication to avoid temporary underflow checks in non-executed branhces
+    // we need to write these that way using boolean multiplication to avoid temporary underflow checks in non-executed branches
     // I'm not quite sure why since the simplest case e.g. a < b ? b - a : a - b on its own doesn't seem to break?
     const new_damage_to_enemy_0 = (old_state.damage_to_enemy_0 + ((enemy_block_0 < damage_to_enemy_0) as Uint<1>) * damage_to_enemy_0 - ((enemy_block_0 < damage_to_enemy_0) as Uint<1>) * enemy_block_0) as Uint<32>;
     const new_damage_to_enemy_1 = (old_state.damage_to_enemy_1 + ((enemy_block_1 < damage_to_enemy_1) as Uint<1>) * damage_to_enemy_1 - ((enemy_block_1 < damage_to_enemy_1) as Uint<1>) * enemy_block_1) as Uint<32>;
