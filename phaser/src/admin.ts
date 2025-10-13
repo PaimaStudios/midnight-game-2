@@ -85,9 +85,9 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             [grass3, makeEnemiesConfig([dragonElite])],
 
             // Desert
-            [desert1, makeEnemiesConfig([enigma])],
-            [desert2, makeEnemiesConfig([enigmaStrong])],
-            [desert3, makeEnemiesConfig([enigmaElite])],
+            [desert1, makeEnemiesConfig([dragon])],
+            [desert2, makeEnemiesConfig([dragonStrong])],
+            [desert3, makeEnemiesConfig([dragonElite])],
 
             // Tundra
             [tundra1, makeEnemiesConfig([abominable])],
@@ -95,9 +95,9 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             [tundra3, makeEnemiesConfig([abominableElite])],
 
             // Cave
-            [cave1, makeEnemiesConfig([dragon])],
-            [cave2, makeEnemiesConfig([dragonStrong])],
-            [cave3, makeEnemiesConfig([dragonElite])],
+            [cave1, makeEnemiesConfig([enigma])],
+            [cave2, makeEnemiesConfig([enigmaStrong])],
+            [cave3, makeEnemiesConfig([enigmaElite])],
         );
 
         enemyConfigs.push(
