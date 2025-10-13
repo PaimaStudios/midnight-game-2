@@ -398,28 +398,20 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     return quest_id;
 }
 
-// until compact 0.26 working with bytes to vec data is broken (compiles but crashes at runtime)
-// so we mock this out on-chain just using a generator element for the Z_256 group that looks semi-random
-ledger mock_rng_val: Uint<8>;
-circuit mock_rng_byte(): Uint<8> {
-    mock_rng_val = (add_mod(mock_rng_val, 23, 256)) as Uint<8>;
-    return mock_rng_val;
-}
-
 circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
-    const color = mod(mock_rng_byte()/*rng[0]*/, 6);
-    const trigger1 = color != 0 && mod(mock_rng_byte()/*rng[1]*/, 3) == 0;
-    const trigger2 = color != 1 && mod(mock_rng_byte()/*rng[2]*/, 3) == 0;
-    const trigger3 = color != 2 && mod(mock_rng_byte()/*rng[3]*/, 3) == 0;
+    const color = mod(rng[0], 6);
+    const trigger1 = color != 0 && mod(rng[1], 3) == 0;
+    const trigger2 = color != 1 && mod(rng[2], 3) == 0;
+    const trigger3 = color != 2 && mod(rng[3], 3) == 0;
     const main_factor = difficulty * (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1);
-    const main_effect = random_effect(mock_rng_byte()/*rng[4]*/, main_factor as Uint<32>);
+    const main_effect = random_effect(rng[4], main_factor as Uint<32>);
     const trigger_factor = (2 * difficulty) as Uint<32>;
     return Ability {
         some<Effect>(main_effect),
         [
-            trigger1 ? some<Effect>(random_effect(mock_rng_byte()/*rng[5]*/, trigger_factor)) : none<Effect>(),
-            trigger2 ? some<Effect>(random_effect(mock_rng_byte()/*rng[6]*/, trigger_factor)) : none<Effect>(),
-            trigger3 ? some<Effect>(random_effect(mock_rng_byte()/*rng[7]*/, trigger_factor)) : none<Effect>()
+            trigger1 ? some<Effect>(random_effect(rng[5], trigger_factor)) : none<Effect>(),
+            trigger2 ? some<Effect>(random_effect(rng[6], trigger_factor)) : none<Effect>(),
+            trigger3 ? some<Effect>(random_effect(rng[7], trigger_factor)) : none<Effect>()
         ],
         color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>(),
         0
@@ -478,7 +470,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    //const rng = (get_player_rng() as Vector<32, Uint<8>>);
+    const rng = (get_player_rng() as Vector<32, Uint<8>>);
     // TODO: check block height here
     const battle_config = BattleConfig {
         quest.level,
@@ -487,7 +479,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
         quest.loadout
     };
     const battle_id = derive_battle_id(battle_config);
-    active_battle_states.insert(battle_id, init_battlestate(mock_rng_byte()/*rng[0]*/, battle_config));
+    active_battle_states.insert(battle_id, init_battlestate(rng[0], battle_config));
     active_battle_configs.insert(battle_id, battle_config);
 
     quests.remove(disclose(quest_id));
@@ -508,16 +500,16 @@ export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleCon
                "Must complete previous level boss to access this level");
     }
 
-    //const rng = (get_player_rng() as Vector<32, Uint<8>>);
+    const rng = (get_player_rng() as Vector<32, Uint<8>>);
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     const battle = BattleConfig {
         disclose(level),
-        get_random_enemy_config(mock_rng_byte()/*rng[0]*/, level),
+        get_random_enemy_config(rng[0], level),
         player_pub_key,
         disclose(loadout)
     };
     const battle_id = derive_battle_id(disclose(battle));
-    active_battle_states.insert(disclose(battle_id), init_battlestate(mock_rng_byte()/*rng[1]*/, disclose(battle)));
+    active_battle_states.insert(disclose(battle_id), init_battlestate(rng[1], disclose(battle)));
     active_battle_configs.insert(disclose(battle_id), disclose(battle));
 
     return battle;
@@ -740,7 +732,7 @@ circuit get_player_rng(): Bytes<32> {
 }
 
 circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {
-    const index = mod(mock_rng_byte()/*rng*/, levels.lookup(level).size() as Uint<32>);
+    const index = mod(rng, levels.lookup(level).size() as Uint<32>);
     return levels.lookup(level).lookup(index);
 }
 

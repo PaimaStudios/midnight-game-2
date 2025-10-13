@@ -1077,14 +1077,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:^0.8.1":
-  version: 0.8.1
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.8.1"
+"@midnight-ntwrk/compact-runtime@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0"
   dependencies:
     "@midnight-ntwrk/onchain-runtime": "npm:^0.3.0"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10c0/c41050b3ae15c2a080b685b317959032bec319a053ba6a9fcc84ff00a7c6d105f5b9dc51d529704c24a23c1907310b04bafb5dc1031c90bb8eee4d11f438d354
+  checksum: 10c0/2197f939bcb232fe90f3890a1f5c656f37ae1265a2e0c050e7d6bd710490dd2ff12fd063d90bc494b08616aca37bf014db447ef4ca008e6e274d4916e04b889a
   languageName: node
   linkType: hard
 
@@ -4604,7 +4604,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "game2-contract@workspace:contract"
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
     eslint: "npm:^8.52.0"
     jest: "npm:^29.7.0"
     typescript: "npm:^5.2.2"
@@ -7858,7 +7858,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:^0.8.1"
+    "@midnight-ntwrk/compact-runtime": "npm:^0.9.0"
     "@midnight-ntwrk/dapp-connector-api": "npm:^3.0.0"
     "@midnight-ntwrk/ledger": "npm:^4.0.0"
     "@midnight-ntwrk/midnight-js-contracts": "npm:2.0.0"
