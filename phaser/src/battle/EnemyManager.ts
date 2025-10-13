@@ -13,6 +13,7 @@ const ENEMY_TEXTURES = [
     'enemy-snowman',
     'enemy-coyote',
     'enemy-pyramid',
+    'enemy-hellspawn',
 ];
 
 const BOSS_TEXTURES = [

@@ -39,7 +39,10 @@ export class QuestsMenu extends Phaser.Scene {
 
     onStateChange(state: Game2DerivedState) {
         this.state = state;
-        this.refreshQuestDisplay();
+        // Only refresh display if the scene is active and initialized
+        if (this.scene?.manager && this.scene.isActive('QuestsMenu')) {
+            this.refreshQuestDisplay();
+        }
     }
 
     create() {

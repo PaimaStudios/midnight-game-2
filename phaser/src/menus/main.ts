@@ -92,6 +92,7 @@ export class TestMenu extends Phaser.Scene {
 
         // Enemy Sprites
         this.load.spritesheet('enemy-goblin', 'enemy-goblin.png', { frameWidth: 32, frameHeight: 28 });
+        this.load.spritesheet('enemy-hellspawn', 'enemy-hellspawn.png', { frameWidth: 70, frameHeight: 51 });
         this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 43, frameHeight: 35 });
         this.load.spritesheet('enemy-ice-golem', 'enemy-ice-golem.png', { frameWidth: 44, frameHeight: 40 });
         this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
