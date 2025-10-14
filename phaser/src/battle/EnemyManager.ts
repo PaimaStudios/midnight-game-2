@@ -9,17 +9,18 @@ import { Def } from "../constants/def";
 const ENEMY_TEXTURES = [
     'enemy-goblin',
     'enemy-fire-sprite',
-    'enemy-ice-golem',
     'enemy-snowman',
     'enemy-coyote',
     'enemy-pyramid',
+    'enemy-ice-golem',
     'enemy-hellspawn',
 ];
 
 const BOSS_TEXTURES = [
     'enemy-boss-dragon',
     'enemy-boss-enigma',
-    'enemy-boss-abominable'
+    'enemy-boss-abominable',
+    'enemy-boss-sphinx',
 ];
 
 type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
