@@ -14,6 +14,7 @@ const ENEMY_TEXTURES = [
     'enemy-pyramid',
     'enemy-ice-golem',
     'enemy-hellspawn',
+    'enemy-goblin-priest',
 ];
 
 const BOSS_TEXTURES = [

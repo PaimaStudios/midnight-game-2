@@ -28,7 +28,7 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const sphinxElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(3), hp: BigInt(800), attack: BigInt(70), block: BigInt(20), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
     // NORMAL ENEMIES
-    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(/*10*/5), block: BigInt(5), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(5), block: BigInt(5), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(45), attack: BigInt(15), block: BigInt(8), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(60), attack: BigInt(20), block: BigInt(12), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
@@ -55,6 +55,10 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const hellspawn: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(80), attack: BigInt(40), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
     const hellspawnStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(120), attack: BigInt(60), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
     const hellspawnElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(160), attack: BigInt(80), block: BigInt(5), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
+
+    const goblinPriest: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(30), attack: BigInt(1), block: BigInt(5), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
+    const goblinPriestStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(45), attack: BigInt(2), block: BigInt(8), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
+    const goblinPriestElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(60), attack: BigInt(3), block: BigInt(12), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
 
 
     // Define all level configurations
@@ -108,29 +112,29 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             // Grasslands
             [grass1, makeEnemiesConfig([snowman, fireSprite])],
 
-            [grass2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])],
+            [grass2, makeEnemiesConfig([goblinStrong, goblinPriestStrong, goblinStrong])],
             [grass2, makeEnemiesConfig([snowmanStrong, fireSpriteStrong])],
             [grass2, makeEnemiesConfig([iceGolemStrong, goblinStrong])],
 
-            [grass3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])],
+            [grass3, makeEnemiesConfig([goblinElite, goblinPriestElite, goblinElite])],
             [grass3, makeEnemiesConfig([snowmanElite, fireSpriteElite])],
             [grass3, makeEnemiesConfig([iceGolemElite, goblinElite])],
 
             // Desert
             [desert1, makeEnemiesConfig([fireSprite, fireSprite])],
             [desert1, makeEnemiesConfig([goblin, fireSprite, coyote])],
-            [desert1, makeEnemiesConfig([pyramid, coyote])],
+            [desert1, makeEnemiesConfig([pyramid, coyote, goblinPriest])],
             [desert1, makeEnemiesConfig([hellspawn, coyote])],
 
             [desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, coyoteStrong])],
-            [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong])],
+            [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinPriestStrong])],
             [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, pyramidStrong])],
             [desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, goblinStrong])],
             [desert1, makeEnemiesConfig([hellspawnStrong, coyoteStrong])],
 
             [desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite])],
             [desert3, makeEnemiesConfig([goblinElite, fireSpriteElite, coyoteElite])],
-            [desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite, goblinElite])],
+            [desert3, makeEnemiesConfig([fireSpriteElite, goblinPriestElite, goblinElite])],
             [desert3, makeEnemiesConfig([fireSpriteElite, pyramidElite, goblinElite])],
             [desert1, makeEnemiesConfig([hellspawnElite, coyoteElite])],
 
@@ -149,17 +153,22 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             // Cave
             [cave1, makeEnemiesConfig([goblin, fireSprite, goblin])],
             [cave1, makeEnemiesConfig([goblin, goblin, goblin])],
+            [cave1, makeEnemiesConfig([goblin, goblinPriest, goblin])],
             [cave1, makeEnemiesConfig([goblin, hellspawn])],
+            [cave1, makeEnemiesConfig([goblin, hellspawn, goblinPriest])],
 
             [cave2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinStrong])],
             [cave2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])],
+            [cave2, makeEnemiesConfig([goblinStrong, goblinPriestStrong, goblinStrong])],
             [cave2, makeEnemiesConfig([iceGolemStrong, fireSpriteStrong])],
-            [cave2, makeEnemiesConfig([hellspawnStrong, goblinStrong])],
+            [cave2, makeEnemiesConfig([hellspawnStrong, goblinStrong, goblinPriestStrong])],
 
             [cave3, makeEnemiesConfig([goblinElite, fireSpriteElite, goblinElite])],
             [cave3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])],
+            [cave3, makeEnemiesConfig([goblinElite, goblinPriestElite, goblinElite])],
             [cave3, makeEnemiesConfig([iceGolemElite, fireSpriteElite])],
             [cave3, makeEnemiesConfig([hellspawnElite, goblinElite])],
+            [cave3, makeEnemiesConfig([hellspawnElite, goblinElite, goblinPriestElite])],
         );
     }
     // concurrency doesn't matter for performance since multiple requests would slow it down (batcher)
