@@ -89,6 +89,7 @@ export class Actor extends Phaser.GameObjects.Container {
             height: 32,
             max: this.maxHp,
             displayTotalCompleted: true,
+            transparent: stats != null, // Only make enemy healthbars transparent, not player
         });
         this.block = 0;
 
