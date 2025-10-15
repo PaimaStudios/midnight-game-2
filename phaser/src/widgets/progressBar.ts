@@ -78,6 +78,15 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         this.bar.setOrigin(0, 0);
         this.add(this.bar);
 
+        // Set bar, background, and temp bar to 50% transparency if requested
+        if (config.transparent) {
+            this.bar.setAlpha(0.5);
+            this.bg.setAlpha(0.5);
+            if (this.barTemp) {
+                this.barTemp.setAlpha(0.5);
+            }
+        }
+
         // Display total completed text if enabled
         this.label = config.scene.add.text(
             0,
@@ -164,16 +173,8 @@ export class HealthBar extends ProgressBar {
             barColor: config.barColor ?? colorToNumber(Color.Red),
             bgColor: config.bgColor ?? colorToNumber(Color.Licorice),
             tempBarColor: config.tempBarColor ?? colorToNumber(Color.DeepPlum),
+            transparent: config.transparent,
         });
-
-        // Set red bar, background, and temp bar to 50% transparency if requested
-        if (config.transparent) {
-            this.bar.setAlpha(0.5);
-            this.bg.setAlpha(0.5);
-            if (this.barTemp) {
-                this.barTemp.setAlpha(0.5);
-            }
-        }
 
         const halfWidth = config.width / 2;
         this.shield = this.scene.add.image(-halfWidth, 0, 'hp-bar-shield')
