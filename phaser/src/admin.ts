@@ -60,6 +60,10 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const goblinPriestStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(45), attack: BigInt(2), block: BigInt(8), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
     const goblinPriestElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(60), attack: BigInt(3), block: BigInt(12), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
 
+    const goblinSwordmaster: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(20), attack: BigInt(10), block: BigInt(2), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const goblinSwordmasterStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(35), attack: BigInt(25), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const goblinSwordmasterElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(50), attack: BigInt(45), block: BigInt(9), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+
 
     // Define all level configurations
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
