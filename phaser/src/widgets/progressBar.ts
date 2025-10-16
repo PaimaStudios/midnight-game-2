@@ -20,6 +20,7 @@ export interface ProgressBarConfig {
     displayTotalCompleted?: boolean; // If true, render the total completed value in text as "{value}/{max}""
     labelText?: string; // Optional text to display in the label
     fontStyle?: Phaser.Types.GameObjects.Text.TextStyle;
+    transparent?: boolean; // If true, make bar and background 50% transparent
 }
 
 export class ProgressBar extends Phaser.GameObjects.Container {
@@ -50,19 +51,21 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         const halfWidth = this.widthPx / 2;
         const halfHeight = this.heightPx / 2;
 
-        // Add border rectangle
+        // Add border rectangle (stroke only, no fill)
         const border = config.scene.add.rectangle(
-            -halfWidth, -halfHeight, 
+            -halfWidth, -halfHeight,
             config.width, config.height
         );
         const borderWidth = config.borderWidth ?? 8; // Default border width
         const borderColor = config.borderColor ?? Color.White;
         border.setStrokeStyle(borderWidth, colorToNumber(borderColor));
+        border.setFillStyle(0x000000, 0); // Set fill alpha to 0 (transparent)
         border.setOrigin(0, 0);
 
         this.add(border);
 
-        this.bg = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.bgColor ?? colorToNumber(Color.DeepPlum));
+        // Background starts at zero width since health starts at max
+        this.bg = config.scene.add.rectangle(halfWidth, -halfHeight, 0, this.heightPx, config.bgColor ?? colorToNumber(Color.DeepPlum));
         this.bg.setOrigin(0, 0);
         this.add(this.bg);
 
@@ -74,6 +77,15 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         this.bar = config.scene.add.rectangle(-halfWidth, -halfHeight, this.widthPx, this.heightPx, config.barColor ?? colorToNumber(Color.Turquoise));
         this.bar.setOrigin(0, 0);
         this.add(this.bar);
+
+        // Set bar, background, and temp bar to 50% transparency if requested
+        if (config.transparent) {
+            this.bar.setAlpha(0.5);
+            this.bg.setAlpha(0.5);
+            if (this.barTemp) {
+                this.barTemp.setAlpha(0.5);
+            }
+        }
 
         // Display total completed text if enabled
         this.label = config.scene.add.text(
@@ -94,10 +106,23 @@ export class ProgressBar extends Phaser.GameObjects.Container {
         const newPercent = (newValue - this.min) / (this.max - this.min);
         this._value = newValue;
 
+        const halfWidth = this.widthPx / 2;
+        const barWidth = this.widthPx * newPercent;
+        const bgWidth = this.widthPx - barWidth;
+
         // Animate the bar width
         this.scene.tweens.add({
             targets: this.bar,
-            width: this.widthPx * newPercent,
+            width: barWidth,
+            duration: 250,
+            ease: 'Cubic.Out',
+        });
+
+        // Animate the background width and position so it starts where the bar ends
+        this.scene.tweens.add({
+            targets: this.bg,
+            x: -halfWidth + barWidth,
+            width: bgWidth,
             duration: 250,
             ease: 'Cubic.Out',
         });
@@ -141,13 +166,14 @@ export class ProgressBar extends Phaser.GameObjects.Container {
 export class HealthBar extends ProgressBar {
     shield: Phaser.GameObjects.Image;
     blockText: Phaser.GameObjects.Text;
-    
+
     constructor(config: ProgressBarConfig) {
         super({
             ...config,
             barColor: config.barColor ?? colorToNumber(Color.Red),
             bgColor: config.bgColor ?? colorToNumber(Color.Licorice),
             tempBarColor: config.tempBarColor ?? colorToNumber(Color.DeepPlum),
+            transparent: config.transparent,
         });
 
         const halfWidth = config.width / 2;

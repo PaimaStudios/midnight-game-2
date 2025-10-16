@@ -9,13 +9,20 @@ import { Def } from "../constants/def";
 const ENEMY_TEXTURES = [
     'enemy-goblin',
     'enemy-fire-sprite',
+    'enemy-snowman',
+    'enemy-coyote',
+    'enemy-pyramid',
     'enemy-ice-golem',
-    'enemy-snowman'
+    'enemy-hellspawn',
+    'enemy-goblin-priest',
+    'enemy-goblin-swordmaster',
 ];
 
 const BOSS_TEXTURES = [
     'enemy-boss-dragon',
-    'enemy-boss-enigma'
+    'enemy-boss-enigma',
+    'enemy-boss-abominable',
+    'enemy-boss-sphinx',
 ];
 
 type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
@@ -84,6 +91,7 @@ export class Actor extends Phaser.GameObjects.Container {
             height: 32,
             max: this.maxHp,
             displayTotalCompleted: true,
+            transparent: stats != null, // Only make enemy healthbars transparent, not player
         });
         this.block = 0;
 

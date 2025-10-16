@@ -8,6 +8,9 @@ import { logger } from './logger';
 
 export async function registerStartingContent(api: DeployedGame2API): Promise<void> {
     // Define enemy stats for different power levels
+
+
+    // BOSSES
     const dragon: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(300), attack: BigInt(15), block: BigInt(15), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
     const dragonStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(450), attack: BigInt(22), block: BigInt(22), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
     const dragonElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(0), hp: BigInt(600), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.EFFECTIVE) };
@@ -16,7 +19,16 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const enigmaStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(65), attack: BigInt(45), block: BigInt(45), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const enigmaElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(1), hp: BigInt(85), attack: BigInt(60), block: BigInt(60), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
-    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(/*10*/5), block: BigInt(5), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const abominable: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(400), attack: BigInt(20), block: BigInt(20), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const abominableStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(600), attack: BigInt(30), block: BigInt(30), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const abominableElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(2), hp: BigInt(800), attack: BigInt(40), block: BigInt(40), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+
+    const sphinx: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(3), hp: BigInt(400), attack: BigInt(35), block: BigInt(10), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const sphinxStrong: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(3), hp: BigInt(600), attack: BigInt(50), block: BigInt(15), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const sphinxElite: EnemyStats = { boss_type: BOSS_TYPE.boss, enemy_type: BigInt(3), hp: BigInt(800), attack: BigInt(70), block: BigInt(20), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+
+    // NORMAL ENEMIES
+    const goblin: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(30), attack: BigInt(5), block: BigInt(5), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(45), attack: BigInt(15), block: BigInt(8), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
     const goblinElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(0), hp: BigInt(60), attack: BigInt(20), block: BigInt(12), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
 
@@ -24,13 +36,34 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const fireSpriteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(38), attack: BigInt(30), block: BigInt(3), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.IMMUNE), ice_def: BigInt(Def.EFFECTIVE) };
     const fireSpriteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(1), hp: BigInt(50), attack: BigInt(40), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.IMMUNE), ice_def: BigInt(Def.EFFECTIVE) };
 
-    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const iceGolemStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(120), attack: BigInt(8), block: BigInt(22), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const iceGolemElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(0), hp: BigInt(160), attack: BigInt(12), block: BigInt(30), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(25), attack: BigInt(25), block: BigInt(0), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowmanStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(38), attack: BigInt(35), block: BigInt(2), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const snowmanElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(2), hp: BigInt(50), attack: BigInt(50), block: BigInt(4), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.SUPEREFFECTIVE), ice_def: BigInt(Def.WEAK) };
 
-    const snowman: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(25), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const snowmanStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(38), attack: BigInt(30), block: BigInt(3), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
-    const snowmanElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(50), attack: BigInt(40), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const coyote: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const coyoteStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const coyoteElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(3), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.EFFECTIVE), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+
+    const pyramid: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(50), attack: BigInt(20), block: BigInt(0), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramidStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(75), attack: BigInt(30), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+    const pyramidElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(4), hp: BigInt(100), attack: BigInt(40), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.EFFECTIVE) };
+
+    const iceGolem: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(5), hp: BigInt(80), attack: BigInt(5), block: BigInt(15), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const iceGolemStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(5), hp: BigInt(120), attack: BigInt(8), block: BigInt(22), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+    const iceGolemElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(5), hp: BigInt(160), attack: BigInt(12), block: BigInt(30), physical_def: BigInt(Def.WEAK), fire_def: BigInt(Def.EFFECTIVE), ice_def: BigInt(Def.WEAK) };
+
+    const hellspawn: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(80), attack: BigInt(40), block: BigInt(1), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
+    const hellspawnStrong: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(120), attack: BigInt(60), block: BigInt(2), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
+    const hellspawnElite: EnemyStats = { boss_type: BOSS_TYPE.miniboss, enemy_type: BigInt(6), hp: BigInt(160), attack: BigInt(80), block: BigInt(5), physical_def: BigInt(Def.IMMUNE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.SUPEREFFECTIVE) };
+
+    const goblinPriest: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(30), attack: BigInt(1), block: BigInt(5), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
+    const goblinPriestStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(45), attack: BigInt(2), block: BigInt(8), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
+    const goblinPriestElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(7), hp: BigInt(60), attack: BigInt(3), block: BigInt(12), physical_def: BigInt(Def.SUPEREFFECTIVE), fire_def: BigInt(Def.WEAK), ice_def: BigInt(Def.WEAK) };
+
+    const goblinSwordmaster: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(20), attack: BigInt(10), block: BigInt(2), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const goblinSwordmasterStrong: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(35), attack: BigInt(25), block: BigInt(5), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+    const goblinSwordmasterElite: EnemyStats = { boss_type: BOSS_TYPE.normal, enemy_type: BigInt(8), hp: BigInt(50), attack: BigInt(45), block: BigInt(9), physical_def: BigInt(Def.NEUTRAL), fire_def: BigInt(Def.NEUTRAL), ice_def: BigInt(Def.NEUTRAL) };
+
 
     // Define all level configurations
     const grass1 = { biome: BigInt(BIOME_ID.grasslands), difficulty: BigInt(1) };
@@ -47,10 +80,10 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const cave3 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(3) };
 
     const levels: [Level, EnemiesConfig][] = [
-        [grass1, makeEnemiesConfig([dragon])]
+        [grass1, makeEnemiesConfig([dragon])],
     ];
     const enemyConfigs: [Level, EnemiesConfig][] = [
-        [grass1, makeEnemiesConfig([goblin, goblin, goblin])]
+        [grass1, makeEnemiesConfig([goblin, goblin, goblin])],
     ];
     // TODO: until https://github.com/PaimaStudios/midnight-game-2/issues/77 is resolved
     // it is prohibitively slow to register all content every single time you test the game
@@ -59,48 +92,55 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     if (import.meta.env.VITE_API_FORCE_DEPLOY == 'mock') {
         levels.push(
             // Grasslands        
+            [grass1, makeEnemiesConfig([dragon])],
             [grass2, makeEnemiesConfig([dragonStrong])],
             [grass3, makeEnemiesConfig([dragonElite])],
 
             // Desert
-            [desert1, makeEnemiesConfig([enigma])],
-            [desert2, makeEnemiesConfig([enigmaStrong])],
-            [desert3, makeEnemiesConfig([enigmaElite])],
+            [desert1, makeEnemiesConfig([sphinx])],
+            [desert2, makeEnemiesConfig([sphinxStrong])],
+            [desert3, makeEnemiesConfig([sphinxElite])],
 
             // Tundra
-            [tundra1, makeEnemiesConfig([enigma])],
-            [tundra2, makeEnemiesConfig([enigmaStrong])],
-            [tundra3, makeEnemiesConfig([enigmaElite])],
+            [tundra1, makeEnemiesConfig([abominable])],
+            [tundra2, makeEnemiesConfig([abominableStrong])],
+            [tundra3, makeEnemiesConfig([abominableElite])],
 
             // Cave
-            [cave1, makeEnemiesConfig([dragon])],
-            [cave2, makeEnemiesConfig([dragonStrong])],
-            [cave3, makeEnemiesConfig([dragonElite])],
+            [cave1, makeEnemiesConfig([enigma])],
+            [cave2, makeEnemiesConfig([enigmaStrong])],
+            [cave3, makeEnemiesConfig([enigmaElite])],
         );
 
         enemyConfigs.push(
             // Grasslands
             [grass1, makeEnemiesConfig([snowman, fireSprite])],
 
-            [grass2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])],
+            [grass2, makeEnemiesConfig([goblinStrong, goblinPriestStrong, goblinStrong])],
             [grass2, makeEnemiesConfig([snowmanStrong, fireSpriteStrong])],
             [grass2, makeEnemiesConfig([iceGolemStrong, goblinStrong])],
 
-            [grass3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])],
+            [grass3, makeEnemiesConfig([goblinElite, goblinPriestElite, goblinElite])],
             [grass3, makeEnemiesConfig([snowmanElite, fireSpriteElite])],
             [grass3, makeEnemiesConfig([iceGolemElite, goblinElite])],
 
             // Desert
             [desert1, makeEnemiesConfig([fireSprite, fireSprite])],
-            [desert1, makeEnemiesConfig([goblin, fireSprite])],
+            [desert1, makeEnemiesConfig([goblin, fireSprite, coyote])],
+            [desert1, makeEnemiesConfig([pyramid, coyote, goblinPriest])],
+            [desert1, makeEnemiesConfig([hellspawn, coyote])],
 
-            [desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong])],
-            [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong])],
+            [desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, coyoteStrong])],
+            [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinPriestStrong])],
+            [desert2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, pyramidStrong])],
             [desert2, makeEnemiesConfig([fireSpriteStrong, fireSpriteStrong, goblinStrong])],
+            [desert1, makeEnemiesConfig([hellspawnStrong, coyoteStrong])],
 
             [desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite])],
-            [desert3, makeEnemiesConfig([goblinElite, fireSpriteElite])],
-            [desert3, makeEnemiesConfig([fireSpriteElite, fireSpriteElite, goblinElite])],
+            [desert3, makeEnemiesConfig([goblinElite, fireSpriteElite, coyoteElite])],
+            [desert3, makeEnemiesConfig([fireSpriteElite, goblinPriestElite, goblinElite])],
+            [desert3, makeEnemiesConfig([fireSpriteElite, pyramidElite, goblinElite])],
+            [desert1, makeEnemiesConfig([hellspawnElite, coyoteElite])],
 
             // Tundra
             [tundra1, makeEnemiesConfig([snowman, snowman, snowman])],
@@ -117,14 +157,22 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
             // Cave
             [cave1, makeEnemiesConfig([goblin, fireSprite, goblin])],
             [cave1, makeEnemiesConfig([goblin, goblin, goblin])],
+            [cave1, makeEnemiesConfig([goblin, goblinPriest, goblin])],
+            [cave1, makeEnemiesConfig([goblin, hellspawn])],
+            [cave1, makeEnemiesConfig([goblin, hellspawn, goblinPriest])],
 
             [cave2, makeEnemiesConfig([goblinStrong, fireSpriteStrong, goblinStrong])],
             [cave2, makeEnemiesConfig([goblinStrong, goblinStrong, goblinStrong])],
+            [cave2, makeEnemiesConfig([goblinStrong, goblinPriestStrong, goblinStrong])],
             [cave2, makeEnemiesConfig([iceGolemStrong, fireSpriteStrong])],
+            [cave2, makeEnemiesConfig([hellspawnStrong, goblinStrong, goblinPriestStrong])],
 
             [cave3, makeEnemiesConfig([goblinElite, fireSpriteElite, goblinElite])],
             [cave3, makeEnemiesConfig([goblinElite, goblinElite, goblinElite])],
-            [cave3, makeEnemiesConfig([iceGolemElite, fireSpriteElite])]
+            [cave3, makeEnemiesConfig([goblinElite, goblinPriestElite, goblinElite])],
+            [cave3, makeEnemiesConfig([iceGolemElite, fireSpriteElite])],
+            [cave3, makeEnemiesConfig([hellspawnElite, goblinElite])],
+            [cave3, makeEnemiesConfig([hellspawnElite, goblinElite, goblinPriestElite])],
         );
     }
     // concurrency doesn't matter for performance since multiple requests would slow it down (batcher)

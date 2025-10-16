@@ -245,4 +245,8 @@ export class QuestMenu extends Phaser.Scene {
 
         attemptFinalizeQuest();
     }
+
+    shutdown() {
+        this.subscription?.unsubscribe();
+    }
 }
