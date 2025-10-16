@@ -7,6 +7,7 @@ import { BattleConfig, pureCircuits, BOSS_TYPE, BattleRewards } from "game2-cont
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
 import { Loader } from "./loader";
+import { NetworkError } from "./network-error";
 import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { BattleLayout } from "../battle/BattleLayout";
@@ -183,11 +184,26 @@ export class ActiveBattle extends Phaser.Scene {
                 return result;
             } catch (err) {
                 if (loaderStarted) {
-                    const loader = this.scene.get('Loader') as Loader;
-                    loader.setText("Error connecting to network.. Retrying");
+                    this.scene.stop('Loader');
                 }
                 logger.network.error(`Network Error during combat_round: ${err}`);
+
+                // Show network error overlay
+                if (!this.scene.get('NetworkError')) {
+                    this.scene.add('NetworkError', new NetworkError('Network Error during combat. Retrying...'));
+                }
+                this.scene.launch('NetworkError');
+
                 await new Promise(resolve => setTimeout(resolve, 2000));
+                this.scene.stop('NetworkError');
+
+                if (!loaderStarted) {
+                    this.scene.pause().launch('Loader');
+                    const loader = this.scene.get('Loader') as Loader;
+                    loader.setText("Retrying...");
+                    loaderStarted = true;
+                }
+
                 return retryCombatRound();
             }
         };
