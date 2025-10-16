@@ -81,10 +81,7 @@ export class NetworkError extends Phaser.Scene {
      * Dismiss the error overlay
      */
     private dismiss() {
-        // Destroy the button to prevent memory leaks
         this.okayButton?.destroy();
-
-        // Stop and remove this scene
         this.scene.stop('NetworkError');
     }
 }
