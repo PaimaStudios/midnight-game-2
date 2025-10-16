@@ -6,6 +6,7 @@ import { createSpiritAnimations } from "../../animations/spirit";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
 import { Button } from "../../widgets/button";
 import { Loader } from "../loader";
+import { NetworkError } from "../network-error";
 import { Color, colorToNumber } from "../../constants/colors";
 import { isStartingAbility, sortedAbilities } from "../pre-battle";
 import { addScaledImage } from "../../utils/scaleImage";
@@ -955,11 +956,16 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             // Otherwise, onStateChange will handle cleanup when state updates
         } catch (error) {
             logger.ui.error('Upgrade failed:', error);
-            this.errorText?.setText(`Upgrade failed: ${error}`);
             this.upgradeButton?.setEnabled(true);
             this.pendingUpgradedAbilityId = undefined;
             this.scene.resume().stop('Loader');
             this.loader = undefined;
+
+            // Show network error overlay for network-related errors
+            if (!this.scene.get('NetworkError')) {
+                this.scene.add('NetworkError', new NetworkError('Error upgrading spirit. Please try again.'));
+            }
+            this.scene.launch('NetworkError');
         }
     }
 

@@ -6,6 +6,7 @@ import { createSpiritAnimations } from "../../animations/spirit";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
 import { Button } from "../../widgets/button";
 import { Loader } from "../loader";
+import { NetworkError } from "../network-error";
 import { Color } from "../../constants/colors";
 import { isStartingAbility, sortedAbilities } from "../pre-battle";
 import { addScaledImage } from "../../utils/scaleImage";
@@ -44,7 +45,6 @@ export class SellSpiritsMenu extends Phaser.Scene {
     ui: Phaser.GameObjects.GameObject[];
     loader: Loader | undefined;
     topBar: TopBar | undefined;
-    errorText: Phaser.GameObjects.Text | undefined;
     waitingForSell: boolean = false;
 
     constructor(api: DeployedGame2API, state: Game2DerivedState) {
@@ -78,8 +78,6 @@ export class SellSpiritsMenu extends Phaser.Scene {
                 this.scene.add('ShopMenu', new ShopMenu(this.api, this.state));
                 this.scene.start('ShopMenu');
             }, 'Back to Shop');
-        
-        this.errorText = this.add.text(82, 32, '', fontStyle(12, { color: Color.Red }));
 
         this.onStateChange(this.state);
     }
@@ -165,9 +163,14 @@ export class SellSpiritsMenu extends Phaser.Scene {
             this.loader?.setText("Waiting on chain update");
         }).catch((e) => {
             this.waitingForSell = false;
-            this.errorText?.setText('Error Talking to the network. Try again...');
             logger.network.error(`Error selling ability: ${e}`);
             this.scene.resume().stop('Loader');
+
+            // Show network error overlay
+            if (!this.scene.get('NetworkError')) {
+                this.scene.add('NetworkError', new NetworkError('Error selling ability. Please try again.'));
+            }
+            this.scene.launch('NetworkError');
         });
     }
 }
