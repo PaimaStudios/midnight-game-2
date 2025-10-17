@@ -6,7 +6,7 @@ import { colorToNumber, Color } from "../constants/colors";
 import { BattleLayout } from "./BattleLayout";
 import { CombatCallbacks } from "../battle/logic";
 import { logger, fontStyle } from "../main";
-import { BattleEffect } from "../widgets/BattleEffect";
+import { BattleEffect, BattleEffectType } from "../widgets/BattleEffect";
 import { Actor } from "./EnemyManager";
 import { RainbowText } from "../widgets/rainbow-text";
 import { Def } from "../constants/def";
@@ -146,8 +146,8 @@ export class CombatAnimationManager {
                 new BattleEffect(
                     this.scene, 
                     this.layout.enemyX(this.battle, enemy), 
-                    this.layout.enemyY() - 20, 
-                    EFFECT_TYPE.block, 
+                    this.layout.enemyY() - 20,
+                    BattleEffectType.BLOCK,
                     amount, 
                     () => resolve()
                 );
@@ -177,7 +177,7 @@ export class CombatAnimationManager {
                                 this.scene, 
                                 this.layout.playerX(), 
                                 this.layout.playerY() - 20, 
-                                EFFECT_TYPE.attack_phys, 
+                                BattleEffectType.ATTACK_PHYS,
                                 amount, 
                                 () => resolve()
                             );
@@ -185,6 +185,23 @@ export class CombatAnimationManager {
                         }
                     });
                 });
+            }),
+
+            onEnemyHeal: (enemy: number, amount: number) => new Promise((resolve) => {
+                logger.combat.debug(`enemy [${enemy}] healed for ${amount} | ${this.enemies.length}`);
+                this.enemies[enemy].heal(amount);
+
+                // Show heal effect on enemy
+                new BattleEffect(
+                    this.scene,
+                    this.layout.enemyX(this.battle, enemy),
+                    this.layout.enemyY() - 20,
+                    // TODO: specific heal animations
+                    BattleEffectType.HEAL,
+                    amount,
+                    () => resolve()
+                );
+                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
             }),
 
             onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
@@ -206,7 +223,7 @@ export class CombatAnimationManager {
                             this.scene, 
                             this.layout.playerX(), 
                             this.layout.playerY() - 20, 
-                            effectType, 
+                            BattleEffectType.BLOCK,
                             amounts[0], 
                             () => {}
                         );
@@ -240,8 +257,8 @@ export class CombatAnimationManager {
                                 new BattleEffect(
                                     this.scene, 
                                     this.layout.enemyX(this.battle, target), 
-                                    this.layout.enemyY() - 20, 
-                                    effectType, 
+                                    this.layout.enemyY() - 20,
+                                    Number(effectType) as BattleEffectType,
                                     amount, 
                                     () => resolve()
                                 );

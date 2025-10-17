@@ -1,22 +1,31 @@
-import { EFFECT_TYPE } from "game2-contract";
-import { fontStyle } from "../main";
+import { fontStyle, logger } from "../main";
 import { BASE_SPRITE_SCALE } from "../utils/scaleImage";
 
-export function effectTypeToIcon(effectType: EFFECT_TYPE): string {
+export enum BattleEffectType {
+    ATTTACK_FIRE = 0,
+    ATTACK_ICE = 1,
+    ATTACK_PHYS = 2,
+    BLOCK = 3,
+    HEAL = 4,
+}
+
+export function effectTypeToIcon(effectType: BattleEffectType): string {
     switch (effectType) {
-        case EFFECT_TYPE.attack_fire:
+        case BattleEffectType.ATTTACK_FIRE:
             return 'fire';
-        case EFFECT_TYPE.attack_ice:
+        case BattleEffectType.ATTACK_ICE:
             return 'ice';
-        case EFFECT_TYPE.attack_phys:
+        case BattleEffectType.ATTACK_PHYS:
             return 'physical';
-        case EFFECT_TYPE.block:
+        case BattleEffectType.BLOCK:
             return 'block';
+        case BattleEffectType.HEAL:
+            return 'heal';
     }
 }
 
 export class BattleEffect extends Phaser.GameObjects.Container {
-    constructor(scene: Phaser.Scene, x: number, y: number, effectType: EFFECT_TYPE, amount: number, onComplete: () => void) {
+    constructor(scene: Phaser.Scene, x: number, y: number, effectType: BattleEffectType, amount: number, onComplete: () => void) {
         super(scene, x, y);
 
         this.add(scene.add.text(12, 0, amount.toString(), fontStyle(12)));
@@ -29,6 +38,7 @@ export class BattleEffect extends Phaser.GameObjects.Container {
             delay: 250,
             duration: 1500,
             onComplete: () => {
+                logger.animation.debug(`BattleEffect.onComplete(): ${effectType} | ${amount} at (${x}, ${y})`);
                 onComplete();
             },
         });

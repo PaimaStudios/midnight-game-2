@@ -107,6 +107,10 @@ export class Actor extends Phaser.GameObjects.Container {
         this.setBlock(this.block + amount);
     }
 
+    public heal(amount: number) {
+        this.setHp(Math.min(this.maxHp, this.hp + amount));
+    }
+
     public damage(amount: number) {
         if (amount > this.block) {
             this.setHp(this.hp - amount + this.block);
