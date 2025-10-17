@@ -15,6 +15,7 @@ function codegen_placeholders() {
         .replaceAll('INSERT_PLAYER_BLOCK_CODE_HERE', gen_player_block())
         .replaceAll('INSERT_ENEMY_DAMAGE_CODE_HERE', gen_enemy_dmg())
         .replaceAll('INSERT_ENEMY_BLOCK_CODE_HERE', gen_enemy_block())
+        .replaceAll('INSERT_ENEMY_HEAL_CODE_HERE', gen_enemy_heal())
         .replaceAll('INSERT_DECK_INDEX_CALCULATION_CODE_HERE', gen_deck_index_calculation())
         .replaceAll('INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE', gen_deck_index_eval());
     fs.writeFileSync('src/game2.compact', `// AUTO-GENERATED - **DO NOT MODIFY**\n// PLEASE CHANGE template.compact INSTEAD!\n\n${replaced}`);
@@ -50,11 +51,11 @@ const generates_color = (a, c) => `(${abilities.filter((a2) => a != a2).map((a2)
 
 // enemy
 
-const gen_enemy_dmg = () => `const damage_to_player = (${max_enemies.map((enemy) => `(battle.enemies.stats[${enemy}].attack * ((new_damage_to_enemy_${enemy} < battle.enemies.stats[${enemy}].hp) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
+const gen_enemy_dmg = () => `const damage_to_player = (${max_enemies.map((enemy) => `(enemy_moves[${enemy}].attack * ((new_damage_to_enemy_${enemy} < battle.enemies.stats[${enemy}].hp) as Uint<1>))`).join(' + ')}) as Uint<32>;`;
 
-const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = battle.enemies.stats[${enemy}].block as Uint<32>;`).join('\n    ');
+const gen_enemy_block = () => max_enemies.map((enemy) => `const enemy_block_${enemy} = (enemy_moves[${enemy}].block_self + ${max_enemies.filter(e => e != enemy).map(e => `enemy_moves[${e}].block_allies * ((old_state.damage_to_enemy_${e} < battle.enemies.stats[${e}].hp) as Uint<1>)`).join(' + ')}) as Uint<32>;`).join('\n    ');
 
-
+const gen_enemy_heal = () => max_enemies.map((enemy) => `const enemy_heal_${enemy} = (((new_damage_to_enemy_${enemy} < battle.enemies.stats[${enemy}].hp) as Uint<1>) * (enemy_moves[${enemy}].heal_self + ${max_enemies.filter(e => e != enemy).map(e => `enemy_moves[${e}].heal_allies * ((new_damage_to_enemy_${e} < battle.enemies.stats[${e}].hp) as Uint<1>)`).join(' + ')})) as Uint<32>;`).join('\n    ');
 
 // deck indices
 
