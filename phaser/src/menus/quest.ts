@@ -65,7 +65,6 @@ export class QuestMenu extends Phaser.Scene {
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.info(`QuestMenu.onStateChange() called, quest exists: ${state.quests.has(this.questId)}`);
 
-        // Update instance state so other methods have access to current state
         this.state = state;
 
         // Set background based on quest biome (only once)
@@ -223,7 +222,6 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     private startBossBattle() {
-        // Prevent starting battle multiple times
         if (this.battleStarted) {
             logger.gameState.warn('Battle already started, ignoring duplicate call');
             return;
