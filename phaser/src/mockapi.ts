@@ -121,8 +121,12 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 // and also move indices
                 battleState.enemy_move_index_0 = BigInt((Number(battleState.enemy_move_index_0) + 1) % Number(battleConfig.enemies.stats[0].move_count));
-                battleState.enemy_move_index_1 = BigInt((Number(battleState.enemy_move_index_1) + 1) % Number(battleConfig.enemies.stats[1].move_count));
-                battleState.enemy_move_index_2 = BigInt((Number(battleState.enemy_move_index_2) + 1) % Number(battleConfig.enemies.stats[2].move_count));
+                if (battleConfig.enemies.count >= 2) {
+                    battleState.enemy_move_index_1 = BigInt((Number(battleState.enemy_move_index_1) + 1) % Number(battleConfig.enemies.stats[1].move_count));
+                }
+                if (battleConfig.enemies.count >= 3) {
+                    battleState.enemy_move_index_2 = BigInt((Number(battleState.enemy_move_index_2) + 1) % Number(battleConfig.enemies.stats[2].move_count));
+                }
 
                 battleState.round += BigInt(1);
                 if (ret != undefined) {

@@ -422,11 +422,11 @@ export async function registerStartingContent(api: DeployedGame2API): Promise<vo
     const cave3 = { biome: BigInt(BIOME_ID.cave), difficulty: BigInt(3) };
 
     const levels: [Level, EnemyStatsConfig[]][] = [
-        [cave1, [dragon]]
+        [grass1, [dragon]]
     ];
     const enemyConfigs: [Level, EnemyStatsConfig[]][] = [
         // TODO: change back to 3x goblin once damage icons work: https://github.com/PaimaStudios/midnight-game-2/issues/139 - this is here for testing
-        [cave1, [goblin, goblinPriest, goblin2]]
+        [grass1, [goblin, goblinPriest, goblin2]]
     ];
     // TODO: until https://github.com/PaimaStudios/midnight-game-2/issues/77 is resolved
     // it is prohibitively slow to register all content every single time you test the game

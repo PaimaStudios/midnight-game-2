@@ -143,7 +143,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         };
 
         // base effects
-        const isEnemyDead = (i: number) => round_damage_to_enemy[i] + old_damage_to_enemy[i] - enemy_block[i] > stats[0].hp;
+        const isEnemyDead = (i: number) => round_damage_to_enemy[i] + old_damage_to_enemy[i] - enemy_block[i] > stats[i].hp;
         const allEnemiesDead = () => isEnemyDead(0) && (isEnemyDead(1) || enemy_count < 2) && (isEnemyDead(2) || enemy_count < 3);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
