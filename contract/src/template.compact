@@ -352,7 +352,7 @@ circuit player_remove_ability(player_id: Field, ability_id: Field): [] {
     const count = player_abilities.lookup(player_id).member(ability_id) ? player_abilities.lookup(player_id).lookup(ability_id) : 0;
     assert(count >= 1, "Must own ability to remove it");
     if (count > 1) {
-        player_abilities.lookup(player_id).insert(ability_id, (count + 1) as Uint<32>);
+        player_abilities.lookup(player_id).insert(ability_id, (count - 1) as Uint<32>);
     } else {
         player_abilities.lookup(player_id).remove(ability_id);
     }
