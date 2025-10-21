@@ -43,12 +43,19 @@ export struct EnemyStats {
     /// Visual indication of what the enemy should be
     enemy_type: Uint<32>,
     hp: Uint<32>,
-    // TODO: do we need a more complicated system or is this okay?
-    attack: Uint<32>,
-    block: Uint<32>,
+    moves: Vector<3, EnemyMove>,
+    move_count: Uint<32>,
     physical_def: Uint<32>,
     fire_def: Uint<32>,
     ice_def: Uint<32>,
+}
+
+export struct EnemyMove {
+    attack: Uint<32>,
+    block_self: Uint<32>,
+    block_allies: Uint<32>,
+    heal_self: Uint<32>,
+    heal_allies: Uint<32>,
 }
 
 // index by ability id
@@ -243,6 +250,9 @@ export struct BattleState {
     damage_to_enemy_0: Uint<32>;
     damage_to_enemy_1: Uint<32>;
     damage_to_enemy_2: Uint<32>;
+    enemy_move_index_0: Uint<32>;
+    enemy_move_index_1: Uint<32>;
+    enemy_move_index_2: Uint<32>;
 }
 
 export struct PlayerLoadout {
@@ -368,9 +378,18 @@ pure circuit compute_upgraded_effect(effect: Maybe<Effect>): Maybe<Effect> {
     return none<Effect>();
 }
 
+export pure circuit filler_move(): EnemyMove {
+    return EnemyMove {
+        0,
+        0,
+        0,
+        0,
+        0
+    };
+}
 
 export pure circuit filler_enemy_stats(): EnemyStats {
-    return EnemyStats { BOSS_TYPE.normal, 0, 0, 0, 0, 0, 0, 0 };
+    return EnemyStats { BOSS_TYPE.normal, 0, 0, [filler_move(), filler_move(), filler_move()], 0, 0, 0, 0 };
 }
 
 export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
@@ -539,6 +558,10 @@ circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
         0,
         0,
         0,
+        0,
+        // TODO: should these be randomized? (probably)
+        0,
+        0,
         0
     };
 }
@@ -596,7 +619,7 @@ export pure circuit boss_type_reward_factor(boss_type: BOSS_TYPE): Uint<8> {
 export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
-
+    const rng = get_player_rng() as Vector<32, Uint<8>>;
     const config = disclose(active_battle_configs.lookup(disclose(battle_id)));
     const loadout = config.loadout;
     const state = disclose(active_battle_states.lookup(disclose(battle_id)));
@@ -625,7 +648,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
                             + boss_type_reward_factor(config.enemies.count >= 2 ? config.enemies.stats[1].boss_type : BOSS_TYPE.normal)
                             + boss_type_reward_factor(config.enemies.count >= 3 ? config.enemies.stats[2].boss_type : BOSS_TYPE.normal);
-        const reward_ability = random_ability(get_player_rng() as Vector<32, Uint<8>>, (config.level.difficulty * reward_factor) as Uint<8>);
+        const reward_ability = random_ability(rng, (config.level.difficulty * reward_factor) as Uint<8>);
         const reward_ability_id = derive_ability_id(reward_ability);
         if (reward_factor > 0) {
             if (!all_abilities.member(reward_ability_id)) {
@@ -667,9 +690,23 @@ pure circuit add_player_rewards(player: Player, reward: BattleRewards): Player {
     };
 }
 
+pure circuit select_move(moves: Vector<3, EnemyMove>, move_index: Uint<32>): EnemyMove {
+    if (move_index == 0) {
+        return moves[0];
+    } else if (move_index == 1) {
+        return moves[1];
+    }
+    return moves[2];
+}
+
 circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..2>>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
+    const enemy_moves = [
+        select_move(battle.enemies.stats[0].moves, old_state.enemy_move_index_0),
+        select_move(battle.enemies.stats[1].moves, old_state.enemy_move_index_1),
+        select_move(battle.enemies.stats[2].moves, old_state.enemy_move_index_2)
+    ];
 
     // See generate.js for an explanation of the code generation
 
@@ -691,6 +728,8 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
 
     INSERT_ENEMY_DAMAGE_CODE_HERE
 
+    INSERT_ENEMY_HEAL_CODE_HERE
+
     INSERT_DECK_INDEX_CALCULATION_CODE_HERE
 
     // CODE-GENERATION END
@@ -699,9 +738,13 @@ circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, abili
         (old_state.round + 1) as Uint<32>,
         INSERT_DECK_INDEX_BATTLE_STATE_INIT_CODE_HERE,
         (old_state.damage_to_player + ((player_block < damage_to_player) as Uint<1>) * damage_to_player - ((player_block < damage_to_player) as Uint<1>) * player_block) as Uint<32>,
-        new_damage_to_enemy_0,
-        new_damage_to_enemy_1,
-        new_damage_to_enemy_2
+        new_damage_to_enemy_0 - (enemy_heal_0 > new_damage_to_enemy_0 ? new_damage_to_enemy_0 : enemy_heal_0),
+        new_damage_to_enemy_1 - (enemy_heal_1 > new_damage_to_enemy_1 ? new_damage_to_enemy_1 : enemy_heal_1),
+        new_damage_to_enemy_2 - (enemy_heal_2 > new_damage_to_enemy_2 ? new_damage_to_enemy_2 : enemy_heal_2),
+        // TODO: randomize?
+        add_mod(old_state.enemy_move_index_0, 1, battle.enemies.stats[0].move_count),
+        add_mod(old_state.enemy_move_index_1, 1, battle.enemies.stats[1].move_count),
+        add_mod(old_state.enemy_move_index_2, 1, battle.enemies.stats[2].move_count)
     };
 }
 
