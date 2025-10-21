@@ -219,8 +219,10 @@ export class QuestMenu extends Phaser.Scene {
 
             // Show network error overlay
             if (!this.scene.get('NetworkError')) {
-                this.scene.add('NetworkError', new NetworkError('Error checking quest status. Please try again.'));
+                this.scene.add('NetworkError', new NetworkError());
             }
+            const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+            networkErrorScene.setErrorMessage('Error checking quest status. Please try again.');
             this.scene.launch('NetworkError');
 
             this.initiateButton!.setEnabled(false);
@@ -298,8 +300,10 @@ export class QuestMenu extends Phaser.Scene {
 
                 // Show network error overlay
                 if (!this.scene.get('NetworkError')) {
-                    this.scene.add('NetworkError', new NetworkError('Network Error during quest finalization. Retrying...'));
+                    this.scene.add('NetworkError', new NetworkError());
                 }
+                const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                networkErrorScene.setErrorMessage('Network Error during quest finalization. Retrying...');
                 this.scene.launch('NetworkError');
 
                 setTimeout(() => {

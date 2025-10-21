@@ -190,8 +190,10 @@ export class ActiveBattle extends Phaser.Scene {
 
                 // Show network error overlay
                 if (!this.scene.get('NetworkError')) {
-                    this.scene.add('NetworkError', new NetworkError('Network Error during combat. Retrying...'));
+                    this.scene.add('NetworkError', new NetworkError());
                 }
+                const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                networkErrorScene.setErrorMessage('Network Error during combat. Retrying...');
                 this.scene.launch('NetworkError');
 
                 await new Promise(resolve => setTimeout(resolve, 2000));

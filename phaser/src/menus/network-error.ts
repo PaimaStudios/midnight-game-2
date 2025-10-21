@@ -10,6 +10,7 @@ import { Button } from "../widgets/button";
 export class NetworkError extends Phaser.Scene {
     private errorMessage: string;
     private okayButton?: Button;
+    private errorText?: Phaser.GameObjects.Text;
 
     constructor(errorMessage?: string) {
         super('NetworkError');
@@ -44,7 +45,7 @@ export class NetworkError extends Phaser.Scene {
         ).setOrigin(0.5);
 
         // Error message text
-        this.add.text(
+        this.errorText = this.add.text(
             GAME_WIDTH / 2,
             GAME_HEIGHT / 2 - 50,
             this.errorMessage,
@@ -75,6 +76,10 @@ export class NetworkError extends Phaser.Scene {
      */
     setErrorMessage(message: string) {
         this.errorMessage = message;
+        // Update the text object if it exists
+        if (this.errorText) {
+            this.errorText.setText(message);
+        }
     }
 
     /**

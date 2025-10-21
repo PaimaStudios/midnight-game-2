@@ -963,8 +963,10 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
 
             // Show network error overlay for network-related errors
             if (!this.scene.get('NetworkError')) {
-                this.scene.add('NetworkError', new NetworkError('Error upgrading spirit. Please try again.'));
+                this.scene.add('NetworkError', new NetworkError());
             }
+            const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+            networkErrorScene.setErrorMessage('Error upgrading spirit. Please try again.');
             this.scene.launch('NetworkError');
         }
     }

@@ -257,8 +257,10 @@ export class TestMenu extends Phaser.Scene {
 
                     // Show network error overlay
                     if (!this.scene.get('NetworkError')) {
-                        this.scene.add('NetworkError', new NetworkError('Error registering player. Please try again.'));
+                        this.scene.add('NetworkError', new NetworkError());
                     }
+                    const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                    networkErrorScene.setErrorMessage('Error registering player. Please try again.');
                     this.scene.launch('NetworkError');
                 });
             }));
