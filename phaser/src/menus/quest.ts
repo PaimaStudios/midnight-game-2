@@ -27,6 +27,7 @@ export class QuestMenu extends Phaser.Scene {
     state: Game2DerivedState;
     subscription: Subscription;
     bossBattleId: (bigint | null) | undefined;
+    battleStarted: boolean = false;
     backgroundSet: boolean = false;
     abilitiesDisplayed: boolean = false;
     uiCreated: boolean = false;
@@ -64,7 +65,9 @@ export class QuestMenu extends Phaser.Scene {
 
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.info(`QuestMenu.onStateChange() called, quest exists: ${state.quests.has(this.questId)}`);
-        
+
+        this.state = state;
+
         // Set background based on quest biome (only once)
         if (!this.backgroundSet) {
             const quest = state.quests.get(this.questId);
@@ -97,8 +100,12 @@ export class QuestMenu extends Phaser.Scene {
         }
 
         // Handle quest finalization result
-        if (this.bossBattleId !== undefined) {
-            this.events.emit('questFinalized');
+        if (this.bossBattleId !== undefined && this.bossBattleId !== null) {
+            // Only start battle when the battle config is actually available in state
+            if (state.activeBattleConfigs.has(this.bossBattleId)) {
+                logger.gameState.info('Battle config now available in state, starting boss battle');
+                this.startBossBattle();
+            }
         }
     }
 
@@ -155,7 +162,7 @@ export class QuestMenu extends Phaser.Scene {
             'Fight Boss',
             14,
             () => {
-                this.initiateQuest(state);
+                this.initiateQuest();
             }
         );
 
@@ -163,17 +170,32 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     private updateQuestStatus(state: Game2DerivedState) {
+        // If UI not ready or scene is fully stopped, skip update
+        // Note: We allow paused scenes since we pause during loading
         if (!this.statusText || !this.initiateButton) return;
+
+        // Check if scene is running (active or paused, but not stopped)
+        const scenePlugin = this.scene.get('QuestMenu');
+        if (!scenePlugin || !this.scene.isVisible('QuestMenu')) return;
 
         const quest = state.quests.get(this.questId);
         if (!quest) {
-            this.statusText.setText('Quest not found');
-            this.initiateButton.setEnabled(false);
-            this.initiateButton.setAlpha(0.5);
+            // Quest was finalized or doesn't exist, stop loader
+            this.scene.resume().stop('Loader');
+            if (this.statusText) {
+                this.statusText.setText('Quest not found or already completed.');
+            }
+            if (this.initiateButton) {
+                this.initiateButton.setEnabled(false);
+                this.initiateButton.setAlpha(0.5);
+            }
             return;
         }
 
         this.api.is_quest_ready(this.questId).then((isReady) => {
+            // Check again before updating UI in case scene was stopped
+            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
+
             // Hide loader once we have the result
             this.scene.resume().stop('Loader');
 
@@ -187,6 +209,9 @@ export class QuestMenu extends Phaser.Scene {
                 this.initiateButton!.setAlpha(0.5);
             }
         }).catch((err) => {
+            // Check again before updating UI in case scene was stopped
+            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
+
             // Hide loader on error too
             this.scene.resume().stop('Loader');
 
@@ -203,48 +228,72 @@ export class QuestMenu extends Phaser.Scene {
         });
     }
 
-    private initiateQuest(state: Game2DerivedState) {
+    private startBossBattle() {
+        if (this.battleStarted) {
+            logger.gameState.warn('Battle already started, ignoring duplicate call');
+            return;
+        }
+
+        if (this.bossBattleId === null || this.bossBattleId === undefined) {
+            logger.gameState.error('Cannot start boss battle: no battle ID');
+            return;
+        }
+
+        const battleConfig = this.state.activeBattleConfigs.get(this.bossBattleId);
+        if (battleConfig) {
+            logger.gameState.info(`Starting boss battle with ID: ${this.bossBattleId}`);
+            this.battleStarted = true;
+            // Clean up subscription before starting battle
+            this.subscription?.unsubscribe();
+            this.scene.stop('Loader');
+            this.scene.remove('ActiveBattle');
+            this.scene.add('ActiveBattle', new ActiveBattle(this.api, battleConfig, this.state));
+            this.scene.start('ActiveBattle');
+            // Stop QuestMenu scene to prevent it from receiving more updates
+            this.scene.stop('QuestMenu');
+        } else {
+            logger.gameState.error(`Battle config not found for battle ID: ${this.bossBattleId}`);
+            this.scene.stop('Loader');
+            this.scene.resume();
+            this.statusText!.setText('Error: Battle configuration not found.');
+        }
+    }
+
+    private initiateQuest() {
+        logger.gameState.info(`initiateQuest() called for quest ${this.questId}`);
+
         // Show loader while finalizing quest
         this.scene.pause().launch('Loader');
         const loader = this.scene.get('Loader') as Loader;
         loader.setText("Finalizing Quest");
 
         const attemptFinalizeQuest = () => {
-            this.events.on('questFinalized', () => {
-                this.scene.stop('Loader');
-                if (this.bossBattleId !== null) {
-                    const battleConfig = state.activeBattleConfigs.get(this.bossBattleId!);
-                    if (battleConfig) {
-                        logger.gameState.info(`Starting boss battle with ID: ${this.bossBattleId}`);
-                        this.scene.remove('ActiveBattle');
-                        this.scene.add('ActiveBattle', new ActiveBattle(this.api, battleConfig, state));
-                        this.scene.start('ActiveBattle');
-                    } else {
-                        logger.gameState.error(`Battle config not found for battle ID: ${this.bossBattleId}`);
-                        this.scene.resume();
-                        this.statusText!.setText('Error: Battle configuration not found.');
-                    }
-                } else {
-                    logger.gameState.error('Quest finalization returned null battle ID');
-                    this.scene.resume();
-                    this.statusText!.setText('Quest was not ready to be finalized.');
-                }
-            });
-
+            logger.gameState.info(`Calling finalize_quest API for quest ${this.questId}`);
             this.api.finalize_quest(this.questId).then((bossBattleId) => {
                 logger.gameState.info(`Quest finalized, boss battle ID: ${bossBattleId}`);
                 this.bossBattleId = bossBattleId ?? null;
-                loader.setText("Waiting on chain update");
 
-                // If we got a battle ID and state is already updated, emit event immediately
-                if (this.bossBattleId !== null && state.activeBattleConfigs.has(this.bossBattleId)) {
-                    logger.gameState.info('Battle config already available, starting immediately');
-                    this.events.emit('questFinalized');
+                if (this.bossBattleId === null) {
+                    logger.gameState.error('Quest finalization returned null battle ID');
+                    this.scene.stop('Loader');
+                    this.scene.resume();
+                    this.statusText!.setText('Quest was not ready to be finalized.');
+                    return;
                 }
-                // Otherwise, the event will be emitted in onStateChange when battle config is added
+
+                loader.setText("Waiting for battle config...");
+
+                // Check if battle config is already available
+                if (this.state.activeBattleConfigs.has(this.bossBattleId)) {
+                    logger.gameState.info('Battle config already available, starting immediately');
+                    this.startBossBattle();
+                }
+                // Otherwise, wait for onStateChange to call startBossBattle when battle config appears
+                // (onStateChange will detect bossBattleId is set and battle config exists)
             }).catch((err) => {
                 this.events.off('questFinalized'); // Remove the event listener
                 this.scene.stop('Loader');
+
                 logger.network.error(`Error Finalizing Quest: ${err}`);
 
                 // Show network error overlay
