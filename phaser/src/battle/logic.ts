@@ -11,6 +11,8 @@ export type CombatCallbacks = {
     onEnemyBlock: (enemy: number, amount: number) => Promise<void>;
     // triggered when an enemy attacks. there are no enemy attack types (atm) and enemy is which enemy attacks (since only 1 player)
     onEnemyAttack: (enemy: number, amount: number) => Promise<void>;
+    // triggered when an enemy heals. enemy is the enemy that is healed
+    onEnemyHeal: (enemy: number, amount: number) => Promise<void>;
     // triggered when a player's ability causes an effect (directly or via trigger)
     // reminder: `amount` is the color for EFFECT_TYPE.generate (range [0, 2])
     onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[], baseAmounts?: number[]) => Promise<void>;
@@ -45,6 +47,13 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         let player_block = BigInt(0);
         const stats = battleConfig.enemies.stats;
+        const moves = [
+            stats[0].moves[Number(battleState.enemy_move_index_0)],
+            stats[1].moves[Number(battleState.enemy_move_index_1)],
+            stats[2].moves[Number(battleState.enemy_move_index_2)],
+        ];
+        const enemies = [0, 1, 2];
+        const enemy_block = enemies.map((i) => moves.filter((_, j) => j != i && j < battleConfig.enemies.count).reduce((sum, move) => sum + move.block_allies, moves[i].block_self));
         const enemy_count = Number(battleConfig.enemies.count);
         let round_damage_to_enemy = new Array(enemy_count).fill(BigInt(0));
         let round_damage_to_player = BigInt(0);
@@ -54,14 +63,14 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             if (round_damage_to_player > player_block) {
                 battleState.damage_to_player += round_damage_to_player - player_block;
             }
-            if (round_damage_to_enemy[0] > stats[0].block) {
-                battleState.damage_to_enemy_0 += round_damage_to_enemy[0] - stats[0].block;
+            if (round_damage_to_enemy[0] > enemy_block[0]) {
+                battleState.damage_to_enemy_0 += round_damage_to_enemy[0] - enemy_block[0];
             }
-            if (round_damage_to_enemy[1] > stats[1].block) {
-                battleState.damage_to_enemy_1 += round_damage_to_enemy[1] - stats[1].block;
+            if (round_damage_to_enemy[1] > enemy_block[1]) {
+                battleState.damage_to_enemy_1 += round_damage_to_enemy[1] - enemy_block[1];
             }
-            if (round_damage_to_enemy[2] > stats[2].block) {
-                battleState.damage_to_enemy_2 += round_damage_to_enemy[2] - stats[2].block;
+            if (round_damage_to_enemy[2] > enemy_block[2]) {
+                battleState.damage_to_enemy_2 += round_damage_to_enemy[2] - enemy_block[2];
             }
             if (battleState.damage_to_player >= 100) {
                 logger.combat.info(`YOU DIED`);
@@ -97,7 +106,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         for (let i = 0; i < enemy_count; ++i) {
             if (old_damage_to_enemy[i] < stats[i].hp) {
                 // do not change vars for block since it's directly checked during player against enemy damage code
-                const block = Number(stats[i].block);
+                const block = Number(enemy_block[i]);
                 if (block != 0) {
                     await uiHooks?.onEnemyBlock(i, block);
                 }
@@ -134,7 +143,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         };
 
         // base effects
-        const isEnemyDead = (i: number) => round_damage_to_enemy[0] + old_damage_to_enemy[0] - stats[0].block > stats[0].hp;
+        const isEnemyDead = (i: number) => round_damage_to_enemy[i] + old_damage_to_enemy[i] - enemy_block[i] > stats[i].hp;
         const allEnemiesDead = () => isEnemyDead(0) && (isEnemyDead(1) || enemy_count < 2) && (isEnemyDead(2) || enemy_count < 3);
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
@@ -166,11 +175,20 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
         }
 
+        // Enemy heal phase
+        for (let i = 0; i < enemy_count; ++i) {
+            if (!isEnemyDead(i)) {
+                const heal = moves.filter((_, j) => j != i && j < battleConfig.enemies.count && !isEnemyDead(j)).reduce((sum, move) => sum + Number(move.heal_allies), Number(moves[i].heal_self));
+                if (heal != 0) {
+                    await uiHooks?.onEnemyHeal(i, heal);
+                }
+            }
+        }
       
         // Enemy damage phase
         for (let i = 0; i < enemy_count; ++i) {
             if (!isEnemyDead(i)) {
-                const damage = stats[i].attack;
+                const damage = moves[i].attack;
                 if (Number(damage) != 0) {
                     round_damage_to_player += damage;
                     await uiHooks?.onEnemyAttack(i, Number(damage));
@@ -239,6 +257,9 @@ export function initBattlestate(rng: number, battle: BattleConfig): BattleState 
         damage_to_player: BigInt(0),
         damage_to_enemy_0: BigInt(0),
         damage_to_enemy_1: BigInt(0),
-        damage_to_enemy_2: BigInt(0)
+        damage_to_enemy_2: BigInt(0),
+        enemy_move_index_0: BigInt(0),
+        enemy_move_index_1: BigInt(0),
+        enemy_move_index_2: BigInt(0),
     };
 }
