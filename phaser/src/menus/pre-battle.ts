@@ -10,7 +10,7 @@ import { QuestsMenu } from "./quests";
 import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
 import { Loader } from "./loader";
-import { fontStyle } from "../main";
+import { NetworkError } from "./network-error";
 import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
@@ -44,7 +44,6 @@ export class StartBattleMenu extends Phaser.Scene {
     biome: BIOME_ID;
     difficulty: number;
     loader: Loader | undefined;
-    errorText: Phaser.GameObjects.Text | undefined;
     spiritPreviews: (SpiritWidget | null)[];
     summoningTablets: Phaser.GameObjects.Image[];
     activeAbilityPanel: ScrollablePanel | undefined;
@@ -115,8 +114,6 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.transferAbilityBetweenPanels(child as Phaser.GameObjects.Container);
             },
         });
-
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
 
         const abilities = sortedAbilities(this.state);
         for (let i = 0; i < abilities.length; ++i) {
@@ -202,9 +199,16 @@ export class StartBattleMenu extends Phaser.Scene {
                         this.battleConfig = battle;
                         this.tryStartBattle();
                     }).catch((e) => {
-                        this.errorText?.setText('Error Talking to the network. Try again...');
                         logger.network.error(`Error starting battle: ${e}`);
                         this.scene.resume().stop('Loader');
+
+                        // Show network error overlay
+                        if (!this.scene.get('NetworkError')) {
+                            this.scene.add('NetworkError', new NetworkError());
+                        }
+                        const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                        networkErrorScene.setErrorMessage('Error starting battle. Please try again.');
+                        this.scene.launch('NetworkError');
                     });
                 }
             } else {

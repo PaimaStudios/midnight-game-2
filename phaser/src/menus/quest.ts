@@ -10,6 +10,7 @@ import { Subscription } from "rxjs";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
+import { NetworkError } from "./network-error";
 import { ActiveBattle } from "./battle";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { addScaledImage } from "../utils/scaleImage";
@@ -215,7 +216,15 @@ export class QuestMenu extends Phaser.Scene {
             this.scene.resume().stop('Loader');
 
             logger.network.error(`Error checking quest readiness: ${err}`);
-            this.statusText!.setText('Error checking quest status. Try again later.');
+
+            // Show network error overlay
+            if (!this.scene.get('NetworkError')) {
+                this.scene.add('NetworkError', new NetworkError());
+            }
+            const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+            networkErrorScene.setErrorMessage('Error checking quest status. Please try again.');
+            this.scene.launch('NetworkError');
+
             this.initiateButton!.setEnabled(false);
             this.initiateButton!.setAlpha(0.5);
         });
@@ -284,9 +293,24 @@ export class QuestMenu extends Phaser.Scene {
                 // Otherwise, wait for onStateChange to call startBossBattle when battle config appears
                 // (onStateChange will detect bossBattleId is set and battle config exists)
             }).catch((err) => {
-                loader.setText("Error connecting to network.. Retrying");
+                this.events.off('questFinalized'); // Remove the event listener
+                this.scene.stop('Loader');
+
                 logger.network.error(`Error Finalizing Quest: ${err}`);
-                setTimeout(attemptFinalizeQuest, 2000);
+
+                // Show network error overlay
+                if (!this.scene.get('NetworkError')) {
+                    this.scene.add('NetworkError', new NetworkError());
+                }
+                const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                networkErrorScene.setErrorMessage('Network Error during quest finalization. Retrying...');
+                this.scene.launch('NetworkError');
+
+                setTimeout(() => {
+                    this.scene.stop('NetworkError');
+                    this.scene.pause().launch('Loader');
+                    attemptFinalizeQuest();
+                }, 2000);
             });
         };
 

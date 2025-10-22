@@ -22,6 +22,7 @@ import { registerStartingContent } from "../admin";
 import { DungeonScene } from "./dungeon-scene";
 import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
+import { NetworkError } from "./network-error";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -29,7 +30,6 @@ export class TestMenu extends Phaser.Scene {
     subscription: Subscription | undefined;
     state: Game2DerivedState | undefined;
     topBar: TopBar | undefined;
-    errorText: Phaser.GameObjects.Text | undefined;
     new_button: Button | undefined;
     buttons: Button[];
     firstRun: boolean;
@@ -187,8 +187,7 @@ export class TestMenu extends Phaser.Scene {
                     break;
             }
         }
-        this.errorText = this.add.text(82, GAME_HEIGHT - 96, '', fontStyle(12, { color: Color.Red }));
-        
+
         // Start menu music (check if already playing globally)
         if (!this.sound.get('menu-music')) {
             this.menuMusic = this.sound.add('menu-music', { volume: 0.6, loop: true });
@@ -251,13 +250,19 @@ export class TestMenu extends Phaser.Scene {
                     this.scene.resume().stop('Loader');
                 });
                 this.api!.register_new_player().then(() => {
-                    this.errorText?.setText('');
                     loader.setText("Waiting on chain update");
-                    
+
                 }).catch((e) => {
-                    this.errorText?.setText('Error Registering Player. Try again...');
                     logger.network.error(`Error registering new player: ${e}`);
                     this.scene.resume().stop('Loader');
+
+                    // Show network error overlay
+                    if (!this.scene.get('NetworkError')) {
+                        this.scene.add('NetworkError', new NetworkError());
+                    }
+                    const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                    networkErrorScene.setErrorMessage('Error registering player. Please try again.');
+                    this.scene.launch('NetworkError');
                 });
             }));
         }
