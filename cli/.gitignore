@@ -1,0 +1,8 @@
+# Build output
+dist/
+
+# LevelDB private state (contains keys and private data)
+midnight-level-db/
+
+# Node modules
+node_modules/

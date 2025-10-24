@@ -11,3 +11,7 @@ contract/src/managed
 contract/src/game2.compact
 contract/coverage
 contract/reports
+
+# CLI private state and deployment data
+midnight-level-db/
+.game2-cli/

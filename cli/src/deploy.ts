@@ -2,8 +2,9 @@
 
 import { Command } from 'commander';
 import pino from 'pino';
+import * as readline from 'readline';
 import { Game2API } from 'game2-api';
-import { saveDeploymentData, loadDeploymentData, clearDeploymentData, hasDeploymentData } from './storage.js';
+import { saveDeploymentData, loadDeploymentData, hasDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 
 const logger = pino({
@@ -17,6 +18,20 @@ const logger = pino({
   },
   level: process.env.LOG_LEVEL || 'info',
 });
+
+async function confirmDeployment(): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question('\nType "yes" to confirm deployment: \n\n', (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'yes');
+    });
+  });
+}
 
 const program = new Command();
 
@@ -39,8 +54,22 @@ program
       if (!options.force && await hasDeploymentData()) {
         const existing = await loadDeploymentData();
         logger.warn(`Deployment already exists at address: ${existing?.contractAddress}`);
-        logger.warn('Use --force to deploy a new contract anyway, or use "game2-deploy info" to view existing deployment');
+        logger.warn('Use --force to deploy a new contract anyway, or use "yarn admin info" to view existing deployment');
         process.exit(1);
+      }
+
+      // Confirmation prompt
+      logger.warn('');
+      logger.warn('WARNING: Deploying a new contract will:');
+      logger.warn('  - Create a fresh contract with no game data');
+      logger.warn('  - Reset all levels, enemies, and player progress');
+      logger.warn('  - Require re-registering all game content');
+      logger.warn('');
+
+      const confirmed = await confirmDeployment();
+      if (!confirmed) {
+        logger.info('Deployment cancelled.');
+        process.exit(0);
       }
 
       logger.info('Deploying Game2 contract using batcher mode...');
@@ -65,11 +94,12 @@ program
         deployedAt: new Date().toISOString(),
       };
 
-      await saveDeploymentData(deploymentData);
+      const savedPath = await saveDeploymentData(deploymentData);
 
       logger.info('');
       logger.info('Contract deployed successfully!');
       logger.info(`Contract address: ${api.deployedContractAddress}`);
+      logger.info(`Deployment data saved to: ${savedPath}`);
       logger.info('');
       logger.info('Next steps:');
       logger.info('1. Register game content: yarn admin register-content');
@@ -92,49 +122,6 @@ program
       logger.error('  - Prover server not running (check http://localhost:6300)');
       logger.error('  - ZK config not accessible (check http://localhost:3000)');
       logger.error('  - Batcher not fully synced');
-      process.exit(1);
-    }
-  });
-
-program
-  .command('info')
-  .description('Show deployment information')
-  .action(async () => {
-    try {
-      const data = await loadDeploymentData();
-
-      if (!data) {
-        logger.info('No deployment found.');
-        logger.info('Run "game2-deploy deploy" to deploy a new contract.');
-        return;
-      }
-
-      logger.info('Current deployment:');
-      logger.info(`  Contract Address: ${data.contractAddress}`);
-      logger.info(`  Deployed At: ${data.deployedAt}`);
-      logger.info(`  Has Admin Key: ${data.playerSecretKey ? 'Yes' : 'No'}`);
-    } catch (error) {
-      logger.error(`Failed to load deployment info: ${error}`);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('clear')
-  .description('Clear deployment data (use with caution)')
-  .option('--confirm', 'Confirm deletion')
-  .action(async (options) => {
-    if (!options.confirm) {
-      logger.warn('This will delete your deployment data including admin keys.');
-      logger.warn('Run with --confirm to proceed.');
-      return;
-    }
-
-    try {
-      await clearDeploymentData();
-      logger.info('Deployment data cleared successfully.');
-    } catch (error) {
-      logger.error(`Failed to clear deployment data: ${error}`);
       process.exit(1);
     }
   });

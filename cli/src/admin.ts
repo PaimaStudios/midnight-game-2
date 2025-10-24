@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import pino from 'pino';
 import { Game2API } from 'game2-api';
-import { loadDeploymentData } from './storage.js';
+import { loadDeploymentData, clearDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 import { registerAllContent } from './content.js';
 
@@ -116,6 +116,48 @@ program
 
     } catch (error) {
       logger.error(`Failed to join contract: ${error}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('info')
+  .description('Show deployment information')
+  .action(async () => {
+    try {
+      const data = await loadDeploymentData();
+
+      if (!data) {
+        logger.info('No deployment found.');
+        logger.info('Run "yarn deploy" to deploy a new contract.');
+        return;
+      }
+
+      logger.info('Current deployment:');
+      logger.info(`  Contract Address: ${data.contractAddress}`);
+      logger.info(`  Deployed At: ${data.deployedAt}`);
+    } catch (error) {
+      logger.error(`Failed to load deployment info: ${error}`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('clear')
+  .description('Clear deployment data (use with caution)')
+  .option('--confirm', 'Confirm deletion')
+  .action(async (options) => {
+    if (!options.confirm) {
+      logger.warn('This will delete your deployment data.');
+      logger.warn('Run with --confirm to proceed.');
+      return;
+    }
+
+    try {
+      await clearDeploymentData();
+      logger.info('Deployment data cleared successfully.');
+    } catch (error) {
+      logger.error(`Failed to clear deployment data: ${error}`);
       process.exit(1);
     }
   });

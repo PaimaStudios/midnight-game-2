@@ -63,9 +63,10 @@ For detailed documentation, see [cli/README.md](./cli/README.md).
 ### CLI Commands
 
 - `yarn deploy` - Deploy a new contract using batcher
+- `yarn deploy info` - Show current deployment info
+- `yarn deploy clear --confirm` - Clear deployment data
 - `yarn admin register-content` - Register all game content
 - `yarn admin join --contract <address>` - Join an existing contract
-- `yarn admin info` - Show current deployment info
 
 ### Configuration
 
