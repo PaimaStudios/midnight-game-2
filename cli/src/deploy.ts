@@ -4,8 +4,7 @@ import { Command } from 'commander';
 import pino from 'pino';
 import { Game2API } from 'game2-api';
 import { saveDeploymentData, loadDeploymentData, clearDeploymentData, hasDeploymentData } from './storage.js';
-import { initializeProviders, type CliConfig } from './providers.js';
-import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 
 const logger = pino({
   transport: {
@@ -28,11 +27,11 @@ program
 
 program
   .command('deploy')
-  .description('Deploy a new Game2 contract')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://localhost:8080')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://localhost:8080')
-  .option('--prover-uri <uri>', 'Prover server URI', process.env.PROVER_URI || 'http://localhost:6565')
-  .option('--zk-config-uri <uri>', 'ZK config base URI', process.env.ZK_CONFIG_URI || 'http://localhost:3000')
+  .description('Deploy a new Game2 contract using batcher mode')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
   .option('--force', 'Force deploy even if deployment data exists')
   .action(async (options) => {
     try {
@@ -44,44 +43,55 @@ program
         process.exit(1);
       }
 
-      logger.info('Deploying Game2 contract...');
+      logger.info('Deploying Game2 contract using batcher mode...');
+      logger.info(`Batcher URL: ${options.batcherUrl}`);
+      logger.info(`Indexer URI: ${options.indexerUri}`);
+      logger.info(`Prover URI: ${options.proverUri}`);
 
-      // Note: In a real CLI tool, you would need to initialize a wallet properly
-      // This is a placeholder - actual implementation would need wallet setup
-      logger.error('Wallet initialization not yet implemented.');
-      logger.error('You need to configure wallet connection for CLI deployment.');
-      logger.error('This requires setting up wallet provider similar to how it\'s done in the browser.');
+      const config: BatcherConfig = {
+        batcherUrl: options.batcherUrl,
+        indexerUri: options.indexerUri,
+        indexerWsUri: options.indexerWsUri,
+        proverUri: options.proverUri,
+      };
 
-      process.exit(1);
+      const providers = await initializeBatcherProviders(config, logger);
+      logger.info('Providers initialized, deploying contract...');
 
-      // TODO: Implement wallet initialization
-      // const config: CliConfig = {
-      //   indexerUri: options.indexerUri,
-      //   indexerWsUri: options.indexerWsUri,
-      //   proverServerUri: options.proverUri,
-      //   zkConfigBaseUri: options.zkConfigUri,
-      //   wallet: /* initialize wallet */,
-      // };
+      const api = await Game2API.deploy(providers, logger);
 
-      // const providers = await initializeProviders(config, logger);
-      // const api = await Game2API.deploy(providers, logger);
+      const deploymentData = {
+        contractAddress: api.deployedContractAddress,
+        deployedAt: new Date().toISOString(),
+      };
 
-      // const deploymentData = {
-      //   contractAddress: api.deployedContractAddress,
-      //   deployedAt: new Date().toISOString(),
-      // };
+      await saveDeploymentData(deploymentData);
 
-      // await saveDeploymentData(deploymentData);
-
-      // logger.info(`Contract deployed successfully!`);
-      // logger.info(`Contract address: ${api.deployedContractAddress}`);
-      // logger.info('');
-      // logger.info('Next steps:');
-      // logger.info('1. Configure your Phaser app with this contract address');
-      // logger.info('2. Use "game2-admin" to register game content');
+      logger.info('');
+      logger.info('Contract deployed successfully!');
+      logger.info(`Contract address: ${api.deployedContractAddress}`);
+      logger.info('');
+      logger.info('Next steps:');
+      logger.info('1. Register game content: yarn admin register-content');
+      logger.info('2. Configure your Phaser app: echo "VITE_CONTRACT_ADDRESS=' + api.deployedContractAddress + '" > phaser/.env');
+      logger.info('3. Start the game: cd phaser && yarn dev');
 
     } catch (error) {
-      logger.error(`Deployment failed: ${error}`);
+      logger.error('Deployment failed:');
+      if (error instanceof Error) {
+        logger.error(`  Error: ${error.message}`);
+        if (error.stack) {
+          logger.debug(`  Stack: ${error.stack}`);
+        }
+      } else {
+        logger.error(`  ${error}`);
+      }
+      logger.error('');
+      logger.error('Common issues:');
+      logger.error('  - Indexer not running (check http://127.0.0.1:8088/api/v1/graphql)');
+      logger.error('  - Prover server not running (check http://localhost:6300)');
+      logger.error('  - ZK config not accessible (check http://localhost:3000)');
+      logger.error('  - Batcher not fully synced');
       process.exit(1);
     }
   });

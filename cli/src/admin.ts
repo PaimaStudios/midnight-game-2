@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import pino from 'pino';
 import { Game2API } from 'game2-api';
 import { loadDeploymentData } from './storage.js';
-import { initializeProviders, type CliConfig } from './providers.js';
+import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 import { registerAllContent } from './content.js';
 
 const logger = pino({
@@ -28,11 +28,11 @@ program
 
 program
   .command('register-content')
-  .description('Register all game content (levels, enemies, bosses)')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://localhost:8080')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://localhost:8080')
-  .option('--prover-uri <uri>', 'Prover server URI', process.env.PROVER_URI || 'http://localhost:6565')
-  .option('--zk-config-uri <uri>', 'ZK config base URI', process.env.ZK_CONFIG_URI || 'http://localhost:3000')
+  .description('Register all game content (levels, enemies, bosses) using batcher mode')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
   .option('--contract <address>', 'Contract address (overrides saved deployment)')
   .option('--minimal', 'Register only minimal content for testing')
   .action(async (options) => {
@@ -50,29 +50,26 @@ program
       }
 
       logger.info(`Connecting to contract: ${contractAddress}`);
+      logger.info(`Batcher URL: ${options.batcherUrl}`);
 
-      // Note: Same wallet initialization issue as deploy command
-      logger.error('Wallet initialization not yet implemented.');
-      logger.error('You need to configure wallet connection for CLI admin operations.');
+      const config: BatcherConfig = {
+        batcherUrl: options.batcherUrl,
+        indexerUri: options.indexerUri,
+        indexerWsUri: options.indexerWsUri,
+        proverUri: options.proverUri,
+      };
 
-      process.exit(1);
+      const providers = await initializeBatcherProviders(config, logger);
+      logger.info('Providers initialized, joining contract...');
 
-      // TODO: Implement wallet initialization
-      // const config: CliConfig = {
-      //   indexerUri: options.indexerUri,
-      //   indexerWsUri: options.indexerWsUri,
-      //   proverServerUri: options.proverUri,
-      //   zkConfigBaseUri: options.zkConfigUri,
-      //   wallet: /* initialize wallet */,
-      // };
+      const api = await Game2API.join(providers, contractAddress, logger);
+      logger.info('Successfully joined contract!');
 
-      // const providers = await initializeProviders(config, logger);
-      // const api = await Game2API.join(providers, contractAddress, logger);
+      logger.info('Registering game content...');
+      await registerAllContent(api, options.minimal ?? false, logger);
 
-      // logger.info('Registering game content...');
-      // await registerAllContent(api, options.minimal, logger);
-
-      // logger.info('All content registered successfully!');
+      logger.info('');
+      logger.info('All content registered successfully!');
 
     } catch (error) {
       logger.error(`Content registration failed: ${error}`);
@@ -82,11 +79,11 @@ program
 
 program
   .command('join')
-  .description('Join an existing contract and verify connection')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://localhost:8080')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://localhost:8080')
-  .option('--prover-uri <uri>', 'Prover server URI', process.env.PROVER_URI || 'http://localhost:6565')
-  .option('--zk-config-uri <uri>', 'ZK config base URI', process.env.ZK_CONFIG_URI || 'http://localhost:3000')
+  .description('Join an existing contract and verify connection using batcher mode')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
   .option('--contract <address>', 'Contract address')
   .action(async (options) => {
     try {
@@ -101,24 +98,21 @@ program
       }
 
       logger.info(`Joining contract: ${contractAddress}`);
+      logger.info(`Batcher URL: ${options.batcherUrl}`);
 
-      logger.error('Wallet initialization not yet implemented.');
-      process.exit(1);
+      const config: BatcherConfig = {
+        batcherUrl: options.batcherUrl,
+        indexerUri: options.indexerUri,
+        indexerWsUri: options.indexerWsUri,
+        proverUri: options.proverUri,
+      };
 
-      // TODO: Implement wallet initialization and join
-      // const config: CliConfig = {
-      //   indexerUri: options.indexerUri,
-      //   indexerWsUri: options.indexerWsUri,
-      //   proverServerUri: options.proverUri,
-      //   zkConfigBaseUri: options.zkConfigUri,
-      //   wallet: /* initialize wallet */,
-      // };
+      const providers = await initializeBatcherProviders(config, logger);
+      const api = await Game2API.join(providers, contractAddress, logger);
 
-      // const providers = await initializeProviders(config, logger);
-      // const api = await Game2API.join(providers, contractAddress, logger);
-
-      // logger.info('Successfully joined contract!');
-      // logger.info(`Contract address: ${api.deployedContractAddress}`);
+      logger.info('');
+      logger.info('Successfully joined contract!');
+      logger.info(`Contract address: ${api.deployedContractAddress}`);
 
     } catch (error) {
       logger.error(`Failed to join contract: ${error}`);

@@ -1,14 +1,24 @@
 # Game2 CLI Tools
 
-Separate deployment and admin tooling for Game2 contracts. This addresses [issue #77](https://github.com/PaimaStudios/midnight-game-2/issues/77) by separating contract deployment from the Phaser app.
+Separate deployment and admin tooling for Game2 contracts. This addresses [issue #77](https://github.com/PaimaStudios/midnight-game-2/issues/77).
 
 ## Overview
 
-Previously, the game would re-deploy the contract every time, which reset all data. This CLI tooling allows you to:
+This CLI tooling allows you to:
 
 1. **Deploy once** - Deploy a contract and save the contract address
 2. **Register content** - Use admin circuits to register levels, enemies, and bosses
 3. **Join existing contract** - Configure the Phaser app to join an existing contract instead of deploying
+
+**Note:** The CLI tools use **batcher mode** which submits transactions through a batcher service instead of requiring a wallet. This makes deployment simpler but requires a running batcher and indexer.
+
+## Prerequisites
+
+Before using the CLI tools, you need to have running:
+
+1. **Batcher** - See https://github.com/PaimaStudios/midnight-batcher
+2. **Indexer** - Provided by the batcher setup (typically on port 8088)
+3. **Prover server** (default: http://localhost:6300)
 
 ## Installation
 
@@ -66,16 +76,25 @@ yarn admin join --contract <contract-address>
 
 The CLI tools support the following environment variables:
 
-- `INDEXER_URI` - Indexer HTTP endpoint (default: `http://localhost:8080`)
-- `INDEXER_WS_URI` - Indexer WebSocket endpoint (default: `ws://localhost:8080`)
-- `PROVER_URI` - Prover server endpoint (default: `http://localhost:6565`)
+- `BATCHER_URL` - Batcher service URL (default: `http://localhost:8000`)
+- `INDEXER_URI` - Indexer HTTP endpoint (default: `http://127.0.0.1:8088/api/v1/graphql`)
+- `INDEXER_WS_URI` - Indexer WebSocket endpoint (default: `ws://127.0.0.1:8088/api/v1/graphql/ws`)
+- `PROVER_URI` - Prover server endpoint (default: `http://localhost:6300`)
 - `ZK_CONFIG_URI` - ZK config base URI (default: `http://localhost:3000`)
 - `LOG_LEVEL` - Logging level (default: `info`)
 
 Example:
 
 ```bash
-INDEXER_URI=http://my-indexer:8080 yarn deploy
+BATCHER_URL=http://my-batcher:8000 yarn deploy
+```
+
+### Command-Line Options
+
+All environment variables can also be passed as command-line options:
+
+```bash
+yarn deploy --batcher-url http://my-batcher:8000 --indexer-uri http://my-indexer:8088/api/v1/graphql
 ```
 
 ### Storage
@@ -139,37 +158,30 @@ The admin tool will call `admin_level_add_config` to register the new content wi
 
 ## Architecture
 
+### Batcher Mode
+
+The CLI tools use **batcher mode** instead of requiring a wallet. This means:
+
+- **No wallet required** - Transactions are submitted through the batcher
+- **Uses batcher's address** - The batcher's coin and encryption keys are used
+- **Simpler setup** - Just requires a running batcher service
+
 ### Providers
 
-The CLI tools use a similar provider structure to the Phaser app, but adapted for Node.js:
+The CLI tools use providers adapted for Node.js with batcher mode:
 
-- **Private State**: Uses LevelDB storage (separate from browser storage)
+- **Private State**: Uses LevelDB storage (stored in `game2-cli-batcher-private-state`)
 - **ZK Config**: Fetches from configured endpoint
-- **Proof Provider**: Uses HTTP client proof provider
-- **Public Data**: Connects to indexer
-- **Wallet**: Requires wallet API setup (TODO)
+- **Proof Provider**: Uses HTTP client proof provider (connects to prover server)
+- **Public Data**: Connects to indexer via GraphQL
+- **Wallet Provider**: Uses batcher's address (no actual wallet)
+- **Midnight Provider**: Submits transactions to batcher
 
 ### Security
 
 The player ID witness (admin secret key) is stored securely in `~/.game2-cli/deployment.json` with file permissions set to 0600 (owner read/write only). This key authenticates admin operations.
 
 **Important**: Keep your `~/.game2-cli/` directory backed up securely, as losing the admin key means you cannot perform admin operations on your deployed contract.
-
-## Current Limitations
-
-### Wallet Integration (TODO)
-
-The CLI tools currently have placeholder wallet initialization. To use these tools in production, you need to:
-
-1. Set up wallet provider for Node.js environment
-2. Configure wallet connection similar to browser setup
-3. Handle wallet authentication and transaction signing
-
-This is similar to how the browser app connects to the Midnight Lace wallet, but needs to be adapted for CLI usage.
-
-### Private State Provider
-
-The current implementation uses LevelDB for private state storage. The storage location may need to be explicitly configured depending on your environment.
 
 ## Development
 
@@ -185,11 +197,12 @@ yarn build
 ```
 cli/
 ├── src/
-│   ├── admin.ts       # Admin CLI tool
-│   ├── deploy.ts      # Deployment CLI tool
-│   ├── content.ts     # Content registration logic
-│   ├── providers.ts   # Provider initialization
-│   └── storage.ts     # Secure storage for deployment data
+│   ├── admin.ts              # Admin CLI tool
+│   ├── deploy.ts             # Deployment CLI tool
+│   ├── content.ts            # Content registration logic
+│   ├── batcher-providers.ts  # Batcher mode provider initialization
+│   ├── providers.ts          # Wallet provider initialization (unused)
+│   └── storage.ts            # Secure storage for deployment data
 ├── package.json
 └── README.md
 ```
@@ -207,9 +220,27 @@ yarn deploy
 
 Use `yarn admin info` to view the existing deployment, or use `--force` to deploy a new contract.
 
-### Wallet errors
+### "Batcher not available"
 
-The wallet integration is not yet complete. See "Current Limitations" above.
+Make sure your batcher is running and accessible:
+1. Check the batcher URL is correct (default: `http://localhost:8000`)
+2. Verify the batcher service is running
+3. Check network connectivity to the batcher
+
+### "Failed to get batcher's address"
+
+The batcher service needs to be fully started and synced:
+1. Wait for the batcher to finish syncing with the blockchain
+2. Check batcher logs for any errors
+3. Verify the batcher has UTXOs available
+
+### Connection timeout
+
+If commands time out connecting to services:
+1. Check all service URLs are correct
+2. Verify indexer is running (default: `http://127.0.0.1:8088/api/v1/graphql`)
+3. Ensure prover server is accessible (default: `http://localhost:6300`)
+4. Check firewall settings
 
 ## Contributing
 
