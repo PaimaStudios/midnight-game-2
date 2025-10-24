@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import pino from 'pino';
 import * as readline from 'readline';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import { Game2API } from 'game2-api';
 import { saveDeploymentData, loadDeploymentData, hasDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
@@ -31,6 +33,22 @@ async function confirmDeployment(): Promise<boolean> {
       resolve(answer.toLowerCase() === 'yes');
     });
   });
+}
+
+async function createPhaserEnvFile(contractAddress: string): Promise<void> {
+  const phaserDir = path.join(process.cwd(), 'phaser');
+  const envFile = path.join(phaserDir, '.env');
+  const envContent = `VITE_CONTRACT_ADDRESS=${contractAddress}\n`;
+
+  try {
+    // Check if phaser directory exists
+    await fs.access(phaserDir);
+    await fs.writeFile(envFile, envContent);
+    logger.info(`Created ${envFile}`);
+  } catch (error) {
+    // If phaser directory doesn't exist, just log a warning
+    logger.warn('Could not create phaser/.env file (phaser directory not found)');
+  }
 }
 
 const program = new Command();
@@ -96,6 +114,9 @@ program
 
       const savedPath = await saveDeploymentData(deploymentData);
 
+      // Automatically create phaser/.env file
+      await createPhaserEnvFile(api.deployedContractAddress);
+
       logger.info('');
       logger.info('Contract deployed successfully!');
       logger.info(`Contract address: ${api.deployedContractAddress}`);
@@ -103,8 +124,7 @@ program
       logger.info('');
       logger.info('Next steps:');
       logger.info('1. Register game content: yarn admin register-content');
-      logger.info('2. Configure your Phaser app: echo "VITE_CONTRACT_ADDRESS=' + api.deployedContractAddress + '" > phaser/.env');
-      logger.info('3. Start the game: cd phaser && yarn dev');
+      logger.info('2. Start the game: cd phaser && yarn dev');
 
     } catch (error) {
       logger.error('Deployment failed:');

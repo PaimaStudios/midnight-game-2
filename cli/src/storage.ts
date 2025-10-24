@@ -7,7 +7,7 @@ export interface DeploymentData {
   deployedAt: string;
 }
 
-const CONFIG_DIR = path.join(os.homedir(), '.game2-cli');
+const CONFIG_DIR = path.join(os.homedir(), '.midnight-dust-to-dust');
 const DEPLOYMENT_FILE = path.join(CONFIG_DIR, 'deployment.json');
 
 async function ensureConfigDir(): Promise<void> {
