@@ -138,31 +138,6 @@ export class CombatAnimationManager {
 
     public createCombatCallbacks(): CombatCallbacks {
         return {
-            planAttack: (enemy: number, amount: number) => new Promise((resolve) => {
-                this.enemies[enemy].setAttackPlan(amount);
-                resolve();
-            }),
-
-            planBlockSelf: (enemy: number, amount: number) => new Promise((resolve) => {
-                this.enemies[enemy].setBlockSelfPlan(amount);
-                resolve();
-            }),
-
-            planBlockAllies: (enemy: number, amount: number) => new Promise((resolve) => {
-                this.enemies[enemy].setBlockAlliesPlan(amount);
-                resolve();
-            }),
-
-            planHealSelf: (enemy: number, amount: number) => new Promise((resolve) => {
-                this.enemies[enemy].setHealSelfPlan(amount);
-                resolve();
-            }),
-
-            planHealAllies: (enemy: number, amount: number) => new Promise((resolve) => {
-                this.enemies[enemy].setHealAlliesPlan(amount);
-                resolve();
-            }),
-
             onEnemyBlock: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
                 if (targets.length == 1 && targets[0] == enemy) {

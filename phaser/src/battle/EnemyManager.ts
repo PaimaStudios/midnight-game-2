@@ -1,4 +1,4 @@
-import { BattleConfig, BOSS_TYPE, EnemyStats, EFFECT_TYPE } from "game2-contract";
+import { BattleConfig, BOSS_TYPE, EnemyStats, EFFECT_TYPE, BattleState } from "game2-contract";
 import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { HealthBar } from "../widgets/progressBar";
 import { fontStyle, GAME_WIDTH } from "../main";
@@ -6,6 +6,7 @@ import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 import { Def } from "../constants/def";
 import { BattleEffectType, effectTypeToIcon } from "../widgets/BattleEffect";
+import { Game2DerivedState } from "game2-api";
 
 const ENEMY_TEXTURES = [
     'enemy-goblin',
@@ -32,10 +33,10 @@ class Plan extends Phaser.GameObjects.Container {
     constructor(actor: Actor, amount: number, effectType: BattleEffectType, allies: boolean) {
         super(actor.scene, actor.x - actor.width / 2 - 32, actor.y + actor.planYOffset());
 
-        this.add(actor.scene.add.text(12, 0, amount.toString(), fontStyle(12)).setOrigin(0.5, 0.65));
-        this.add(actor.scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
+        this.add(actor.scene.add.text(14, 0, amount.toString(), fontStyle(10)).setOrigin(0.5, 0.65));
+        this.add(actor.scene.add.sprite(-14, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
         if (allies) {
-            this.add(actor.scene.add.image(-12, -2, 'aoe').setScale(BASE_SPRITE_SCALE));
+            this.add(actor.scene.add.image(-14, -3, 'aoe').setScale(BASE_SPRITE_SCALE));
         }
 
         actor.scene.add.existing(this);
@@ -458,6 +459,41 @@ export class EnemyManager {
         }
 
         return this.enemies;
+    }
+
+    public setEnemyPlans(config: BattleConfig, battleState: BattleState) {
+        const stats = config.enemies.stats;
+        const oldDamageToEnemy = [battleState.damage_to_enemy_0, battleState.damage_to_enemy_1, battleState.damage_to_enemy_2];
+        const moves = [
+            stats[0].moves[Number(battleState.enemy_move_index_0)],
+            stats[1].moves[Number(battleState.enemy_move_index_1)],
+            stats[2].moves[Number(battleState.enemy_move_index_2)],
+        ];
+        for (let i = 0; i < config.enemies.count; ++i) {
+            if (oldDamageToEnemy[i] < stats[i].hp) {
+                const move = moves[i];
+                const attack = Number(move.attack);
+                if (attack != 0) {
+                    this.enemies[i].setAttackPlan(attack);
+                }
+                const blockSelf = Number(move.block_self);
+                if (blockSelf != 0) {
+                    this.enemies[i].setBlockSelfPlan(blockSelf);
+                }
+                const blockAllies = Number(move.block_allies);
+                if (blockAllies != 0) {
+                    this.enemies[i].setBlockAlliesPlan(blockAllies);
+                }
+                const healSelf = Number(move.heal_self);
+                if (healSelf != 0) {
+                    this.enemies[i].setHealSelfPlan(healSelf);
+                }
+                const healAllies = Number(move.heal_allies);
+                if (healAllies != 0) {
+                    this.enemies[i].setHealAlliesPlan(healAllies);
+                }
+            }
+        }
     }
 
     public getEnemies(): Actor[] {

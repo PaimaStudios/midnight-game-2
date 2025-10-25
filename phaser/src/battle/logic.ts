@@ -7,11 +7,6 @@ import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits, B
 import { logger } from '../main';
 
 export type CombatCallbacks = {
-    planAttack: (enemy: number, amount: number) => Promise<void>;
-    planHealSelf: (enemy: number, amount: number) => Promise<void>;
-    planHealAllies: (enemy: number, amount: number) => Promise<void>;
-    planBlockSelf: (enemy: number, amount: number) => Promise<void>;
-    planBlockAllies: (enemy: number, amount: number) => Promise<void>;
     // triggered when an enemy blocks. enemy is the enemy that blocks, targets are who the block is applied to
     onEnemyBlock: (enemy: number, targets: number[], amount: number) => Promise<void>;
     // triggered when an enemy attacks. there are no enemy attack types (atm) and enemy is which enemy attacks (since only 1 player)
@@ -106,33 +101,6 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         }
 
         await uiHooks?.onDrawAbilities(abilities);
-
-        // Enemy Plans
-        for (let i = 0; i < enemy_count; ++i) {
-            if (old_damage_to_enemy[i] < stats[i].hp) {
-                const move = moves[i];
-                const attack = Number(move.attack);
-                if (attack != 0) {
-                    await uiHooks?.planAttack(i, attack);
-                }
-                const blockSelf = Number(move.block_self);
-                if (blockSelf != 0) {
-                    await uiHooks?.planBlockSelf(i, blockSelf);
-                }
-                const blockAllies = Number(move.block_allies);
-                if (blockAllies != 0) {
-                    await uiHooks?.planBlockAllies(i, blockAllies);
-                }
-                const healSelf = Number(move.heal_self);
-                if (healSelf != 0) {
-                    await uiHooks?.planHealSelf(i, healSelf);
-                }
-                const healAllies = Number(move.heal_allies);
-                if (healAllies != 0) {
-                    await uiHooks?.planHealAllies(i, healAllies);
-                }
-            }
-        }
 
         // Enemy block phase
         for (let i = 0; i < enemy_count; ++i) {
