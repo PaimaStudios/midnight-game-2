@@ -1,10 +1,11 @@
 import { BattleConfig, BOSS_TYPE, EnemyStats, EFFECT_TYPE } from "game2-contract";
 import { addScaledImage, BASE_SPRITE_SCALE } from "../utils/scaleImage";
 import { HealthBar } from "../widgets/progressBar";
-import { GAME_WIDTH } from "../main";
+import { fontStyle, GAME_WIDTH } from "../main";
 import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 import { Def } from "../constants/def";
+import { BattleEffectType, effectTypeToIcon } from "../widgets/BattleEffect";
 
 const ENEMY_TEXTURES = [
     'enemy-goblin',
@@ -27,6 +28,20 @@ const BOSS_TEXTURES = [
 
 type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
 
+class Plan extends Phaser.GameObjects.Container {
+    constructor(actor: Actor, amount: number, effectType: BattleEffectType, allies: boolean) {
+        super(actor.scene, actor.x - actor.width / 2 - 32, actor.y + actor.planYOffset());
+
+        this.add(actor.scene.add.text(12, 0, amount.toString(), fontStyle(12)).setOrigin(0.5, 0.65));
+        this.add(actor.scene.add.sprite(-12, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
+        if (allies) {
+            this.add(actor.scene.add.image(-12, -2, 'aoe').setScale(BASE_SPRITE_SCALE));
+        }
+
+        actor.scene.add.existing(this);
+    }
+}
+
 export class Actor extends Phaser.GameObjects.Container {
     hp: number;
     maxHp: number;
@@ -37,6 +52,11 @@ export class Actor extends Phaser.GameObjects.Container {
     animationTick: number;
     textureKey: string = '';
     stats: EnemyStats | null;
+    planAttack: Plan | null;
+    planBlockSelf: Plan | null;
+    planBlockAllies: Plan | null;
+    planHealSelf: Plan | null;
+    planHealAllies: Plan | null;
 
     constructor(scene: Phaser.Scene, x: number, y: number, stats: EnemyStats | null) {
         super(scene, x, y);
@@ -100,7 +120,67 @@ export class Actor extends Phaser.GameObjects.Container {
         this.setHp(this.hp);
         this.setSize(64, 64);
 
+        this.planAttack = null;
+        this.planBlockSelf = null;
+        this.planBlockAllies = null;
+        this.planHealSelf = null;
+        this.planHealAllies = null;
+
         scene.add.existing(this);
+    }
+
+    public setAttackPlan(amount: number) {
+        this.planAttack = new Plan(this, amount, BattleEffectType.ATTACK_PHYS, false);
+    }
+
+    public setBlockSelfPlan(amount: number) {
+        this.planBlockSelf = new Plan(this, amount, BattleEffectType.BLOCK, false);
+    }
+
+    public setBlockAlliesPlan(amount: number) {
+        this.planBlockAllies = new Plan(this, amount, BattleEffectType.BLOCK, true);
+    }
+    
+    public setHealSelfPlan(amount: number) {
+        this.planHealSelf = new Plan(this, amount, BattleEffectType.HEAL, false);
+    }
+
+    public setHealAlliesPlan(amount: number) {
+        this.planHealAllies = new Plan(this, amount, BattleEffectType.HEAL, true);
+    }
+
+    public clearAttackPlan() {
+        this.planAttack?.destroy();
+        this.planAttack = null;
+    }
+
+    public clearBlockSelfPlan() {
+        this.planBlockSelf?.destroy();
+        this.planBlockSelf = null;
+    }
+
+    public clearBlockAlliesPlan() {
+        this.planBlockAllies?.destroy();
+        this.planBlockAllies = null;
+    }
+
+    public clearHealSelfPlan() {
+        this.planHealSelf?.destroy();
+        this.planHealSelf = null;
+    }
+
+    public clearHealAlliesPlan() {
+        this.planHealAllies?.destroy();
+        this.planHealAllies = null;
+    }
+
+    public planYOffset(): number {
+        const total = (this.planAttack != null ? 1 : 0)
+                    + (this.planBlockSelf != null ? 1 : 0)
+                    + (this.planBlockAllies != null ? 1 : 0)
+                    + (this.planHealSelf != null ? 1 : 0)
+                    + (this.planHealAllies != null ? 1 : 0);
+        return Math.floor((total + 1) / 2) * (total % 2 == 0 ? -32 : 32)
     }
 
     public addBlock(amount: number) {
@@ -210,6 +290,97 @@ export class Actor extends Phaser.GameObjects.Container {
                     }
                     resolve();
                 }
+            });
+        });
+    }
+
+    public castHealAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            const circle = this.scene.add.image(this.x, this.y, 'heal-effect-circle')
+                .setAlpha(0)
+                .setScale(0, 0);
+            // Circle rotate
+            this.scene.tweens.add({
+                targets: circle,
+                angle: 90,
+                duration: 2400,
+            });
+            // Circle expand
+            this.scene.tweens.add({
+                targets: circle,
+                alpha: 0.7,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 1000,
+                onComplete: () => {
+                    // Circle fade
+                    this.scene.tweens.add({
+                        targets: circle,
+                        alpha: 0,
+                        duration: 1500,
+                        onComplete: () => circle.destroy(),
+                    });
+                    // Ray expand vertically
+                    const rays = this.scene.add.image(this.x, this.y, 'heal-effect-rays')
+                        .setAlpha(0)
+                        .setOrigin(0.5, 64 / 92) // cirlce is 64 high, beam is 92, need origins to line up
+                        .setScale(1, 0);
+                    this.scene.tweens.add({
+                        targets: rays,
+                        alpha: 0.35,
+                        scaleX: 1,
+                        scaleY: 1,
+                        duration: 900,
+                        onComplete: () => {
+                            // Resolve before the animation finishes to have some overlap
+                            resolve();
+                            // Ray fly up
+                            this.scene.tweens.add({
+                                targets: rays,
+                                y: -96,
+                                scaleX: 1.5,
+                                scaleY: 3,
+                                alpha: 0,
+                                ease: 'Quadratic.Out',
+                                duration: 600,
+                                onComplete: () => {
+                                    rays.destroy();
+                                },
+                            });
+                        },
+                    });
+                }
+            });
+        });
+    }
+
+    public beingHealedAnimation(): Promise<void> {
+        return new Promise((resolve) => {
+            const rays = this.scene.add.image(this.x, -92, 'heal-effect-rays')
+                .setAlpha(0.35)
+                .setOrigin(0.5, 64 / 92); // cirlce is 64 high, beam is 92, need origins to line up
+            // Ray down
+            this.scene.tweens.add({
+                targets: rays,
+                y: this.y,
+                scaleY: 2,
+                ease: 'Quadratic.In',
+                duration: 900,
+                onComplete: () => {
+                    // Resolve before the animation finishes to have some overlap
+                    resolve();
+                    // Ray fade
+                    this.scene.tweens.add({
+                        targets: rays,
+                        scaleX: 1,
+                        scaleY: 0,
+                        alpha: 0,
+                        duration: 600,
+                        onComplete: () => {
+                            rays.destroy();
+                        },
+                    });
+                },
             });
         });
     }

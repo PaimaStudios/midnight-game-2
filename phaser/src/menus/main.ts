@@ -106,6 +106,10 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-boss-abominable', 'enemy-boss-abominable.png', { frameWidth: 130, frameHeight: 98 });
         this.load.spritesheet('enemy-boss-sphinx', 'enemy-boss-sphinx.png', { frameWidth: 80, frameHeight: 94 });
 
+        // Combat Effects
+        this.load.image('heal-effect-circle', 'heal-effect-circle.png');
+        this.load.image('heal-effect-rays', 'heal-effect-rays.png');
+
         // Backgrounds
         this.load.image('bg-hub1', 'bg-hub1.png');
         this.load.image('bg-shop', 'bg-shop.png');

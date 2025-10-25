@@ -138,23 +138,57 @@ export class CombatAnimationManager {
 
     public createCombatCallbacks(): CombatCallbacks {
         return {
-            onEnemyBlock: (enemy: number, amount: number) => new Promise((resolve) => {
+            planAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].setAttackPlan(amount);
+                resolve();
+            }),
+
+            planBlockSelf: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].setBlockSelfPlan(amount);
+                resolve();
+            }),
+
+            planBlockAllies: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].setBlockAlliesPlan(amount);
+                resolve();
+            }),
+
+            planHealSelf: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].setHealSelfPlan(amount);
+                resolve();
+            }),
+
+            planHealAllies: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].setHealAlliesPlan(amount);
+                resolve();
+            }),
+
+            onEnemyBlock: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
-                this.enemies[enemy].addBlock(amount);
-                
-                // Show block effect on enemy
-                new BattleEffect(
-                    this.scene, 
-                    this.layout.enemyX(this.battle, enemy), 
-                    this.layout.enemyY() - 20,
-                    BattleEffectType.BLOCK,
-                    amount, 
-                    () => resolve()
-                );
+                if (targets.length == 1 && targets[0] == enemy) {
+                    this.enemies[enemy].clearBlockSelfPlan();
+                } else {
+                    this.enemies[enemy].clearBlockAlliesPlan();
+                }
+                // TODO: block animations?
+                targets.forEach((target) => {
+                    this.enemies[target].addBlock(amount);
+                    
+                    // Show block effect on enemy
+                    new BattleEffect(
+                        this.scene,
+                        this.layout.enemyX(this.battle, target),
+                        this.layout.enemyY() - 20,
+                        BattleEffectType.BLOCK,
+                        amount,
+                        () => resolve()
+                    );
+                });
                 this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
             }),
 
             onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                this.enemies[enemy].clearAttackPlan();
                 this.enemies[enemy].performAttackAnimation().then(() => {
                     const fist = addScaledImage(this.scene, this.layout.enemyX(this.battle, enemy), this.layout.enemyY(), 'physical');
                     this.scene.tweens.add({
@@ -187,20 +221,42 @@ export class CombatAnimationManager {
                 });
             }),
 
-            onEnemyHeal: (enemy: number, amount: number) => new Promise((resolve) => {
+            onEnemyHeal: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] healed for ${amount} | ${this.enemies.length}`);
-                this.enemies[enemy].heal(amount);
-
-                // Show heal effect on enemy
-                new BattleEffect(
-                    this.scene,
-                    this.layout.enemyX(this.battle, enemy),
-                    this.layout.enemyY() - 20,
-                    // TODO: specific heal animations
-                    BattleEffectType.HEAL,
-                    amount,
-                    () => resolve()
-                );
+                if (targets.length == 1 && targets[0] == enemy) {
+                    this.enemies[enemy].clearHealSelfPlan();
+                } else {
+                    this.enemies[enemy].clearHealAlliesPlan();
+                }
+                this.enemies[enemy].castHealAnimation().then(() => {
+                    if (targets.length == 1 && enemy == targets[0]) {
+                        new BattleEffect(
+                            this.scene,
+                            this.layout.enemyX(this.battle, enemy),
+                            this.layout.enemyY() - 20,
+                            BattleEffectType.HEAL,
+                            amount,
+                            () => {
+                                this.enemies[enemy].heal(amount);
+                                resolve();
+                            }
+                        )
+                    } else {
+                        targets.forEach((target) => {
+                            this.enemies[target].beingHealedAnimation().then(() => new BattleEffect(
+                                this.scene,
+                                this.layout.enemyX(this.battle, target),
+                                this.layout.enemyY() - 20,
+                                BattleEffectType.HEAL,
+                                amount,
+                                () => {
+                                    this.enemies[target].heal(amount);
+                                    resolve();
+                                }
+                            ));
+                        });
+                    }
+                });
                 this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
             }),
 
