@@ -7,6 +7,13 @@ import { loadDeploymentData, clearDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 import { registerAllContent } from './content.js';
 
+// Default service URLs
+const DEFAULT_BATCHER_URL = 'http://localhost:8000';
+const DEFAULT_INDEXER_URI = 'http://127.0.0.1:8088/api/v1/graphql';
+const DEFAULT_INDEXER_WS_URI = 'ws://127.0.0.1:8088/api/v1/graphql/ws';
+const DEFAULT_PROVER_URI = 'http://localhost:6300';
+const DEFAULT_LOG_LEVEL = 'info';
+
 const logger = pino({
   transport: {
     target: 'pino-pretty',
@@ -16,7 +23,7 @@ const logger = pino({
       ignore: 'pid,hostname',
     },
   },
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || DEFAULT_LOG_LEVEL,
 });
 
 const program = new Command();
@@ -29,10 +36,10 @@ program
 program
   .command('register-content')
   .description('Register all game content (levels, enemies, bosses) using batcher mode')
-  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
-  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || DEFAULT_BATCHER_URL)
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || DEFAULT_INDEXER_URI)
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || DEFAULT_INDEXER_WS_URI)
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || DEFAULT_PROVER_URI)
   .option('--contract <address>', 'Contract address (overrides saved deployment)')
   .option('--minimal', 'Register only minimal content for testing')
   .action(async (options) => {
@@ -80,10 +87,10 @@ program
 program
   .command('join')
   .description('Join an existing contract and verify connection using batcher mode')
-  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
-  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || DEFAULT_BATCHER_URL)
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || DEFAULT_INDEXER_URI)
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || DEFAULT_INDEXER_WS_URI)
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || DEFAULT_PROVER_URI)
   .option('--contract <address>', 'Contract address')
   .action(async (options) => {
     try {

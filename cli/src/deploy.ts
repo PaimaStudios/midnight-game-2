@@ -9,6 +9,13 @@ import { Game2API } from 'game2-api';
 import { saveDeploymentData, loadDeploymentData, hasDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 
+// Default service URLs
+const DEFAULT_BATCHER_URL = 'http://localhost:8000';
+const DEFAULT_INDEXER_URI = 'http://127.0.0.1:8088/api/v1/graphql';
+const DEFAULT_INDEXER_WS_URI = 'ws://127.0.0.1:8088/api/v1/graphql/ws';
+const DEFAULT_PROVER_URI = 'http://localhost:6300';
+const DEFAULT_LOG_LEVEL = 'info';
+
 const logger = pino({
   transport: {
     target: 'pino-pretty',
@@ -18,7 +25,7 @@ const logger = pino({
       ignore: 'pid,hostname',
     },
   },
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || DEFAULT_LOG_LEVEL,
 });
 
 async function confirmDeployment(): Promise<boolean> {
@@ -35,19 +42,54 @@ async function confirmDeployment(): Promise<boolean> {
   });
 }
 
-async function createPhaserEnvFile(contractAddress: string): Promise<void> {
+async function updatePhaserEnvFile(contractAddress: string): Promise<void> {
   const phaserDir = path.join(process.cwd(), 'phaser');
   const envFile = path.join(phaserDir, '.env');
-  const envContent = `VITE_CONTRACT_ADDRESS=${contractAddress}\n`;
+  const newLine = `VITE_CONTRACT_ADDRESS=${contractAddress}`;
 
   try {
     // Check if phaser directory exists
     await fs.access(phaserDir);
-    await fs.writeFile(envFile, envContent);
-    logger.info(`Created ${envFile}`);
+
+    let content = '';
+    let fileExists = false;
+
+    // Try to read existing .env file
+    try {
+      content = await fs.readFile(envFile, 'utf-8');
+      fileExists = true;
+    } catch (error) {
+      // File doesn't exist, will create new one
+    }
+
+    if (fileExists) {
+      // Update or add VITE_CONTRACT_ADDRESS in existing file
+      const lines = content.split('\n');
+      let found = false;
+
+      const updatedLines = lines.map(line => {
+        if (line.startsWith('VITE_CONTRACT_ADDRESS=') || line.startsWith('# VITE_CONTRACT_ADDRESS=')) {
+          found = true;
+          return newLine;
+        }
+        return line;
+      });
+
+      if (!found) {
+        // Add at the end
+        updatedLines.push(newLine);
+      }
+
+      await fs.writeFile(envFile, updatedLines.join('\n'));
+      logger.info(`Updated ${envFile}`);
+    } else {
+      // Create new file with just the contract address
+      await fs.writeFile(envFile, newLine + '\n');
+      logger.info(`Created ${envFile}`);
+    }
   } catch (error) {
     // If phaser directory doesn't exist, just log a warning
-    logger.warn('Could not create phaser/.env file (phaser directory not found)');
+    logger.warn('Could not update phaser/.env file (phaser directory not found)');
   }
 }
 
@@ -61,10 +103,10 @@ program
 program
   .command('deploy')
   .description('Deploy a new Game2 contract using batcher mode')
-  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || 'http://localhost:8000')
-  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || 'http://127.0.0.1:8088/api/v1/graphql')
-  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || 'ws://127.0.0.1:8088/api/v1/graphql/ws')
-  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || 'http://localhost:6300')
+  .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || DEFAULT_BATCHER_URL)
+  .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || DEFAULT_INDEXER_URI)
+  .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || DEFAULT_INDEXER_WS_URI)
+  .option('--prover-uri <uri>', 'Prover server URI (REQUIRED - run midnight-prover)', process.env.PROVER_URI || DEFAULT_PROVER_URI)
   .option('--force', 'Force deploy even if deployment data exists')
   .action(async (options) => {
     try {
@@ -114,8 +156,8 @@ program
 
       const savedPath = await saveDeploymentData(deploymentData);
 
-      // Automatically create phaser/.env file
-      await createPhaserEnvFile(api.deployedContractAddress);
+      // Automatically create or update phaser/.env file
+      await updatePhaserEnvFile(api.deployedContractAddress);
 
       logger.info('');
       logger.info('Contract deployed successfully!');
