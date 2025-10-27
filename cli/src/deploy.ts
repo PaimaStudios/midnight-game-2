@@ -153,7 +153,7 @@ program
       logger.info('');
       logger.info('Next steps:');
       logger.info('1. Register game content: yarn admin register-content');
-      logger.info('2. Start the game: cd phaser && yarn dev');
+      logger.info('2. Build the game: cd phaser && yarn run build');
 
     } catch (error) {
       logger.error('Deployment failed:');

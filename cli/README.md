@@ -6,9 +6,9 @@ Separate deployment and admin tooling for Game contracts. This addresses [issue 
 
 This CLI tooling allows you to:
 
-1. **Deploy once** - Deploy a contract and save the contract address
+1. **Deploy** - Deploy a contract and save the contract address
 2. **Register content** - Use admin circuits to register levels, enemies, and bosses
-3. **Join existing contract** - Configure the Phaser app to join an existing contract instead of deploying
+3. **Admin Commands** - Configure and debug existing deployed contracts with admin commands
 
 **Note:** The CLI tools use **batcher mode** which submits transactions through a batcher service instead of requiring a wallet. This makes deployment simpler but requires a running batcher and indexer.
 
@@ -82,7 +82,6 @@ The CLI tools support the following environment variables:
 - `INDEXER_URI` - Indexer HTTP endpoint (default: `http://127.0.0.1:8088/api/v1/graphql`)
 - `INDEXER_WS_URI` - Indexer WebSocket endpoint (default: `ws://127.0.0.1:8088/api/v1/graphql/ws`)
 - `PROVER_URI` - Prover server endpoint (default: `http://localhost:6300`)
-- `LOG_LEVEL` - Logging level (default: `info`)
 
 Example:
 
@@ -119,36 +118,11 @@ The CLI tools create two important directories:
 
 After deploying a contract, the deploy command automatically creates a `phaser/.env` file with your contract address. The Phaser app will automatically join the existing contract instead of deploying a new one.
 
-To start the game:
-
-```bash
-cd phaser
-yarn dev
-```
-
 **Note:** If you need to manually configure the contract address, you can edit `phaser/.env`:
 
 ```bash
 VITE_CONTRACT_ADDRESS=<your-contract-address>
 ```
-
-## Workflow
-
-### Initial Setup
-
-1. Deploy the contract:
-   ```bash
-   yarn deploy
-   ```
-
-2. Register game content:
-   ```bash
-   yarn admin register-content
-   ```
-
-3. Configure Phaser app with the contract address (see above)
-
-4. Start playing!
 
 ### Adding Content After Release
 
@@ -161,99 +135,3 @@ yarn admin register-content
 ```
 
 The admin tool will call `admin_level_add_config` to register the new content without affecting existing game state.
-
-## Architecture
-
-### Batcher Mode
-
-The CLI tools use **batcher mode** instead of requiring a wallet. This means:
-
-- **No wallet required** - Transactions are submitted through the batcher
-- **Uses batcher's address** - The batcher's coin and encryption keys are used
-- **Simpler setup** - Just requires a running batcher service
-
-### Providers
-
-The CLI tools use providers adapted for Node.js with batcher mode:
-
-- **Private State**: Uses LevelDB storage (stored in `game-cli-batcher-private-state`)
-- **ZK Config**: Fetches from configured endpoint
-- **Proof Provider**: Uses HTTP client proof provider (connects to prover server)
-- **Public Data**: Connects to indexer via GraphQL
-- **Wallet Provider**: Uses batcher's address (no actual wallet)
-- **Midnight Provider**: Submits transactions to batcher
-
-### Security
-
-The player ID witness (admin secret key) is stored securely in `~/.midnight-dust-to-dust/deployment.json` with file permissions set to 0600 (owner read/write only). This key authenticates admin operations.
-
-**Important**: Keep your `~/.midnight-dust-to-dust/` directory backed up securely, as losing the admin key means you cannot perform admin operations on your deployed contract.
-
-## Development
-
-### Building
-
-```bash
-cd cli
-yarn build
-```
-
-### Project Structure
-
-```
-cli/
-├── src/
-│   ├── admin.ts              # Admin CLI tool
-│   ├── deploy.ts             # Deployment CLI tool
-│   ├── content.ts            # Content registration logic
-│   ├── batcher-providers.ts  # Batcher mode provider initialization
-│   ├── providers.ts          # Wallet provider initialization (unused)
-│   └── storage.ts            # Secure storage for deployment data
-├── package.json
-└── README.md
-```
-
-## Troubleshooting
-
-### "No deployment found"
-
-You need to deploy a contract first:
-```bash
-yarn deploy
-```
-
-### "Deployment already exists"
-
-Use `yarn admin info` to view the existing deployment, or use `yarn deploy --force` to deploy a new contract anyway (not recommended - this will reset all game data).
-
-### "Batcher not available"
-
-Make sure your batcher is running and accessible:
-1. Check the batcher URL is correct (default: `http://localhost:8000`)
-2. Verify the batcher service is running
-3. Check network connectivity to the batcher
-
-### "Failed to get batcher's address"
-
-The batcher service needs to be fully started and synced:
-1. Wait for the batcher to finish syncing with the blockchain
-2. Check batcher logs for any errors
-3. Verify the batcher has UTXOs available
-
-### Connection timeout
-
-If commands time out connecting to services:
-1. Check all service URLs are correct
-2. Verify indexer is running (default: `http://127.0.0.1:8088/api/v1/graphql`)
-3. Ensure prover server is accessible (default: `http://localhost:6300`)
-4. Check firewall settings
-
-## Contributing
-
-When adding new game content:
-
-1. Edit [cli/src/content.ts](./src/content.ts)
-2. Add your enemy configurations and level definitions
-3. Run `yarn admin register-content` to deploy
-
-For questions or issues, please file an issue on GitHub.
