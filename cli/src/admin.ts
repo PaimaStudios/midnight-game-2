@@ -1,36 +1,23 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import pino from 'pino';
 import { Game2API } from 'game2-api';
 import { loadDeploymentData, clearDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
 import { registerAllContent } from './content.js';
-
-// Default service URLs
-const DEFAULT_BATCHER_URL = 'http://localhost:8000';
-const DEFAULT_INDEXER_URI = 'http://127.0.0.1:8088/api/v1/graphql';
-const DEFAULT_INDEXER_WS_URI = 'ws://127.0.0.1:8088/api/v1/graphql/ws';
-const DEFAULT_PROVER_URI = 'http://localhost:6300';
-const DEFAULT_LOG_LEVEL = 'info';
-
-const logger = pino({
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'HH:MM:ss',
-      ignore: 'pid,hostname',
-    },
-  },
-  level: process.env.LOG_LEVEL || DEFAULT_LOG_LEVEL,
-});
+import { logger } from './logger.js';
+import {
+  DEFAULT_BATCHER_URL,
+  DEFAULT_INDEXER_URI,
+  DEFAULT_INDEXER_WS_URI,
+  DEFAULT_PROVER_URI,
+} from './constants.js';
 
 const program = new Command();
 
 program
-  .name('game2-admin')
-  .description('Admin tools for Game2 contracts')
+  .name('admin-cli')
+  .description('Admin tools for game contracts')
   .version('0.1.0');
 
 program

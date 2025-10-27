@@ -1,32 +1,19 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import pino from 'pino';
 import * as readline from 'readline';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { Game2API } from 'game2-api';
 import { saveDeploymentData, loadDeploymentData, hasDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
-
-// Default service URLs
-const DEFAULT_BATCHER_URL = 'http://localhost:8000';
-const DEFAULT_INDEXER_URI = 'http://127.0.0.1:8088/api/v1/graphql';
-const DEFAULT_INDEXER_WS_URI = 'ws://127.0.0.1:8088/api/v1/graphql/ws';
-const DEFAULT_PROVER_URI = 'http://localhost:6300';
-const DEFAULT_LOG_LEVEL = 'info';
-
-const logger = pino({
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'HH:MM:ss',
-      ignore: 'pid,hostname',
-    },
-  },
-  level: process.env.LOG_LEVEL || DEFAULT_LOG_LEVEL,
-});
+import { logger } from './logger.js';
+import {
+  DEFAULT_BATCHER_URL,
+  DEFAULT_INDEXER_URI,
+  DEFAULT_INDEXER_WS_URI,
+  DEFAULT_PROVER_URI,
+} from './constants.js';
 
 async function confirmDeployment(): Promise<boolean> {
   const rl = readline.createInterface({
@@ -97,12 +84,12 @@ const program = new Command();
 
 program
   .name('game2-deploy')
-  .description('Deploy and manage Game2 contracts')
+  .description('Deploy and manage Game contracts')
   .version('0.1.0');
 
 program
   .command('deploy')
-  .description('Deploy a new Game2 contract using batcher mode')
+  .description('Deploy a new Game contract using batcher mode')
   .option('--batcher-url <url>', 'Batcher URL', process.env.BATCHER_URL || DEFAULT_BATCHER_URL)
   .option('--indexer-uri <uri>', 'Indexer HTTP URI', process.env.INDEXER_URI || DEFAULT_INDEXER_URI)
   .option('--indexer-ws-uri <uri>', 'Indexer WebSocket URI', process.env.INDEXER_WS_URI || DEFAULT_INDEXER_WS_URI)
@@ -132,7 +119,7 @@ program
         process.exit(0);
       }
 
-      logger.info('Deploying Game2 contract using batcher mode...');
+      logger.info('Deploying Game contract using batcher mode...');
       logger.info(`Batcher URL: ${options.batcherUrl}`);
       logger.info(`Indexer URI: ${options.indexerUri}`);
       logger.info(`Prover URI: ${options.proverUri}`);
@@ -180,10 +167,10 @@ program
       }
       logger.error('');
       logger.error('Common issues:');
+      logger.error('  - Batcher not running or not fully synced');
       logger.error('  - Indexer not running (check http://127.0.0.1:8088/api/v1/graphql)');
       logger.error('  - Prover server not running (check http://localhost:6300)');
-      logger.error('  - ZK config not accessible (check http://localhost:3000)');
-      logger.error('  - Batcher not fully synced');
+      logger.error('  - ZK config files missing in contract/src/managed/game2/');
       process.exit(1);
     }
   });

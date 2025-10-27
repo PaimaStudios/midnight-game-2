@@ -23,11 +23,24 @@ export async function saveDeploymentData(data: DeploymentData): Promise<string> 
 export async function loadDeploymentData(): Promise<DeploymentData | null> {
   try {
     const content = await fs.readFile(DEPLOYMENT_FILE, 'utf-8');
-    return JSON.parse(content);
+    const data = JSON.parse(content);
+
+    // Validate the structure
+    if (!data.contractAddress || !data.deployedAt) {
+      throw new Error('Invalid deployment data format: missing required fields');
+    }
+
+    return data;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return null;
     }
+
+    // Provide helpful error for corrupted JSON
+    if (error instanceof SyntaxError) {
+      throw new Error(`Deployment file is corrupted (invalid JSON). Consider running 'yarn admin clear --confirm' to reset.`);
+    }
+
     throw error;
   }
 }

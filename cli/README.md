@@ -1,6 +1,6 @@
-# Game2 CLI Tools
+# Game CLI Tools
 
-Separate deployment and admin tooling for Game2 contracts. This addresses [issue #77](https://github.com/PaimaStudios/midnight-game-2/issues/77).
+Separate deployment and admin tooling for Game contracts. This addresses [issue #77](https://github.com/PaimaStudios/midnight-game-2/issues/77).
 
 ## Overview
 
@@ -32,7 +32,7 @@ yarn install
 
 ### Deployment Commands
 
-Deploy a new Game2 contract:
+Deploy a new Game contract:
 
 ```bash
 yarn deploy
@@ -176,7 +176,7 @@ The CLI tools use **batcher mode** instead of requiring a wallet. This means:
 
 The CLI tools use providers adapted for Node.js with batcher mode:
 
-- **Private State**: Uses LevelDB storage (stored in `game2-cli-batcher-private-state`)
+- **Private State**: Uses LevelDB storage (stored in `game-cli-batcher-private-state`)
 - **ZK Config**: Fetches from configured endpoint
 - **Proof Provider**: Uses HTTP client proof provider (connects to prover server)
 - **Public Data**: Connects to indexer via GraphQL

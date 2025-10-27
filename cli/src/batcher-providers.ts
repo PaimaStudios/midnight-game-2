@@ -14,6 +14,11 @@ import {
 } from '@midnight-ntwrk/ledger';
 import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import * as path from 'path';
+import { validateBatcherAddress } from './validation.js';
+
+// Retry configuration for batcher requests
+const BATCHER_RETRY_COUNT = 10;
+const BATCHER_RETRY_DELAY_MS = 10000; // 10 seconds
 
 export interface BatcherConfig {
   batcherUrl: string;
@@ -34,10 +39,10 @@ export async function initializeBatcherProviders(
   logger.info('Initializing batcher providers for CLI');
 
   const batcherAddress = await getBatcherAddress(config.batcherUrl);
-  const batcherAddressParts = batcherAddress.split('|');
+  const { coinPublicKey, encryptionPublicKey } = validateBatcherAddress(batcherAddress);
 
   logger.info(`Connected to batcher at: ${config.batcherUrl}`);
-  logger.info(`Batcher address: ${batcherAddressParts[0]}`);
+  logger.info(`Batcher address: ${coinPublicKey}`);
   logger.info(`Using prover at: ${config.proverUri}`);
 
   // Find the contract directory to locate ZK config files
@@ -46,15 +51,15 @@ export async function initializeBatcherProviders(
 
   return {
     privateStateProvider: levelPrivateStateProvider({
-      privateStateStoreName: 'game2-cli-batcher-private-state',
+      privateStateStoreName: 'game-cli-batcher-private-state',
     }),
     zkConfigProvider: new NodeZkConfigProvider(contractDir),
     proofProvider: httpClientProofProvider(config.proverUri),
     publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
     walletProvider: {
       // Use the batcher's address since we don't have a wallet
-      coinPublicKey: batcherAddressParts[0],
-      encryptionPublicKey: batcherAddressParts[1],
+      coinPublicKey,
+      encryptionPublicKey,
       balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction> {
         // In batcher mode, the transaction is already balanced
         // @ts-expect-error - batcher doesn't actually balance, just passes through
@@ -83,8 +88,6 @@ function sleep(ms: number): Promise<void> {
 async function postTxToBatcher(batcherUrl: string, deploy_tx: Uint8Array): Promise<string> {
   const url = `${batcherUrl}/submitTx`;
 
-  const retries = 10;
-
   const query = () =>
     fetch(url, {
       method: 'POST',
@@ -94,7 +97,7 @@ async function postTxToBatcher(batcherUrl: string, deploy_tx: Uint8Array): Promi
       body: JSON.stringify({ tx: uint8ArrayToHex(deploy_tx) }),
     });
 
-  const batcherResponse = await withRetries(retries, query);
+  const batcherResponse = await withRetries(BATCHER_RETRY_COUNT, query);
 
   if (batcherResponse.status >= 300) {
     throw new Error(`Failed to post transaction: ${batcherResponse.statusText}`);
@@ -115,7 +118,7 @@ async function getBatcherAddress(batcherUrl: string): Promise<string> {
       },
     });
 
-  const batcherResponse = await withRetries(10, query);
+  const batcherResponse = await withRetries(BATCHER_RETRY_COUNT, query);
 
   if (batcherResponse.status >= 300) {
     throw new Error(`Failed to get batcher's address: ${batcherResponse.statusText}`);
@@ -139,7 +142,7 @@ async function withRetries(retries: number, query: () => Promise<Response>): Pro
     // 2. no utxos available
     //
     // in both cases a big sleep like this makes sense.
-    await sleep(10000);
+    await sleep(BATCHER_RETRY_DELAY_MS);
   }
 
   throw new Error('Batcher not available after retries');
