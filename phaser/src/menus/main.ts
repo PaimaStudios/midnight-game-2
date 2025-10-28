@@ -18,7 +18,7 @@ import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
-import { registerStartingContent } from "../admin";
+import { registerStartingContent } from "game-content";
 import { DungeonScene } from "./dungeon-scene";
 import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
@@ -215,10 +215,11 @@ export class TestMenu extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
-    // TODO: replace when adding admin tooling
-    // https://github.com/PaimaStudios/midnight-game-2/issues/77
     private createDefaultContent(api: DeployedGame2API) {
-        registerStartingContent(api).then(() => this.initApi(api))
+        // Always register full content by default
+        // To use minimal content, set VITE_MINIMAL_CONTENT=true in your .env
+        const minimalOnly = import.meta.env.VITE_MINIMAL_CONTENT === 'true';
+        registerStartingContent(api, minimalOnly, logger.network).then(() => this.initApi(api))
     }
 
 

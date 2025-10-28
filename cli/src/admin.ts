@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { Game2API } from 'game2-api';
 import { loadDeploymentData, clearDeploymentData } from './storage.js';
 import { initializeBatcherProviders, type BatcherConfig } from './batcher-providers.js';
-import { registerAllContent } from './content.js';
+import { registerStartingContent } from 'game-content';
 import { logger } from './logger.js';
 import {
   DEFAULT_BATCHER_URL,
@@ -60,7 +60,7 @@ program
       logger.info('Successfully joined contract!');
 
       logger.info('Registering game content...');
-      await registerAllContent(api, options.minimal ?? false, logger);
+      await registerStartingContent(api, options.minimal ?? false, logger);
 
       logger.info('');
       logger.info('All content registered successfully!');

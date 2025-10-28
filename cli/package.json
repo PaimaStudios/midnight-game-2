@@ -24,6 +24,7 @@
     "@midnight-ntwrk/midnight-js-types": "2.0.0",
     "@midnight-ntwrk/wallet-api": "^5.0.0",
     "commander": "^12.0.0",
+    "game-content": "workspace:*",
     "game2-api": "workspace:*",
     "game2-contract": "workspace:*",
     "pino": "^8.16.0",

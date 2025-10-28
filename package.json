@@ -3,6 +3,7 @@
   "workspaces": [
     "api",
     "cli",
+    "content",
     "contract",
     "phaser"
   ],
