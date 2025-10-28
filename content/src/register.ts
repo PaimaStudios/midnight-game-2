@@ -471,7 +471,7 @@ export async function registerStartingContent(
   if (!minimalOnly) {
     levels.push(
       // Grasslands
-      [grass1, [dragon]],
+      // [grass1, [dragon]], // grass1 IS ALREADY ADDED ABOVE IN `levels` DEFINITION SO THIS IS UNNEEDED. 
       [grass2, [dragonStrong]],
       [grass3, [dragonElite]],
 
@@ -494,32 +494,38 @@ export async function registerStartingContent(
     enemyConfigs.push(
       // Grasslands
       [grass1, [snowman, fireSprite]],
+      [grass1, [goblinSwordmaster, goblin, goblinSwordmaster]],
 
       [grass2, [goblinStrong, goblinPriestStrong, goblinStrong]],
       [grass2, [snowmanStrong, fireSpriteStrong]],
       [grass2, [iceGolemStrong, goblinStrong]],
+      [grass2, [goblinSwordmasterStrong, goblinSwordmasterStrong, goblinPriestStrong]],
 
       [grass3, [goblinElite, goblinPriestElite, goblinElite]],
       [grass3, [snowmanElite, fireSpriteElite]],
       [grass3, [iceGolemElite, goblinElite]],
+      [grass3, [goblinSwordmasterElite, goblinSwordmasterElite, goblinSwordmasterElite]],
 
       // Desert
       [desert1, [fireSprite, fireSprite]],
       [desert1, [goblin, fireSprite, coyote]],
       [desert1, [pyramid, coyote, goblinPriest]],
       [desert1, [hellspawn, coyote]],
+      [desert1, [goblinSwordmaster, coyote, goblinSwordmaster]],
 
       [desert2, [fireSpriteStrong, fireSpriteStrong, coyoteStrong]],
       [desert2, [goblinStrong, fireSpriteStrong, goblinPriestStrong]],
       [desert2, [goblinStrong, fireSpriteStrong, pyramidStrong]],
       [desert2, [fireSpriteStrong, fireSpriteStrong, goblinStrong]],
       [desert1, [hellspawnStrong, coyoteStrong]],
+      [desert2, [goblinSwordmasterStrong, pyramidStrong, goblinSwordmasterStrong]],
 
       [desert3, [fireSpriteElite, fireSpriteElite]],
       [desert3, [goblinElite, fireSpriteElite, coyoteElite]],
       [desert3, [fireSpriteElite, goblinPriestElite, goblinElite]],
       [desert3, [fireSpriteElite, pyramidElite, goblinElite]],
       [desert1, [hellspawnElite, coyoteElite]],
+      [desert3, [goblinSwordmasterElite, coyoteElite, goblinSwordmasterElite]],
 
       // Tundra
       [tundra1, [snowman, snowman, snowman]],
@@ -539,19 +545,22 @@ export async function registerStartingContent(
       [cave1, [goblin, goblinPriest, goblin]],
       [cave1, [goblin, hellspawn]],
       [cave1, [goblin, hellspawn, goblinPriest]],
+      [cave1, [goblinSwordmaster, goblinSwordmaster, goblinPriest]],
 
       [cave2, [goblinStrong, fireSpriteStrong, goblinStrong]],
       [cave2, [goblinStrong, goblinStrong, goblinStrong]],
       [cave2, [goblinStrong, goblinPriestStrong, goblinStrong]],
       [cave2, [iceGolemStrong, fireSpriteStrong]],
       [cave2, [hellspawnStrong, goblinStrong, goblinPriestStrong]],
+      [cave2, [goblinSwordmasterStrong, goblinSwordmasterStrong, goblinSwordmasterStrong]],
 
       [cave3, [goblinElite, fireSpriteElite, goblinElite]],
       [cave3, [goblinElite, goblinElite, goblinElite]],
       [cave3, [goblinElite, goblinPriestElite, goblinElite]],
       [cave3, [iceGolemElite, fireSpriteElite]],
       [cave3, [hellspawnElite, goblinElite]],
-      [cave3, [hellspawnElite, goblinElite, goblinPriestElite]]
+      [cave3, [hellspawnElite, goblinElite, goblinPriestElite]],
+      [cave3, [goblinSwordmasterElite, goblinPriestElite, goblinSwordmasterElite]]
     );
   }
 
