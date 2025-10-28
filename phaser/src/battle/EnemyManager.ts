@@ -31,7 +31,7 @@ type AnimationType = 'idle' | 'attack' | 'hurt' | 'death';
 
 class Plan extends Phaser.GameObjects.Container {
     constructor(actor: Actor, amount: number, effectType: BattleEffectType, allies: boolean) {
-        super(actor.scene, actor.x - actor.width / 2 - 32, actor.y + actor.planYOffset());
+        super(actor.scene, /*actor.x*/ - actor.width / 2 - 32, /*actor.y + */actor.planYOffset());
 
         this.add(actor.scene.add.text(14, 0, amount.toString(), fontStyle(10)).setOrigin(0.5, 0.65));
         this.add(actor.scene.add.sprite(-14, 0, effectTypeToIcon(effectType)).setScale(BASE_SPRITE_SCALE));
@@ -131,23 +131,33 @@ export class Actor extends Phaser.GameObjects.Container {
     }
 
     public setAttackPlan(amount: number) {
+        this.planAttack?.destroy();
         this.planAttack = new Plan(this, amount, BattleEffectType.ATTACK_PHYS, false);
+        this.add(this.planAttack);
     }
 
     public setBlockSelfPlan(amount: number) {
+        this.planBlockSelf?.destroy();
         this.planBlockSelf = new Plan(this, amount, BattleEffectType.BLOCK, false);
+        this.add(this.planBlockSelf);
     }
 
     public setBlockAlliesPlan(amount: number) {
+        this.planBlockAllies?.destroy();
         this.planBlockAllies = new Plan(this, amount, BattleEffectType.BLOCK, true);
+        this.add(this.planBlockAllies);
     }
     
     public setHealSelfPlan(amount: number) {
+        this.planHealSelf?.destroy();
         this.planHealSelf = new Plan(this, amount, BattleEffectType.HEAL, false);
+        this.add(this.planHealSelf);
     }
 
     public setHealAlliesPlan(amount: number) {
+        this.planHealAllies?.destroy();
         this.planHealAllies = new Plan(this, amount, BattleEffectType.HEAL, true);
+        this.add(this.planHealAllies);
     }
 
     public clearAttackPlan() {
@@ -249,6 +259,18 @@ export class Actor extends Phaser.GameObjects.Container {
             const breathe = Math.sin(this.animationTick) * 2;
             this.sprite.setY(breathe);
         }
+    }
+
+    protected override preDestroy(): void {
+        this.destroyPlans();
+    }
+
+    private destroyPlans() {
+        this.clearAttackPlan();
+        this.clearBlockSelfPlan();
+        this.clearBlockAlliesPlan();
+        this.clearHealSelfPlan();
+        this.clearHealAlliesPlan();
     }
 
     private getAnimationKey(animationType: AnimationType): string {
@@ -408,7 +430,7 @@ export class Actor extends Phaser.GameObjects.Container {
         return new Promise((resolve) => {
             this.playAnimation('death');
             const target = this.sprite || this.image;
-            
+            this.destroyPlans();
             if (target) {
                 // Fade out and fall
                 this.scene.tweens.add({
