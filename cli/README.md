@@ -1,6 +1,6 @@
 # Game CLI Tools
 
-Separate deployment and admin tooling for Game contracts. This addresses [issue #77](https://github.com/PaimaStudios/midnight-game-2/issues/77).
+Separate deployment and admin tooling for Game contracts.
 
 ## Overview
 
@@ -8,7 +8,7 @@ This CLI tooling allows you to:
 
 1. **Deploy** - Deploy a contract and save the contract address
 2. **Register content** - Use admin circuits to register levels, enemies, and bosses
-3. **Admin Commands** - Configure and debug existing deployed contracts with admin commands
+3. **Additional Admin Commands** - Configure and debug existing deployed contracts with admin commands
 
 **Note:** The CLI tools use **batcher mode** which submits transactions through a batcher service instead of requiring a wallet. This makes deployment simpler but requires a running batcher and indexer.
 
