@@ -82,8 +82,8 @@ export class ActiveBattle extends Phaser.Scene {
         this.player = new Actor(this, playerX(), playerY(), null);
         this.enemies = this.enemyManager.createEnemies(this.battle);
 
-        // Initialize spirits and start targeting
-        this.initializeSpirits();
+        // Initialize spirits and start targeting and set enemy plans (if we have the state updated - if not, state updates will trigger this)
+        this.initialize();
     }
 
     private onStateChange(state: Game2DerivedState) {
@@ -92,15 +92,14 @@ export class ActiveBattle extends Phaser.Scene {
         this.state = structuredClone(state);
 
         if (!this.initialized) {
-            this.initializeSpirits();
+            this.initialize();
         }
 
         // this possibly comes after the round already returned, so try to handle it if that's the case
         this.handleRoundComplete();
     }
 
-    private initializeSpirits() {
-        logger.combat.debug('initializeSpirits called');
+    private initialize() {
         if (!this.state || !this.battle) {
             logger.combat.debug('No state or battle found');
             return;
@@ -113,6 +112,16 @@ export class ActiveBattle extends Phaser.Scene {
             logger.combat.debug('No battleConfig or battleState found');
             return;
         }
+
+        this.initializeSpirits();
+
+        this.enemyManager.setEnemyPlans(battleConfig, battleState);
+
+        this.initialized = true;
+    }
+
+    private initializeSpirits() {
+        logger.combat.debug('initializeSpirits called');
         
         // Create spirits using SpiritManager
         this.spirits = this.spiritManager.createSpirits(this.state, this.battle);
@@ -143,8 +152,6 @@ export class ActiveBattle extends Phaser.Scene {
         
         // Start targeting phase
         this.spiritManager.startTargeting();
-        
-        this.initialized = true;
     }
 
     private async executeCombat() {
@@ -231,7 +238,7 @@ export class ActiveBattle extends Phaser.Scene {
         
         // Update animation manager references and use its callbacks
         this.combatAnimationManager.updateReferences(this.spirits, this.uiStateManager.getAbilityIcons(), this.enemies, this.player);
-        
+
         // Use the imported combat logic with targets
         return combat_round_logic(id, clonedState, targetsCopy, this.combatAnimationManager.createCombatCallbacks())
             .then((rewards) => {
@@ -241,6 +248,7 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     private handleRoundComplete() {
+        const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
         const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
         const combatRoundContinue = !this.waitingOnAnimations && battleState != undefined && battleState.round > this.round;
         // since the combat round ending removes the state we must also check if rewards have been given
@@ -252,6 +260,8 @@ export class ActiveBattle extends Phaser.Scene {
             
             this.player?.setBlock(0);
             this.enemyManager.clearBlocks();
+            // these must exist as above check (assuming battle state existing is same as config existing but if one exists without the other we have far worse problems)
+            this.enemyManager.setEnemyPlans(battleConfig!, battleState!);
             this.uiStateManager.destroyAbilityIcons();
             
             if (this.rewards != undefined) {
@@ -275,8 +285,4 @@ export class ActiveBattle extends Phaser.Scene {
             }
         }
     }
-
-
-
 }
-
