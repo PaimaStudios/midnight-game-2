@@ -22,6 +22,7 @@
     "@paima/midnight-vm-bindings": "^0.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "buffer": "^6.0.3",
+    "game-content": "workspace:*",
     "game2-api": "workspace:*",
     "game2-contract": "workspace:*",
     "phaser": "3.90.0",

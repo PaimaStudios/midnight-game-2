@@ -18,7 +18,7 @@ import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
-import { registerStartingContent } from "../admin";
+import { registerStartingContent } from "game-content";
 import { DungeonScene } from "./dungeon-scene";
 import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
@@ -161,34 +161,45 @@ export class TestMenu extends Phaser.Scene {
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
         if (this.firstRun) {
-            switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
-                case 'real':
-                    logger.network.info('~deploying~');
-                    this.deployProvider.create().then((api) => {
-                        logger.network.info('==========GOT API========');
-                        this.createDefaultContent(api);
-                    }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                    break;
-                case 'mock':
-                    logger.network.info('==========MOCK API========');
-                    this.createDefaultContent(new MockGame2API());
-                    break;
-                default:
-                    if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
-                        logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
-                    }
-                    this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+            // Check if we should join an existing contract
+            const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+            if (contractAddress) {
+                logger.network.info(`Joining existing contract: ${contractAddress}`);
+                this.deployProvider.join(contractAddress).then((api) => {
+                    logger.network.info('==========JOINED CONTRACT========');
+                    this.initApi(api);
+                }).catch((e) => logger.network.error(`Error joining contract: ${e}`));
+            } else {
+                // Original deploy/mock logic
+                switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
+                    case 'real':
                         logger.network.info('~deploying~');
                         this.deployProvider.create().then((api) => {
                             logger.network.info('==========GOT API========');
                             this.createDefaultContent(api);
                         }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                    }));
-                    this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
+                        break;
+                    case 'mock':
                         logger.network.info('==========MOCK API========');
                         this.createDefaultContent(new MockGame2API());
-                    }));
-                    break;
+                        break;
+                    default:
+                        if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
+                            logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
+                        }
+                        this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+                            logger.network.info('~deploying~');
+                            this.deployProvider.create().then((api) => {
+                                logger.network.info('==========GOT API========');
+                                this.createDefaultContent(api);
+                            }).catch((e) => logger.network.error(`Error connecting: ${e}`));
+                        }));
+                        this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
+                            logger.network.info('==========MOCK API========');
+                            this.createDefaultContent(new MockGame2API());
+                        }));
+                        break;
+                }
             }
         }
 
@@ -208,10 +219,11 @@ export class TestMenu extends Phaser.Scene {
         this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
-    // TODO: replace when adding admin tooling
-    // https://github.com/PaimaStudios/midnight-game-2/issues/77
     private createDefaultContent(api: DeployedGame2API) {
-        registerStartingContent(api).then(() => this.initApi(api))
+        // Always register full content by default
+        // To use minimal content, set VITE_MINIMAL_CONTENT=true in your .env
+        const minimalOnly = import.meta.env.VITE_MINIMAL_CONTENT === 'true';
+        registerStartingContent(api, minimalOnly, logger.network).then(() => this.initApi(api))
     }
 
 
