@@ -234,6 +234,13 @@ export class TestMenu extends Phaser.Scene {
 
         this.events.emit('stateChange', state);
 
+        // If TestMenu is not the active scene, don't update the UI
+        // This prevents interference with other scenes (like ActiveBattle)
+        if (!this.scene.isActive('TestMenu')) {
+            // But still check if we should rejoin a battle when coming back to this scene
+            return;
+        }
+
         this.buttons.forEach((b) => b.destroy());
 
         if (state.player !== undefined) {
