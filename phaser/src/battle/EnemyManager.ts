@@ -518,6 +518,25 @@ export class EnemyManager {
         }
     }
 
+    /**
+     * Apply accumulated damage from BattleState to enemy actors
+     * This is needed when rejoining an existing battle to show current HP
+     */
+    public applyBattleStateDamage(config: BattleConfig, battleState: BattleState) {
+        const stats = config.enemies.stats;
+        const damageToEnemy = [battleState.damage_to_enemy_0, battleState.damage_to_enemy_1, battleState.damage_to_enemy_2];
+
+        for (let i = 0; i < config.enemies.count; ++i) {
+            const enemy = this.enemies[i];
+            const maxHp = Number(stats[i].hp);
+            const damage = Number(damageToEnemy[i]);
+
+            // Calculate current HP based on accumulated damage
+            enemy.hp = Math.max(0, maxHp - damage);
+            enemy.hpBar.setValue(enemy.hp);
+        }
+    }
+
     public getEnemies(): Actor[] {
         return this.enemies;
     }

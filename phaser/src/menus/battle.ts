@@ -104,10 +104,10 @@ export class ActiveBattle extends Phaser.Scene {
             logger.combat.debug('No state or battle found');
             return;
         }
-        
+
         const battleConfig = this.state.activeBattleConfigs.get(pureCircuits.derive_battle_id(this.battle));
         const battleState = this.state.activeBattleStates.get(pureCircuits.derive_battle_id(this.battle));
-        
+
         if (!battleConfig || !battleState) {
             logger.combat.debug('No battleConfig or battleState found');
             return;
@@ -116,6 +116,15 @@ export class ActiveBattle extends Phaser.Scene {
         this.initializeSpirits();
 
         this.enemyManager.setEnemyPlans(battleConfig, battleState);
+
+        // Apply accumulated damage to restore HP to current state
+        // This is important when rejoining an existing battle
+        this.enemyManager.applyBattleStateDamage(battleConfig, battleState);
+
+        // Apply damage to player as well
+        const playerDamage = Number(battleState.damage_to_player);
+        this.player.hp = Math.max(0, this.player.maxHp - playerDamage);
+        this.player.hpBar.setValue(this.player.hp);
 
         this.initialized = true;
     }
