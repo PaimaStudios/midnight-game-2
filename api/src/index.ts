@@ -260,6 +260,7 @@ export class Game2API implements DeployedGame2API {
                     activeBattleStates: new Map(ledgerState.active_battle_states),
                     quests: new Map(ledgerState.quests),
                     player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
+                    playerId: playerId,
                     playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
                     allAbilities: new Map(ledgerState.all_abilities),
                     levels: extractLevelsFromLedgerState(),
