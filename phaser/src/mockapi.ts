@@ -51,7 +51,6 @@ export class MockGame2API implements DeployedGame2API {
         };
 
         // Use BehaviorSubject to ensure new subscribers immediately get current state
-        // This fixes race conditions where subscription happens after state updates
         this.stateSubject = new BehaviorSubject<Game2DerivedState>(this.mockState);
         this.state$ = this.stateSubject.asObservable();
     }
