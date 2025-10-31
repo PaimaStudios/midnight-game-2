@@ -449,7 +449,6 @@ export class Actor extends Phaser.GameObjects.Container {
 
     /**
      * Immediately hide dead enemy without animation
-     * Used when rejoining a battle where enemies are already dead
      */
     public hideDeadEnemy(): void {
         this.hpBar.setLabel('DEAD');
