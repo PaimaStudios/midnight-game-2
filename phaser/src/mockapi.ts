@@ -67,10 +67,6 @@ export class MockGame2API implements DeployedGame2API {
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_ice()), BigInt(1)],
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_fire_aoe()), BigInt(1)],
             ]);
-            // This is one difference vs the on-chain version so we can test effect triggers
-            for (let i = 0; i < 20; ++i) {
-                this.givePlayerRandomAbility(BigInt(1));
-            }
         });
     }
 
@@ -287,14 +283,6 @@ export class MockGame2API implements DeployedGame2API {
             const abilityId = rewards.ability.value;
             this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
         }
-    }
-
-    private givePlayerRandomAbility(difficulty: bigint): bigint {
-        const ability = randomAbility(randomBytes(32), difficulty);
-        const abilityId = pureCircuits.derive_ability_id(ability);
-        this.mockState.allAbilities.set(abilityId, ability);
-        this.mockState.playerAbilities.set(abilityId, (this.mockState.playerAbilities.get(abilityId) ?? BigInt(0)) + BigInt(1));
-        return abilityId;
     }
 
     private removePlayerAbility(id: bigint) {

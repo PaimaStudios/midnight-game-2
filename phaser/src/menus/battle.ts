@@ -269,8 +269,10 @@ export class ActiveBattle extends Phaser.Scene {
             
             this.player?.setBlock(0);
             this.enemyManager.clearBlocks();
-            // these must exist as above check (assuming battle state existing is same as config existing but if one exists without the other we have far worse problems)
-            this.enemyManager.setEnemyPlans(battleConfig!, battleState!);
+            // these should exist but after the battle finishes they don't so safe-guard here
+            if (battleConfig != undefined && battleState != undefined) {
+                this.enemyManager.setEnemyPlans(battleConfig!, battleState!);
+            }
             this.uiStateManager.destroyAbilityIcons();
             
             if (this.rewards != undefined) {

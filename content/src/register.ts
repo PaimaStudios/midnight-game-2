@@ -17,11 +17,11 @@ export const BIOME_ID = {
 
 // Defense values
 export const Def = {
-  IMMUNE: 0n,
-  WEAK: 1n,
+  SUPEREFFECTIVE: 0n,
+  EFFECTIVE: 1n,
   NEUTRAL: 2n,
-  EFFECTIVE: 3n,
-  SUPEREFFECTIVE: 4n,
+  WEAK: 3n,
+  IMMUNE: 4n,
 } as const;
 
 export type EnemyMoveConfig = {
@@ -211,16 +211,7 @@ export async function registerStartingContent(
     enemy_type: 0,
     hp: 30,
     moves: [{ attack: 5, block_self: 5 }, { attack: 10 }, { block_self: 10 }],
-    physical_def: Def.WEAK,
-    fire_def: Def.NEUTRAL,
-    ice_def: Def.NEUTRAL,
-  };
-  // TODO: remove once damage icons work: https://github.com/PaimaStudios/midnight-game-2/issues/139
-  const goblin2: EnemyStatsConfig = {
-    enemy_type: 8,
-    hp: 100,
-    moves: [{ heal_self: 1 }],
-    physical_def: Def.WEAK,
+    physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
@@ -228,7 +219,7 @@ export async function registerStartingContent(
     enemy_type: 0,
     hp: 45,
     moves: [{ attack: 10, block_self: 5 }, { attack: 15 }, { block_self: 15 }],
-    physical_def: Def.WEAK,
+    physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
@@ -236,7 +227,7 @@ export async function registerStartingContent(
     enemy_type: 0,
     hp: 60,
     moves: [{ attack: 10, block_self: 10 }, { attack: 20 }, { block_self: 20 }],
-    physical_def: Def.WEAK,
+    physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
@@ -464,7 +455,7 @@ export async function registerStartingContent(
   const levels: [Level, EnemyStatsConfig[]][] = [[grass1, [dragon]]];
   const enemyConfigs: [Level, EnemyStatsConfig[]][] = [
     // TODO: change back to 3x goblin once damage icons work
-    [grass1, [goblin, goblinPriest, goblin2]],
+    [grass1, [goblin, goblinPriest]],
   ];
 
   // Register full content if not minimal

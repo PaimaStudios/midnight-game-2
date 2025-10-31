@@ -2,11 +2,6 @@ pragma language_version >= 0.17;
 
 import CompactStandardLibrary;
 
-// fire/ice can go past block
-// physical doesn't
-// you can either be neutral (fire/ice do normal damage) or you can have higher/lower resistances to them
-// do we want them to all be 1 to 10 or just {weak fire, strong ice}/{balanced}/{strong fire, weak ice}?
-
 export enum EFFECT_TYPE {
     attack_phys,
     attack_fire,
@@ -15,8 +10,7 @@ export enum EFFECT_TYPE {
 }
 
 // a note on attack base damage:
-// damage is subject to resistances in EnemyStats and can be up to 10 times higher (when the enemy has no resistance)
-// TODO: how to handle this in the UI? Multiply by 10? or 5 to get 'average' with >5 being 'resistance' and <5 being 'weakness'?
+// damage is subject to resistances in EnemyStats and can go from half damage (weak) to +50% (effective) to double (super effective)
 export struct Effect {
     effect_type: EFFECT_TYPE,
     amount: Uint<32>,
@@ -45,9 +39,9 @@ export struct EnemyStats {
     hp: Uint<32>,
     moves: Vector<3, EnemyMove>,
     move_count: Uint<32>,
-    physical_def: Uint<32>,
-    fire_def: Uint<32>,
-    ice_def: Uint<32>,
+    physical_def: Uint<0..4>,
+    fire_def: Uint<0..4>,
+    ice_def: Uint<0..4>,
 }
 
 export struct EnemyMove {
@@ -86,7 +80,8 @@ export pure circuit ability_score(ability: Ability): Uint<32> {
 // ranks how "good" an effect is. higher is better
 pure circuit effect_score(effect: Maybe<Effect>): Uint<32> {
     const aoe = (1 + (effect.value.is_aoe as Uint<1>));
-    const attack_compensate = (1 + 4 * ((effect.value.effect_type == EFFECT_TYPE.attack_phys || effect.value.effect_type == EFFECT_TYPE.attack_ice || effect.value.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>));
+    // attacks are half that of block stats for efficient computations (* 2 is normal resistance) so adjust that here
+    const attack_compensate = (1 + ((effect.value.effect_type == EFFECT_TYPE.attack_phys || effect.value.effect_type == EFFECT_TYPE.attack_ice || effect.value.effect_type == EFFECT_TYPE.attack_fire) as Uint<1>));
     return ((effect.is_some as Uint<1>) * (effect.value.amount * aoe * attack_compensate)) as Uint<32>;
 }
 
@@ -95,7 +90,7 @@ export pure circuit ability_base_phys(): Ability {
     return Ability {
         some<Effect>(Effect {
             EFFECT_TYPE.attack_phys,
-            2,
+            5,
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
@@ -121,7 +116,7 @@ export pure circuit ability_base_fire_aoe(): Ability {
     return Ability {
         some<Effect>(Effect {
             EFFECT_TYPE.attack_fire,
-            2,
+            5,
             true
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
@@ -134,7 +129,7 @@ export pure circuit ability_base_ice(): Ability {
     return Ability {
         some<Effect>(Effect {
             EFFECT_TYPE.attack_ice,
-            4,
+            10,
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
@@ -262,7 +257,7 @@ export struct PlayerLoadout {
 export circuit register_new_player(): [] {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     const initial_rng = persistentHash<Field>(player_id + players.size());
-    players.insert(player_id, Player { 3, initial_rng });
+    players.insert(player_id, Player { 0, initial_rng });
     player_abilities.insertDefault(player_id);
     player_abilities.lookup(player_id).insert(ability_base_phys_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
@@ -440,7 +435,8 @@ circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability 
 circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
     const effect_type = cast_to_effect_type(mod(rng, 4) as Uint<0..4>);
     const aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
-    const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 5;
+    // damage needs to be half that of block due to resistance calculations. see Effect comment
+    const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
     const final_factor = factor * block_factor * (aoe ? 1 : 2);
     const amount = final_factor + mod(rng, final_factor as Uint<32>);
     return Effect {

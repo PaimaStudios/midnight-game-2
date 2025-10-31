@@ -8,9 +8,9 @@ import { Color, colorToNumber } from "../constants/colors";
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
 import { orbAuraIdleKey, spiritAuraIdleKey } from "../animations/spirit";
 
-/// Adjusts contract-level damage numbers to a base/average amount
+/// Adjusts contract-level damage numbers to a base/average amount (normal damage resistance)
 export function contractDamageToBaseUI(amount: number | bigint): number {
-    return Number(amount) * 5;
+    return Number(amount) * 2;
 }
 
 function addEffectIcons(container: Phaser.GameObjects.Container, effect: Effect, xOffset: number, yOffset: number, tint: Color): Phaser.GameObjects.GameObject[] {
