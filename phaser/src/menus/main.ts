@@ -163,44 +163,46 @@ export class TestMenu extends Phaser.Scene {
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
         // deploy contract for testing
         if (this.firstRun) {
-            // Check if we should join an existing contract
-            const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-            if (contractAddress) {
-                logger.network.info(`Joining existing contract: ${contractAddress}`);
-                this.deployProvider.join(contractAddress).then((api) => {
-                    logger.network.info('==========JOINED CONTRACT========');
-                    this.initApi(api);
-                }).catch((e) => logger.network.error(`Error joining contract: ${e}`));
+            // Check if we're in mock mode first - mock mode doesn't use real contracts
+            if (import.meta.env.VITE_API_FORCE_DEPLOY === 'mock') {
+                logger.network.info('==========MOCK API========');
+                this.createDefaultContent(new MockGame2API());
             } else {
-                // Original deploy/mock logic
-                switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
-                    case 'real':
-                        logger.network.info('~deploying~');
-                        this.deployProvider.create().then((api) => {
-                            logger.network.info('==========GOT API========');
-                            this.createDefaultContent(api);
-                        }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                        break;
-                    case 'mock':
-                        logger.network.info('==========MOCK API========');
-                        this.createDefaultContent(new MockGame2API());
-                        break;
-                    default:
-                        if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
-                            logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
-                        }
-                        this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+                // Check if we should join an existing contract (only for real deployments)
+                const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+                if (contractAddress) {
+                    logger.network.info(`Joining existing contract: ${contractAddress}`);
+                    this.deployProvider.join(contractAddress).then((api) => {
+                        logger.network.info('==========JOINED CONTRACT========');
+                        this.initApi(api);
+                    }).catch((e) => logger.network.error(`Error joining contract: ${e}`));
+                } else {
+                    // Original deploy logic
+                    switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
+                        case 'real':
                             logger.network.info('~deploying~');
                             this.deployProvider.create().then((api) => {
                                 logger.network.info('==========GOT API========');
                                 this.createDefaultContent(api);
                             }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                        }));
-                        this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
-                            logger.network.info('==========MOCK API========');
-                            this.createDefaultContent(new MockGame2API());
-                        }));
-                        break;
+                            break;
+                        default:
+                            if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
+                                logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
+                            }
+                            this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
+                                logger.network.info('~deploying~');
+                                this.deployProvider.create().then((api) => {
+                                    logger.network.info('==========GOT API========');
+                                    this.createDefaultContent(api);
+                                }).catch((e) => logger.network.error(`Error connecting: ${e}`));
+                            }));
+                            this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
+                                logger.network.info('==========MOCK API========');
+                                this.createDefaultContent(new MockGame2API());
+                            }));
+                            break;
+                    }
                 }
             }
         }
@@ -234,9 +236,10 @@ export class TestMenu extends Phaser.Scene {
 
         this.events.emit('stateChange', state);
 
-        // If TestMenu is not the active scene, don't update the UI
-        // This prevents interference with other scenes
-        if (!this.scene.isActive('TestMenu')) {
+        // If TestMenu is not the active scene (but allow paused scenes for registration flow)
+        // This prevents interference with other scenes like ActiveBattle
+        const sceneStatus = this.scene.settings.status;
+        if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
             return;
         }
 
@@ -273,17 +276,20 @@ export class TestMenu extends Phaser.Scene {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
                 logger.gameState.info('Registering new player...');
+
                 // Launch the loader scene to display during the API call
+
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
                 loader.setText("Submitting Proof");
-                this.events.on('stateChange', () => {
+
+                this.events.once('stateChange', () => {
                     logger.gameState.info('Registered new player');
                     this.scene.resume().stop('Loader');
                 });
+
                 this.api!.register_new_player().then(() => {
                     loader.setText("Waiting on chain update");
-
                 }).catch((e) => {
                     logger.network.error(`Error registering new player: ${e}`);
                     this.scene.resume().stop('Loader');
