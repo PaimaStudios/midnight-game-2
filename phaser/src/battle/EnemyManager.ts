@@ -534,6 +534,24 @@ export class EnemyManager {
             // Calculate current HP based on accumulated damage
             enemy.hp = Math.max(0, maxHp - damage);
             enemy.hpBar.setValue(enemy.hp);
+
+            // If enemy is already dead, immediately hide them
+            if (enemy.hp <= 0) {
+                enemy.hpBar.setLabel('DEAD');
+                // Immediately hide dead enemies instead of animating
+                // (they already died in a previous round)
+                const target = enemy.sprite || enemy.image;
+                if (target) {
+                    target.setAlpha(0);
+                }
+                enemy.hpBar.setAlpha(0);
+                // Clear all enemy plans
+                enemy.clearAttackPlan();
+                enemy.clearBlockSelfPlan();
+                enemy.clearBlockAlliesPlan();
+                enemy.clearHealSelfPlan();
+                enemy.clearHealAlliesPlan();
+            }
         }
     }
 
