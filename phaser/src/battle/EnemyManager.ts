@@ -446,6 +446,19 @@ export class Actor extends Phaser.GameObjects.Container {
             }
         });
     }
+
+    /**
+     * Immediately hide dead enemy without animation
+     */
+    public hideDeadEnemy(): void {
+        this.hpBar.setLabel('DEAD');
+        const target = this.sprite || this.image;
+        if (target) {
+            target.setAlpha(0);
+        }
+        this.hpBar.setAlpha(0);
+        this.destroyPlans();
+    }
 }
 
 export class EnemyManager {
@@ -534,6 +547,11 @@ export class EnemyManager {
             // Calculate current HP based on accumulated damage
             enemy.hp = Math.max(0, maxHp - damage);
             enemy.hpBar.setValue(enemy.hp);
+
+            // If enemy is already dead, immediately hide them
+            if (enemy.hp <= 0) {
+                enemy.hideDeadEnemy();
+            }
         }
     }
 

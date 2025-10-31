@@ -7,7 +7,7 @@
 import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { Observable, Subscriber, Subject } from "rxjs";
+import { Observable, Subscriber, Subject, BehaviorSubject } from "rxjs";
 import { combat_round_logic, initBattlestate, randomAbility } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
@@ -21,7 +21,7 @@ export const OFFLINE_PRACTICE_CONTRACT_ADDR = 'OFFLINE_PRACTICE_CONTRACT_ADDR';
 export class MockGame2API implements DeployedGame2API {
     readonly deployedContractAddress: ContractAddress;
     readonly state$: Observable<Game2DerivedState>;
-    private stateSubject: Subject<Game2DerivedState>;
+    private stateSubject: BehaviorSubject<Game2DerivedState>;
     mockState: Game2DerivedState;
     questReadiness: Map<bigint, boolean>;
     questStartTimes: Map<bigint, number>;
@@ -30,8 +30,8 @@ export class MockGame2API implements DeployedGame2API {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
         this.questReadiness = new Map();
         this.questStartTimes = new Map();
-        this.stateSubject = new Subject<Game2DerivedState>();
-        this.state$ = this.stateSubject.asObservable();
+
+        // Initialize mock state
         this.mockState = {
             activeBattleConfigs: new Map(),
             activeBattleStates: new Map(),
@@ -49,9 +49,10 @@ export class MockGame2API implements DeployedGame2API {
             bosses: new Map(),
             playerBossProgress: new Map(),
         };
-        setTimeout(() => {
-            this.stateSubject.next(this.mockState);
-        }, MOCK_DELAY);
+
+        // Use BehaviorSubject to ensure new subscribers immediately get current state
+        this.stateSubject = new BehaviorSubject<Game2DerivedState>(this.mockState);
+        this.state$ = this.stateSubject.asObservable();
     }
 
     public register_new_player(): Promise<void> {
