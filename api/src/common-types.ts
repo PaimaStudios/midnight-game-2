@@ -64,6 +64,7 @@ export type Game2DerivedState = {
   activeBattleConfigs: Map<bigint, BattleConfig>;
   quests: Map<bigint, QuestConfig>;
   player?: Player;
+  playerId?: bigint;
   playerAbilities: Map<bigint, bigint>;
   allAbilities: Map<bigint, Ability>;
   // biome -> difficulty -> index

@@ -43,6 +43,7 @@ export class MockGame2API implements DeployedGame2API {
             ].map((ability) => [pureCircuits.derive_ability_id(ability), ability])),
             quests: new Map(),
             player: undefined,
+            playerId: undefined,
             playerAbilities: new Map(),
             levels: new Map(),
             bosses: new Map(),
@@ -59,6 +60,7 @@ export class MockGame2API implements DeployedGame2API {
                 gold: BigInt(0),
                 rng: randomBytes(32)
             };
+            this.mockState.playerId = MOCK_PLAYER_ID;
             this.mockState.playerAbilities = new Map([
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_phys()), BigInt(4)],
                 [pureCircuits.derive_ability_id(pureCircuits.ability_base_block()), BigInt(4)],

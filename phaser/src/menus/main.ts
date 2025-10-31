@@ -23,6 +23,8 @@ import { DungeonScene } from "./dungeon-scene";
 import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
 import { NetworkError } from "./network-error";
+import { ActiveBattle } from "./battle";
+import { pureCircuits } from "game2-contract";
 
 export class TestMenu extends Phaser.Scene {
     deployProvider: BrowserDeploymentManager;
@@ -232,22 +234,36 @@ export class TestMenu extends Phaser.Scene {
 
         this.events.emit('stateChange', state);
 
+        // If TestMenu is not the active scene, don't update the UI
+        // This prevents interference with other scenes
+        if (!this.scene.isActive('TestMenu')) {
+            return;
+        }
+
         this.buttons.forEach((b) => b.destroy());
 
         if (state.player !== undefined) {
+            // Check if player has an active battle and rejoin if needed
+            const activeBattle = this.findPlayerActiveBattle(state);
+            if (activeBattle) {
+                logger.gameState.info('Active battle detected - rejoining battle');
+                this.rejoinBattle(activeBattle.config);
+                return; // Don't show menu buttons, redirect to battle
+            }
+
             // Main menu buttons in vertical column with proper spacing
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
                 this.scene.remove('BiomeSelectMenu');
                 this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
                 this.scene.start('BiomeSelectMenu');
             }));
-            
+
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
                 this.scene.remove('QuestsMenu');
                 this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
                 this.scene.start('QuestsMenu');
             }));
-            
+
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
@@ -282,6 +298,46 @@ export class TestMenu extends Phaser.Scene {
                 });
             }));
         }
+    }
+
+    /**
+     * Find any active battle belonging to the current player
+     * @param state Current game state
+     * @returns The battle config and ID if found, undefined otherwise
+     */
+    private findPlayerActiveBattle(state: Game2DerivedState): { config: any, id: bigint } | undefined {
+        if (!state.player || !state.playerId) {
+            return undefined;
+        }
+
+        // Look through all active battle configs for one belonging to this player
+        for (const [battleId, config] of state.activeBattleConfigs) {
+            if (config.player_pub_key === state.playerId) {
+                // Found an active battle for this player
+                logger.gameState.debug(`Found active battle for player: ${battleId}`);
+                return { config, id: battleId };
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Rejoin an existing active battle
+     * @param battleConfig The battle configuration to rejoin
+     */
+    private rejoinBattle(battleConfig: any) {
+        logger.gameState.info('Rejoining active battle...');
+
+        // Stop and remove any existing ActiveBattle scene
+        if (this.scene.get('ActiveBattle')) {
+            this.scene.stop('ActiveBattle');
+            this.scene.remove('ActiveBattle');
+        }
+
+        // Create and start the ActiveBattle scene
+        this.scene.add('ActiveBattle', new ActiveBattle(this.api!, battleConfig, this.state!));
+        this.scene.start('ActiveBattle');
     }
 
 }
