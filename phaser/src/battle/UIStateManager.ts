@@ -102,6 +102,13 @@ export class UIStateManager {
         const battleOverText = circuit.alive ? `You won ${circuit.gold} gold!` : `You Died :(`;
         this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.52, battleOverText, fontStyle(16)).setOrigin(0.5, 0.5);
         new Button(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.72, GAME_WIDTH * 0.5, GAME_HEIGHT * 0.2, returnButtonText, 16, () => {
+            // Stop battle music when returning to hub
+            const battleMusic = this.scene.sound.get('boss-battle-music');
+            if (battleMusic) {
+                battleMusic.stop();
+                battleMusic.destroy();
+            }
+
             this.scene.scene.remove('TestMenu');
             this.scene.scene.add('TestMenu', new TestMenu(this.api, state));
             this.scene.scene.start('TestMenu');
