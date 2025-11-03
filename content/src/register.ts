@@ -508,7 +508,7 @@ export async function registerStartingContent(
       [desert2, [goblinStrong, fireSpriteStrong, goblinPriestStrong]],
       [desert2, [goblinStrong, fireSpriteStrong, pyramidStrong]],
       [desert2, [fireSpriteStrong, fireSpriteStrong, goblinStrong]],
-      [desert1, [hellspawnStrong, coyoteStrong]],
+      [desert2, [hellspawnStrong, coyoteStrong]],
       [desert2, [goblinSwordmasterStrong, pyramidStrong, goblinSwordmasterStrong]],
 
       [desert3, [fireSpriteElite, fireSpriteElite]],
