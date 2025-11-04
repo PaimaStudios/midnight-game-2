@@ -172,7 +172,7 @@ export class Game2API implements DeployedGame2API {
                 providers.publicDataProvider.contractStateObservable(this.deployedContractAddress, { type: 'latest' }).pipe(
                   map((contractState) => ledger(contractState.data)),
                   tap((ledgerState) =>
-                    logger?.trace({
+                    logger?.debug({
                       ledgerStateChanged: {
                         ledgerState: {
                           ...ledgerState,

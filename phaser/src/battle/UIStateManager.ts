@@ -163,7 +163,7 @@ export class UIStateManager {
         );
     }
 
-    private async executeRetreat(battle: BattleConfig, state: Game2DerivedState, onRetreatStart: () => void) {
+    private async executeRetreat(battle: BattleConfig, _state: Game2DerivedState, onRetreatStart: () => void) {
         logger.combat.info('Retreating from battle');
 
         // Call the callback to disable interactions in the battle scene
@@ -172,11 +172,48 @@ export class UIStateManager {
         // Disable retreat button
         this.retreatButton?.setEnabled(false);
 
+        // Close the overlay and show loader
+        this.retreatOverlay = null;
+        this.scene.scene.pause().launch('Loader');
+
         try {
             const battleId = pureCircuits.derive_battle_id(battle);
 
             // Call the retreat API
             await this.api.retreat_from_battle(battleId);
+
+            // Wait for the state to update (battle should be removed from activeBattleConfigs)
+            // This prevents a race condition where we navigate to TestMenu before the state updates
+            logger.combat.info(`Waiting for battle ${battleId} to be removed from state...`);
+
+            const stateUpdatePromise = new Promise<Game2DerivedState>((resolve, reject) => {
+                let subscription: any;
+
+                // Add timeout to prevent infinite waiting
+                const timeout = setTimeout(() => {
+                    if (subscription) subscription.unsubscribe();
+                    reject(new Error('Timeout waiting for battle state to update'));
+                }, 30000); // 30 second timeout
+
+                subscription = this.api.state$.subscribe((updatedState) => {
+                    logger.combat.debug(`State update received, checking for battle ${battleId}. Battle exists: ${updatedState.activeBattleConfigs.has(battleId)}`);
+
+                    // Check if the battle has been removed from the state
+                    if (!updatedState.activeBattleConfigs.has(battleId)) {
+                        clearTimeout(timeout);
+                        subscription.unsubscribe();
+                        logger.combat.info('Battle successfully removed from state');
+                        resolve(updatedState);
+                    }
+                });
+            });
+
+            const updatedState = await stateUpdatePromise;
+
+            logger.combat.info('Navigating to TestMenu with updated state');
+
+            // Stop loader
+            this.scene.scene.resume().stop('Loader');
 
             // Stop battle music
             const battleMusic = this.scene.sound.get('boss-battle-music');
@@ -185,16 +222,30 @@ export class UIStateManager {
                 battleMusic.destroy();
             }
 
-            // Cleanup retreat button and overlay
+            // Cleanup retreat button
             this.removeRetreatButton();
-            this.retreatOverlay = null;
 
-            // Return to hub
+            // Return to hub with updated state
+            // IMPORTANT: Call shutdown() on the old TestMenu to unsubscribe from state updates
+            // This prevents the old scene from reacting to stale state emissions from the indexer
+            const oldTestMenu = this.scene.scene.get('TestMenu') as TestMenu;
+            if (oldTestMenu && oldTestMenu.shutdown) {
+                oldTestMenu.shutdown();
+            }
+
             this.scene.scene.remove('TestMenu');
-            this.scene.scene.add('TestMenu', new TestMenu(this.api, state));
+            const newTestMenu = new TestMenu(this.api, updatedState);
+
+            // Mark this battle as retreated so the new TestMenu ignores stale state updates
+            // This prevents the indexer from replaying old state and causing a rejoin
+            newTestMenu.markBattleAsRetreated(battleId);
+
+            this.scene.scene.add('TestMenu', newTestMenu);
             this.scene.scene.start('TestMenu');
         } catch (err) {
             logger.network.error(`Error retreating from battle: ${err}`);
+            // Stop loader on error
+            this.scene.scene.resume().stop('Loader');
             // Re-enable interactions on error
             this.retreatButton?.setEnabled(true);
             this.retreatOverlay = null;

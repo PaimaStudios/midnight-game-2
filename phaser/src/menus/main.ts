@@ -36,6 +36,7 @@ export class TestMenu extends Phaser.Scene {
     buttons: Button[];
     firstRun: boolean;
     menuMusic: Phaser.Sound.BaseSound | undefined;
+    private retreatedBattleIds: Set<bigint> = new Set(); // Track battles we've retreated from
 
     constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
         super('TestMenu');
@@ -241,6 +242,7 @@ export class TestMenu extends Phaser.Scene {
         // This prevents interference with other scenes like ActiveBattle
         const sceneStatus = this.scene.settings.status;
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
+            logger.gameState.debug(`TestMenu.onStateChange() skipped - scene status: ${sceneStatus}`);
             return;
         }
 
@@ -250,10 +252,18 @@ export class TestMenu extends Phaser.Scene {
             // Check if player has an active battle and rejoin if needed
             const activeBattle = this.findPlayerActiveBattle(state);
             if (activeBattle) {
-                logger.gameState.info('Active battle detected - rejoining battle');
+                // Don't rejoin battles we just retreated from (prevents race condition with indexer state replay)
+                if (this.retreatedBattleIds.has(activeBattle.id)) {
+                    logger.gameState.info(`Ignoring stale state for retreated battle ${activeBattle.id}`);
+                    return;
+                }
+
+                logger.gameState.info(`Active battle detected - rejoining battle ${activeBattle.id}. Total active battles: ${state.activeBattleConfigs.size}`);
                 this.rejoinBattle(activeBattle.config);
                 return; // Don't show menu buttons, redirect to battle
             }
+
+            logger.gameState.debug(`No active battle found. Total active battles in state: ${state.activeBattleConfigs.size}`);
 
             // Main menu buttons in vertical column with proper spacing
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
@@ -345,6 +355,33 @@ export class TestMenu extends Phaser.Scene {
         // Create and start the ActiveBattle scene
         this.scene.add('ActiveBattle', new ActiveBattle(this.api!, battleConfig, this.state!));
         this.scene.start('ActiveBattle');
+    }
+
+    /**
+     * Mark a battle as retreated to prevent rejoining it from stale state updates
+     * @param battleId The battle ID that was retreated from
+     */
+    public markBattleAsRetreated(battleId: bigint) {
+        logger.gameState.debug(`Marking battle ${battleId} as retreated`);
+        this.retreatedBattleIds.add(battleId);
+
+        // Clean up the retreated battle ID after 10 seconds to prevent memory leak
+        setTimeout(() => {
+            this.retreatedBattleIds.delete(battleId);
+            logger.gameState.debug(`Cleared retreated battle ${battleId} from ignore list`);
+        }, 10000);
+    }
+
+    /**
+     * Cleanup method to unsubscribe from state updates
+     * Call this before removing the TestMenu scene to prevent stale state updates
+     */
+    public shutdown() {
+        logger.gameState.debug('TestMenu.shutdown() - unsubscribing from state updates');
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = undefined;
+        }
     }
 
 }
