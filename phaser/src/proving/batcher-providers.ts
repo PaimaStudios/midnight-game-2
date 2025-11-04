@@ -1,11 +1,12 @@
-import { type Game2Providers } from "game2-api";
+import { Game2CircuitKeys, safeJSONString, type Game2Providers } from "game2-api";
 import { type Logger } from "pino";
-import { logger } from './main';
+import { logger } from '../main';
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import {
     type BalancedTransaction,
+    ProofProvider,
     ProveTxConfig,
     type UnbalancedTransaction,
     createUnbalancedTx,
@@ -26,71 +27,71 @@ import init, {
     NetworkId,
     ZkConfig,
 } from "@paima/midnight-vm-bindings";
+import { proveTxLocally } from "./local-proving";
 
-const localProofServer = {
+type WebWorkerPromiseCallbacks = {
+    resolve: (value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>) => void;
+    reject: (reason?: any) => void;
+};
+
+class WebWorkerLocalProofServer implements ProofProvider<Game2CircuitKeys> {
+    nextId: number;
+    requests: Map<number, WebWorkerPromiseCallbacks>;
+    worker: Worker | undefined;
+
+    constructor() {
+        this.nextId = 0;
+        this.requests = new Map();
+
+        if (window.Worker) {
+            console.log(`creating web worker`);
+            this.worker = new Worker(new URL('./prover-worker.js', import.meta.url));
+            this.worker.onmessage = (event) => {
+                console.log(`got message from worker: ${JSON.stringify(event.data)}!`);
+                if (event.data.type == 'success') {
+                    this.requests.get(event.data.requestId)?.resolve(event.data.tx);
+                } else {
+                    this.requests.get(event.data.requestId)?.reject(event.data.error);
+                }
+                this.requests.delete(event.data.requestId);
+            };
+            this.worker.onerror = function(error) {
+                logger.network.error(`general web worker error: ${error.message} | ${safeJSONString(error)}`);
+            };
+        }
+    }
+
     async proveTx<K extends string>(
         tx: UnprovenTransaction,
         proveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
         const baseUrl = new URL(window.location.href).toString();
+        if (this.worker != undefined) {
+            return new Promise((resolve, reject) => {
+                this.requests.set(this.nextId, { resolve, reject });
 
-        const pp = MidnightWasmParamsProvider.new(baseUrl);
+                this.worker!.postMessage({
+                    baseUrl,
+                    tx,
+                    proveTxConfig
+                });
+                
+                ++this.nextId;
+            });
+        } else {
+            return proveTxLocally(baseUrl, tx, proveTxConfig);
+        }
+    }
+}
 
-        const prover = WasmProver.new();
 
-        const rng = Rng.new();
-
-        const networkId = getRuntimeNetworkId();
-
-        const rawTx = tx.serialize(networkId);
-
-        const zkConfig = (() => {
-            if (proveTxConfig) {
-                return ZkConfig.new(
-                    proveTxConfig.zkConfig?.circuitId!,
-                    proveTxConfig.zkConfig?.proverKey!,
-                    proveTxConfig.zkConfig?.verifierKey!,
-                    proveTxConfig.zkConfig?.zkir!
-                );
-            } else {
-                return ZkConfig.empty();
-            }
-        })();
-
-        logger.network.info('Starting ZK proof');
-
-        const startTime = performance.now();
-
-        let unbalancedTxRaw = await prover.prove_tx(
-            rng,
-            rawTx,
-            networkId === LedgerNetworkId.Undeployed
-                ? NetworkId.undeployed()
-                : NetworkId.testnet(),
-            zkConfig,
-            pp
-        );
-
-        const endTime = performance.now();
-        logger.network.info(
-            `Proved unbalanced tx in: ${Math.floor(endTime - startTime)} ms`
-        );
-
-        const unbalancedTx = Transaction.deserialize(
-            unbalancedTxRaw,
-            getRuntimeNetworkId()
-        );
-
-        return createUnbalancedTx(unbalancedTx);
-    },
-};
 
 /** @internal */
 export const initializeProviders = async (
     logger: Logger
 ): Promise<Game2Providers> => {
-    logger.info("initializing batcher providers");
     await init();
+
     await initThreadPool(navigator.hardwareConcurrency);
 
     const batcherAddress = await getBatcherAddress();
@@ -105,7 +106,7 @@ export const initializeProviders = async (
             window.location.origin,
             fetch.bind(window)
         ),
-        proofProvider: localProofServer,
+        proofProvider: new WebWorkerLocalProofServer(),
         publicDataProvider: indexerPublicDataProvider(
             import.meta.env.VITE_BATCHER_MODE_INDEXER_HTTP_URL!,
             import.meta.env.VITE_BATCHER_MODE_INDEXER_WS_URL!
