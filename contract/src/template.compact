@@ -624,14 +624,14 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[1])),
         all_abilities.lookup(index<Field>(loadout.abilities, state.deck_indices[2])),
     ];
-    
+
     const result = combat_round_impl(disclose(battle_id), round_abilities, disclose(ability_targets));
-    
+
     active_battle_states.insert(disclose(battle_id), result);
     if (result.damage_to_player >= 100) {
         active_battle_configs.remove(disclose(battle_id));
         active_battle_states.remove(disclose(battle_id));
-        
+
         return some<BattleRewards>(BattleRewards {
             false,
             0,
@@ -640,7 +640,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
     } else if (result.damage_to_enemy_0 >= config.enemies.stats[0].hp && (config.enemies.count < 2 || result.damage_to_enemy_1 >= config.enemies.stats[1].hp) && (config.enemies.count < 3 || result.damage_to_enemy_2 >= config.enemies.stats[2].hp)) {
         // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
-        
+
         const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
                             + boss_type_reward_factor(config.enemies.count >= 2 ? config.enemies.stats[1].boss_type : BOSS_TYPE.normal)
                             + boss_type_reward_factor(config.enemies.count >= 3 ? config.enemies.stats[2].boss_type : BOSS_TYPE.normal);
@@ -676,6 +676,24 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         return some<BattleRewards>(reward);
     }
     return none<BattleRewards>();
+}
+
+/**
+ * Retreat from an active battle without penalty
+ * Returns the loadout to the player and removes the battle from active battles
+ */
+export circuit retreat_from_battle(battle_id: Field): [] {
+    const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
+    assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
+
+    const config = disclose(active_battle_configs.lookup(disclose(battle_id)));
+
+    // Return the loadout to the player
+    return_loadout(config.loadout);
+
+    // Remove battle config and state
+    active_battle_configs.remove(disclose(battle_id));
+    active_battle_states.remove(disclose(battle_id));
 }
 
 

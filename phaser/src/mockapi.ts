@@ -148,6 +148,25 @@ export class MockGame2API implements DeployedGame2API {
         });
     }
 
+    public retreat_from_battle(battle_id: bigint): Promise<void> {
+        return this.response(async () => {
+            const battleConfig = this.mockState.activeBattleConfigs.get(battle_id);
+            if (!battleConfig) {
+                throw new Error("Battle not found");
+            }
+
+            // Return loadout abilities to player
+            for (const ability_id of battleConfig.loadout.abilities) {
+                const count = this.mockState.playerAbilities.get(ability_id) ?? BigInt(0);
+                this.mockState.playerAbilities.set(ability_id, count + BigInt(1));
+            }
+
+            // Remove battle config and state
+            this.mockState.activeBattleConfigs.delete(battle_id);
+            this.mockState.activeBattleStates.delete(battle_id);
+        });
+    }
+
     public start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
         return this.response(async () => {
             for (const ability_id of loadout.abilities) {
