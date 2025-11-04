@@ -145,8 +145,6 @@ export class TestMenu extends Phaser.Scene {
     }
 
     create() {
-        logger.gameState.info(`TestMenu.create() called - firstRun: ${this.firstRun}, has state: ${this.state !== undefined}, retreatedBattles: ${this.retreatedBattleIds.size}`);
-
         // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
@@ -161,15 +159,10 @@ export class TestMenu extends Phaser.Scene {
         createSpiritAnimations(this);
         createEnemyAnimations(this);
 
-        //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
-
         // If this is not the first run (we're returning from a battle/menu), initialize UI immediately
+        // Scene status is CREATING during create(), so we bypass onStateChange's status check
         if (!this.firstRun && this.state) {
-            logger.gameState.info(`TestMenu.create() - not first run, initializing UI with ${this.state.activeBattleConfigs.size} active battles, buttons count before: ${this.buttons.length}`);
-            // Call initializeUI directly instead of onStateChange to bypass scene status check
-            // Scene status is CREATING (4) during create(), not RUNNING (2)
             this.initializeUI(this.state);
-            logger.gameState.info(`TestMenu.create() - buttons count after initializeUI: ${this.buttons.length}`);
         }
 
         // deploy contract for testing
@@ -246,20 +239,15 @@ export class TestMenu extends Phaser.Scene {
      * Used by create() when scene status is CREATING
      */
     private initializeUI(state: Game2DerivedState) {
-        logger.gameState.debug(`initializeUI called with ${state.activeBattleConfigs.size} active battles`);
-
         // Check for retreated battles and active battles first
         if (state.player !== undefined) {
             const activeBattle = this.findPlayerActiveBattle(state);
             if (activeBattle) {
                 // Don't rejoin battles we just retreated from
                 if (this.retreatedBattleIds.has(activeBattle.id)) {
-                    logger.gameState.info(`initializeUI: Ignoring retreated battle ${activeBattle.id}`);
-                    // Don't initialize - keep existing UI or wait for valid state
                     return;
                 }
 
-                logger.gameState.info(`initializeUI: Active battle detected - rejoining battle ${activeBattle.id}`);
                 this.rejoinBattle(activeBattle.config);
                 return;
             }
@@ -288,8 +276,6 @@ export class TestMenu extends Phaser.Scene {
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
             }));
-
-            logger.gameState.debug(`initializeUI: Created ${this.buttons.length} buttons`);
         } else {
             // Register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
@@ -328,9 +314,7 @@ export class TestMenu extends Phaser.Scene {
         // If TestMenu is not the active scene (but allow paused scenes for registration flow)
         // This prevents interference with other scenes like ActiveBattle
         const sceneStatus = this.scene.settings.status;
-        logger.gameState.debug(`TestMenu.onStateChange() called - scene status: ${sceneStatus}, active battles: ${state.activeBattleConfigs.size}`);
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
-            logger.gameState.debug(`TestMenu.onStateChange() skipped - scene status: ${sceneStatus}`);
             return;
         }
 
@@ -340,23 +324,18 @@ export class TestMenu extends Phaser.Scene {
             if (activeBattle) {
                 // Don't rejoin battles we just retreated from (prevents race condition with indexer state replay)
                 if (this.retreatedBattleIds.has(activeBattle.id)) {
-                    logger.gameState.info(`Ignoring stale state for retreated battle ${activeBattle.id}`);
-                    // Don't process this stale state update at all - keep existing UI
                     return;
                 }
 
-                logger.gameState.info(`Active battle detected - rejoining battle ${activeBattle.id}. Total active battles: ${state.activeBattleConfigs.size}`);
+                logger.gameState.info(`Active battle detected - rejoining battle ${activeBattle.id}`);
                 this.rejoinBattle(activeBattle.config);
-                return; // Don't show menu buttons, redirect to battle
+                return;
             }
-
-            logger.gameState.debug(`No active battle found. Total active battles in state: ${state.activeBattleConfigs.size}`);
         }
 
         // Only destroy and recreate buttons if we're actually going to show the menu
         // This happens after all the early returns (scene not active, stale battle, rejoining battle)
         this.buttons.forEach((b) => b.destroy());
-        logger.gameState.debug(`Creating menu buttons. Active battles: ${state.activeBattleConfigs.size}, Player defined: ${state.player !== undefined}`);
 
         if (state.player !== undefined) {
             // Main menu buttons in vertical column with proper spacing
@@ -456,13 +435,11 @@ export class TestMenu extends Phaser.Scene {
      * @param battleId The battle ID that was retreated from
      */
     public markBattleAsRetreated(battleId: bigint) {
-        logger.gameState.debug(`Marking battle ${battleId} as retreated`);
         this.retreatedBattleIds.add(battleId);
 
         // Clean up the retreated battle ID after 10 seconds to prevent memory leak
         setTimeout(() => {
             this.retreatedBattleIds.delete(battleId);
-            logger.gameState.debug(`Cleared retreated battle ${battleId} from ignore list`);
         }, 10000);
     }
 
@@ -471,7 +448,6 @@ export class TestMenu extends Phaser.Scene {
      * Call this before removing the TestMenu scene to prevent stale state updates
      */
     public shutdown() {
-        logger.gameState.debug('TestMenu.shutdown() - unsubscribing from state updates');
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = undefined;

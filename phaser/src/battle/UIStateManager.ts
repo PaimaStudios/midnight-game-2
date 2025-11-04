@@ -164,8 +164,6 @@ export class UIStateManager {
     }
 
     private async executeRetreat(battle: BattleConfig, _state: Game2DerivedState, onRetreatStart: () => void) {
-        logger.combat.info('Retreating from battle');
-
         // Call the callback to disable interactions in the battle scene
         onRetreatStart();
 
@@ -184,8 +182,6 @@ export class UIStateManager {
 
             // Wait for the state to update (battle should be removed from activeBattleConfigs)
             // This prevents a race condition where we navigate to TestMenu before the state updates
-            logger.combat.info(`Waiting for battle ${battleId} to be removed from state...`);
-
             const stateUpdatePromise = new Promise<Game2DerivedState>((resolve, reject) => {
                 let subscription: any;
 
@@ -196,21 +192,16 @@ export class UIStateManager {
                 }, 30000); // 30 second timeout
 
                 subscription = this.api.state$.subscribe((updatedState) => {
-                    logger.combat.debug(`State update received, checking for battle ${battleId}. Battle exists: ${updatedState.activeBattleConfigs.has(battleId)}`);
-
                     // Check if the battle has been removed from the state
                     if (!updatedState.activeBattleConfigs.has(battleId)) {
                         clearTimeout(timeout);
                         subscription.unsubscribe();
-                        logger.combat.info('Battle successfully removed from state');
                         resolve(updatedState);
                     }
                 });
             });
 
             const updatedState = await stateUpdatePromise;
-
-            logger.combat.info('Navigating to TestMenu with updated state');
 
             // Stop loader
             this.scene.scene.resume().stop('Loader');
@@ -222,22 +213,18 @@ export class UIStateManager {
                 battleMusic.destroy();
             }
 
-            // Cleanup retreat button
+            // Cleanup and return to hub
             this.removeRetreatButton();
 
-            // Return to hub with updated state
-            // IMPORTANT: Call shutdown() on the old TestMenu to unsubscribe from state updates
-            // This prevents the old scene from reacting to stale state emissions from the indexer
+            // Shutdown old TestMenu to prevent it from reacting to stale state emissions
             const oldTestMenu = this.scene.scene.get('TestMenu') as TestMenu;
             if (oldTestMenu && oldTestMenu.shutdown) {
                 oldTestMenu.shutdown();
             }
 
+            // Create new TestMenu and mark battle as retreated to ignore stale states
             this.scene.scene.remove('TestMenu');
             const newTestMenu = new TestMenu(this.api, updatedState);
-
-            // Mark this battle as retreated so the new TestMenu ignores stale state updates
-            // This prevents the indexer from replaying old state and causing a rejoin
             newTestMenu.markBattleAsRetreated(battleId);
 
             this.scene.scene.add('TestMenu', newTestMenu);
