@@ -46,9 +46,6 @@ export class TestMenu extends Phaser.Scene {
         if (api != undefined) {
             setTimeout(() => {
                 this.initApi(api);
-                if (state != undefined) {
-                    this.onStateChange(state);
-                }
             }, 100);
         }
         this.deployProvider = new BrowserDeploymentManager(logger.pino);
@@ -148,6 +145,8 @@ export class TestMenu extends Phaser.Scene {
     }
 
     create() {
+        logger.gameState.info(`TestMenu.create() called - firstRun: ${this.firstRun}, has state: ${this.state !== undefined}, retreatedBattles: ${this.retreatedBattleIds.size}`);
+
         // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
@@ -163,6 +162,16 @@ export class TestMenu extends Phaser.Scene {
         createEnemyAnimations(this);
 
         //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
+
+        // If this is not the first run (we're returning from a battle/menu), initialize UI immediately
+        if (!this.firstRun && this.state) {
+            logger.gameState.info(`TestMenu.create() - not first run, initializing UI with ${this.state.activeBattleConfigs.size} active battles, buttons count before: ${this.buttons.length}`);
+            // Call initializeUI directly instead of onStateChange to bypass scene status check
+            // Scene status is CREATING (4) during create(), not RUNNING (2)
+            this.initializeUI(this.state);
+            logger.gameState.info(`TestMenu.create() - buttons count after initializeUI: ${this.buttons.length}`);
+        }
+
         // deploy contract for testing
         if (this.firstRun) {
             // Check if we're in mock mode first - mock mode doesn't use real contracts
@@ -232,6 +241,84 @@ export class TestMenu extends Phaser.Scene {
         registerStartingContent(api, minimalOnly, logger.network).then(() => this.initApi(api))
     }
 
+    /**
+     * Initialize UI without scene status checks
+     * Used by create() when scene status is CREATING
+     */
+    private initializeUI(state: Game2DerivedState) {
+        logger.gameState.debug(`initializeUI called with ${state.activeBattleConfigs.size} active battles`);
+
+        // Check for retreated battles and active battles first
+        if (state.player !== undefined) {
+            const activeBattle = this.findPlayerActiveBattle(state);
+            if (activeBattle) {
+                // Don't rejoin battles we just retreated from
+                if (this.retreatedBattleIds.has(activeBattle.id)) {
+                    logger.gameState.info(`initializeUI: Ignoring retreated battle ${activeBattle.id}`);
+                    // Don't initialize - keep existing UI or wait for valid state
+                    return;
+                }
+
+                logger.gameState.info(`initializeUI: Active battle detected - rejoining battle ${activeBattle.id}`);
+                this.rejoinBattle(activeBattle.config);
+                return;
+            }
+        }
+
+        // Destroy existing buttons and create new ones
+        this.buttons.forEach((b) => b.destroy());
+        this.buttons = [];
+
+        if (state.player !== undefined) {
+            // Main menu buttons
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
+                this.scene.start('BiomeSelectMenu');
+            }));
+
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
+                this.scene.remove('QuestsMenu');
+                this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
+                this.scene.start('QuestsMenu');
+            }));
+
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
+                this.scene.remove('ShopMenu');
+                this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
+                this.scene.start('ShopMenu');
+            }));
+
+            logger.gameState.debug(`initializeUI: Created ${this.buttons.length} buttons`);
+        } else {
+            // Register button
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
+                logger.gameState.info('Registering new player...');
+                this.scene.pause().launch('Loader');
+                const loader = this.scene.get('Loader') as Loader;
+                loader.setText("Submitting Proof");
+
+                this.events.once('stateChange', () => {
+                    logger.gameState.info('Registered new player');
+                    this.scene.resume().stop('Loader');
+                });
+
+                this.api!.register_new_player().then(() => {
+                    loader.setText("Waiting on chain update");
+                }).catch((e) => {
+                    logger.network.error(`Error registering new player: ${e}`);
+                    this.scene.resume().stop('Loader');
+
+                    if (!this.scene.get('NetworkError')) {
+                        this.scene.add('NetworkError', new NetworkError());
+                    }
+                    const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                    networkErrorScene.setErrorMessage('Error registering player. Please try again.');
+                    this.scene.launch('NetworkError');
+                });
+            }));
+        }
+    }
 
     private onStateChange(state: Game2DerivedState) {
         this.state = state;
@@ -241,12 +328,11 @@ export class TestMenu extends Phaser.Scene {
         // If TestMenu is not the active scene (but allow paused scenes for registration flow)
         // This prevents interference with other scenes like ActiveBattle
         const sceneStatus = this.scene.settings.status;
+        logger.gameState.debug(`TestMenu.onStateChange() called - scene status: ${sceneStatus}, active battles: ${state.activeBattleConfigs.size}`);
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
             logger.gameState.debug(`TestMenu.onStateChange() skipped - scene status: ${sceneStatus}`);
             return;
         }
-
-        this.buttons.forEach((b) => b.destroy());
 
         if (state.player !== undefined) {
             // Check if player has an active battle and rejoin if needed
@@ -255,6 +341,7 @@ export class TestMenu extends Phaser.Scene {
                 // Don't rejoin battles we just retreated from (prevents race condition with indexer state replay)
                 if (this.retreatedBattleIds.has(activeBattle.id)) {
                     logger.gameState.info(`Ignoring stale state for retreated battle ${activeBattle.id}`);
+                    // Don't process this stale state update at all - keep existing UI
                     return;
                 }
 
@@ -264,7 +351,14 @@ export class TestMenu extends Phaser.Scene {
             }
 
             logger.gameState.debug(`No active battle found. Total active battles in state: ${state.activeBattleConfigs.size}`);
+        }
 
+        // Only destroy and recreate buttons if we're actually going to show the menu
+        // This happens after all the early returns (scene not active, stale battle, rejoining battle)
+        this.buttons.forEach((b) => b.destroy());
+        logger.gameState.debug(`Creating menu buttons. Active battles: ${state.activeBattleConfigs.size}, Player defined: ${state.player !== undefined}`);
+
+        if (state.player !== undefined) {
             // Main menu buttons in vertical column with proper spacing
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
                 this.scene.remove('BiomeSelectMenu');
