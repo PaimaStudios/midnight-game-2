@@ -9,7 +9,6 @@ export class RetreatOverlay extends Phaser.GameObjects.Container {
     private confirmButton: Button;
     private cancelButton: Button;
     private titleText: Phaser.GameObjects.Text;
-    private messageText: Phaser.GameObjects.Text;
 
     constructor(
         scene: Phaser.Scene,
@@ -38,15 +37,6 @@ export class RetreatOverlay extends Phaser.GameObjects.Container {
             fontStyle(18)
         ).setOrigin(0.5, 0.5);
         this.add(this.titleText);
-
-        // Message text
-        this.messageText = scene.add.text(
-            GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.45,
-            'Your loadout will be returned.\nNo rewards or penalties.',
-            fontStyle(12, { align: 'center' })
-        ).setOrigin(0.5, 0.5);
-        this.add(this.messageText);
 
         // Confirm button
         this.confirmButton = new Button(

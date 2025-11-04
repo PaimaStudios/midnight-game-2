@@ -5,6 +5,8 @@ import { fontStyle } from "../main";
 import BBCodeText from 'phaser3-rex-plugins/plugins/bbcodetext.js';
 import { BG_TYPE, makeWidgetBackground, WidgetBackground } from "./widget-background";
 
+const peekAmount = 4; // How much of the button is visible when collapsed
+
 export class RetreatButton extends Phaser.GameObjects.Container {
     bg: WidgetBackground & Phaser.GameObjects.GameObject;
     enabled: boolean = true;
@@ -15,10 +17,19 @@ export class RetreatButton extends Phaser.GameObjects.Container {
 
     private readonly buttonWidth = 120;
     private readonly buttonHeight = 40;
-    private readonly peekAmount = 20; // How much of the button is visible when collapsed
+    private readonly collapsedX: number;
+    private readonly collapsedY: number;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void, soundOnClick = true) {
-        super(scene, x, y);
+    constructor(scene: Phaser.Scene, cornerX: number, cornerY: number, onClick: () => void, soundOnClick = true) {
+        // Calculate initial position so only peekAmount x peekAmount is visible in the corner
+        // Container position is at its center by default
+        const initialX = cornerX - (peekAmount / 2);
+        const initialY = cornerY + (peekAmount / 2);
+
+        super(scene, initialX, initialY);
+
+        this.collapsedX = initialX;
+        this.collapsedY = initialY;
 
         this.soundOnClick = soundOnClick;
 
@@ -34,9 +45,6 @@ export class RetreatButton extends Phaser.GameObjects.Container {
         this.setSize(this.buttonWidth, this.buttonHeight);
         this.setInteractive();
 
-        // Position initially - mostly off screen, peeking from corner
-        this.setPosition(x + this.buttonWidth - this.peekAmount, y + this.buttonHeight - this.peekAmount);
-
         this.on('pointerdown', () => {
             if (this.enabled) {
                 if (this.soundOnClick) {
@@ -47,6 +55,8 @@ export class RetreatButton extends Phaser.GameObjects.Container {
         this.on('pointerup', () => {
             if (this.enabled) {
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+                // Collapse the button when clicked
+                this.collapseButton();
                 onClick();
             }
         });
@@ -80,9 +90,11 @@ export class RetreatButton extends Phaser.GameObjects.Container {
             this.expandTween.stop();
         }
 
-        // Get the target position (fully visible)
-        const targetX = this.x - (this.buttonWidth - this.peekAmount);
-        const targetY = this.y - (this.buttonHeight - this.peekAmount);
+        // Expand to align with top and right edges
+        // Button should be flush with the right edge and top edge when expanded
+        // Center should be at (GAME_WIDTH - buttonWidth/2, buttonHeight/2)
+        const targetX = this.collapsedX - (this.buttonWidth / 2 - peekAmount / 2);
+        const targetY = this.buttonHeight / 2;
 
         this.expandTween = this.scene.tweens.add({
             targets: this,
@@ -103,14 +115,11 @@ export class RetreatButton extends Phaser.GameObjects.Container {
             this.expandTween.stop();
         }
 
-        // Get the target position (peeking)
-        const targetX = this.x + (this.buttonWidth - this.peekAmount);
-        const targetY = this.y + (this.buttonHeight - this.peekAmount);
-
+        // Return to collapsed position
         this.expandTween = this.scene.tweens.add({
             targets: this,
-            x: targetX,
-            y: targetY,
+            x: this.collapsedX,
+            y: this.collapsedY,
             duration: 200,
             ease: 'Back.easeIn'
         });

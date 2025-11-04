@@ -2,8 +2,10 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Button } from "../widgets/button";
 import { AbilityWidget } from "../widgets/ability";
 import { BattleConfig, BattleRewards, pureCircuits } from "game2-contract";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { TestMenu } from "../menus/main";
+import { RetreatButton } from "../widgets/retreat-button";
+import { RetreatOverlay } from "../widgets/retreat-overlay";
 
 // Legacy layout functions - TODO: replace this with layout manager usage
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
@@ -13,6 +15,8 @@ export class UIStateManager {
     private api: DeployedGame2API;
     private fightButton: Button | null = null;
     private abilityIcons: AbilityWidget[] = [];
+    private retreatButton: RetreatButton | null = null;
+    private retreatOverlay: RetreatOverlay | null = null;
 
     constructor(scene: Phaser.Scene, api: DeployedGame2API) {
         this.scene = scene;
@@ -117,6 +121,83 @@ export class UIStateManager {
         if (circuit.alive && circuit.ability.is_some) {
             new AbilityWidget(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, state?.allAbilities.get(circuit.ability.value)!);
             this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
+        }
+    }
+
+    public createRetreatButton(battle: BattleConfig, state: Game2DerivedState, onRetreatStart: () => void) {
+        if (this.retreatButton) return;
+
+        this.retreatButton = new RetreatButton(
+            this.scene,
+            GAME_WIDTH,
+            0,
+            () => this.showRetreatConfirmation(battle, state, onRetreatStart)
+        );
+        this.retreatButton.setDepth(100);
+    }
+
+    public removeRetreatButton() {
+        if (this.retreatButton) {
+            this.retreatButton.destroy();
+            this.retreatButton = null;
+        }
+    }
+
+    private showRetreatConfirmation(battle: BattleConfig, state: Game2DerivedState, onRetreatStart: () => void) {
+        // Don't allow multiple overlays
+        if (this.retreatOverlay) {
+            return;
+        }
+
+        // Disable retreat button while overlay is shown
+        this.retreatButton?.setEnabled(false);
+
+        this.retreatOverlay = new RetreatOverlay(
+            this.scene,
+            () => this.executeRetreat(battle, state, onRetreatStart),
+            () => {
+                // On cancel, re-enable the button
+                this.retreatButton?.setEnabled(true);
+                this.retreatOverlay = null;
+            }
+        );
+    }
+
+    private async executeRetreat(battle: BattleConfig, state: Game2DerivedState, onRetreatStart: () => void) {
+        logger.combat.info('Retreating from battle');
+
+        // Call the callback to disable interactions in the battle scene
+        onRetreatStart();
+
+        // Disable retreat button
+        this.retreatButton?.setEnabled(false);
+
+        try {
+            const battleId = pureCircuits.derive_battle_id(battle);
+
+            // Call the retreat API
+            await this.api.retreat_from_battle(battleId);
+
+            // Stop battle music
+            const battleMusic = this.scene.sound.get('boss-battle-music');
+            if (battleMusic) {
+                battleMusic.stop();
+                battleMusic.destroy();
+            }
+
+            // Cleanup retreat button and overlay
+            this.removeRetreatButton();
+            this.retreatOverlay = null;
+
+            // Return to hub
+            this.scene.scene.remove('TestMenu');
+            this.scene.scene.add('TestMenu', new TestMenu(this.api, state));
+            this.scene.scene.start('TestMenu');
+        } catch (err) {
+            logger.network.error(`Error retreating from battle: ${err}`);
+            // Re-enable interactions on error
+            this.retreatButton?.setEnabled(true);
+            this.retreatOverlay = null;
         }
     }
 }

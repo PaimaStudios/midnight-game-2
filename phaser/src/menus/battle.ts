@@ -16,9 +16,6 @@ import { EnemyManager, Actor } from "../battle/EnemyManager";
 import { SpiritManager, BattlePhase } from "../battle/SpiritManager";
 import { UIStateManager } from "../battle/UIStateManager";
 import { combat_round_logic } from "../battle/logic";
-import { RetreatButton } from "../widgets/retreat-button";
-import { RetreatOverlay } from "../widgets/retreat-overlay";
-import { TestMenu } from "./main";
 
 // Legacy layout functions - TODO: replace these with layout manager usage
 const playerX = () => GAME_WIDTH / 2;
@@ -45,10 +42,6 @@ export class ActiveBattle extends Phaser.Scene {
     private enemyManager!: EnemyManager;
     private spiritManager!: SpiritManager;
     private uiStateManager!: UIStateManager;
-
-    // Retreat
-    private retreatButton!: RetreatButton;
-    private retreatOverlay: RetreatOverlay | null = null;
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
@@ -95,15 +88,6 @@ export class ActiveBattle extends Phaser.Scene {
         this.player = new Actor(this, playerX(), playerY(), null);
         this.enemies = this.enemyManager.createEnemies(this.battle);
 
-        // Create retreat button in top-right corner
-        this.retreatButton = new RetreatButton(
-            this,
-            GAME_WIDTH,
-            0,
-            () => this.showRetreatConfirmation()
-        );
-        this.retreatButton.setDepth(100); // High depth to appear above most elements
-
         // Initialize spirits and start targeting and set enemy plans (if we have the state updated - if not, state updates will trigger this)
         this.initialize();
     }
@@ -147,6 +131,18 @@ export class ActiveBattle extends Phaser.Scene {
         const playerDamage = Number(battleState.damage_to_player);
         this.player.hp = Math.max(0, this.player.maxHp - playerDamage);
         this.player.hpBar.setValue(this.player.hp);
+
+        // Create retreat button
+        this.uiStateManager.createRetreatButton(
+            this.battle,
+            this.state,
+            () => {
+                // Disable interactions when retreat is initiated
+                this.spiritManager.disableInteractions();
+                this.uiStateManager.destroyAbilityIcons();
+                this.spiritManager.cleanupSpirits();
+            }
+        );
 
         this.initialized = true;
     }
@@ -316,62 +312,6 @@ export class ActiveBattle extends Phaser.Scene {
                 
                 this.resetSpirits();
             }
-        }
-    }
-
-    private showRetreatConfirmation() {
-        // Don't allow retreating if already showing overlay or if animations are in progress
-        if (this.retreatOverlay || this.waitingOnAnimations) {
-            return;
-        }
-
-        // Disable retreat button while overlay is shown
-        this.retreatButton.setEnabled(false);
-
-        this.retreatOverlay = new RetreatOverlay(
-            this,
-            () => this.executeRetreat(),
-            () => {
-                // On cancel, just re-enable the button
-                this.retreatButton.setEnabled(true);
-                this.retreatOverlay = null;
-            }
-        );
-    }
-
-    private async executeRetreat() {
-        logger.combat.info('Retreating from battle');
-
-        // Disable all interactions
-        this.spiritManager.disableInteractions();
-        this.retreatButton.setEnabled(false);
-
-        try {
-            const battleId = pureCircuits.derive_battle_id(this.battle);
-
-            // Call the retreat API
-            await this.api.retreat_from_battle(battleId);
-
-            // Stop battle music
-            const battleMusic = this.sound.get('boss-battle-music');
-            if (battleMusic) {
-                battleMusic.stop();
-                battleMusic.destroy();
-            }
-
-            // Cleanup and return to hub
-            this.spiritManager.cleanupSpirits();
-            this.uiStateManager.destroyAbilityIcons();
-
-            this.scene.remove('TestMenu');
-            this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-            this.scene.start('TestMenu');
-        } catch (err) {
-            logger.network.error(`Error retreating from battle: ${err}`);
-            // Re-enable interactions on error
-            this.spiritManager.startTargeting();
-            this.retreatButton.setEnabled(true);
-            this.retreatOverlay = null;
         }
     }
 }
