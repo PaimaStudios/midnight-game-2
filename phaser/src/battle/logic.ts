@@ -54,7 +54,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         ];
         const enemy_count = Number(battleConfig.enemies.count);
         const enemies = new Array(enemy_count).fill(0).map((_, i) => i);
-        const enemy_block = enemies.map((i) => moves.filter((_, j) => j != i && j < enemy_count).reduce((sum, move) => sum + move.block_allies, moves[i].block_self));
+        const enemy_block = enemies.map((i) => moves.filter((_, j) => j != i && j < enemy_count).reduce((sum, move) => BigInt(sum) + BigInt(move.block_allies), BigInt(moves[i].block_self)));
         let old_damage_to_enemy = [battleState.damage_to_enemy_0, battleState.damage_to_enemy_1, battleState.damage_to_enemy_2];
         let round_damage_to_enemy = new Array(enemy_count).fill(BigInt(0));
         let round_damage_to_player = BigInt(0);

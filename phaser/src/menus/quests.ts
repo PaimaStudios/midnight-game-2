@@ -7,7 +7,7 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { TestMenu } from "./main";
+import { MainMenu } from "./main";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestMenu } from "./quest";
 import { QuestConfig } from "game2-contract";
@@ -57,9 +57,9 @@ export class QuestsMenu extends Phaser.Scene {
 
         new TopBar(this, true, this.api, this.state)
             .back(() => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                this.scene.start('TestMenu');
+                this.scene.remove('MainMenu');
+                this.scene.add('MainMenu', new MainMenu(this.api, this.state));
+                this.scene.start('MainMenu');
             }, 'Back to Hub');
         
         this.refreshQuestDisplay();

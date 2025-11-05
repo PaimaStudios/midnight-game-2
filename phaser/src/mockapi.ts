@@ -155,13 +155,8 @@ export class MockGame2API implements DeployedGame2API {
                 throw new Error("Battle not found");
             }
 
-            // Return loadout abilities to player
-            for (const ability_id of battleConfig.loadout.abilities) {
-                const count = this.mockState.playerAbilities.get(ability_id) ?? BigInt(0);
-                this.mockState.playerAbilities.set(ability_id, count + BigInt(1));
-            }
-
-            // Remove battle config and state
+            // Abilities remain in player inventory (they were never removed when battle started)
+            // Just remove the battle config and state to free up the loadout
             this.mockState.activeBattleConfigs.delete(battle_id);
             this.mockState.activeBattleStates.delete(battle_id);
         });

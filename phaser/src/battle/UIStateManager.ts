@@ -3,7 +3,7 @@ import { Button } from "../widgets/button";
 import { AbilityWidget } from "../widgets/ability";
 import { BattleConfig, BattleRewards, pureCircuits } from "game2-contract";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { TestMenu } from "../menus/main";
+import { MainMenu } from "../menus/main";
 import { RetreatButton } from "../widgets/retreat-button";
 import { RetreatOverlay } from "../widgets/retreat-overlay";
 
@@ -113,9 +113,9 @@ export class UIStateManager {
                 battleMusic.destroy();
             }
 
-            this.scene.scene.remove('TestMenu');
-            this.scene.scene.add('TestMenu', new TestMenu(this.api, state));
-            this.scene.scene.start('TestMenu');
+            this.scene.scene.remove('MainMenu');
+            this.scene.scene.add('MainMenu', new MainMenu(this.api, state));
+            this.scene.scene.start('MainMenu');
         });
         
         if (circuit.alive && circuit.ability.is_some) {
@@ -181,13 +181,16 @@ export class UIStateManager {
             await this.api.retreat_from_battle(battleId);
 
             // Wait for the state to update (battle should be removed from activeBattleConfigs)
-            // This prevents a race condition where we navigate to TestMenu before the state updates
+            // This prevents a race condition where we navigate to MainMenu before the state updates
             const stateUpdatePromise = new Promise<Game2DerivedState>((resolve, reject) => {
-                let subscription: any;
+                let subscription: any = null;
 
                 // Add timeout to prevent infinite waiting
                 const timeout = setTimeout(() => {
-                    if (subscription) subscription.unsubscribe();
+                    if (subscription) {
+                        subscription.unsubscribe();
+                        subscription = null;
+                    }
                     reject(new Error('Timeout waiting for battle state to update'));
                 }, 30000); // 30 second timeout
 
@@ -195,7 +198,10 @@ export class UIStateManager {
                     // Check if the battle has been removed from the state
                     if (!updatedState.activeBattleConfigs.has(battleId)) {
                         clearTimeout(timeout);
-                        subscription.unsubscribe();
+                        if (subscription) {
+                            subscription.unsubscribe();
+                            subscription = null;
+                        }
                         resolve(updatedState);
                     }
                 });
@@ -204,7 +210,7 @@ export class UIStateManager {
             const updatedState = await stateUpdatePromise;
 
             // Stop loader
-            this.scene.scene.resume().stop('Loader');
+            this.scene.scene.stop('Loader');
 
             // Stop battle music
             const battleMusic = this.scene.sound.get('boss-battle-music');
@@ -216,19 +222,21 @@ export class UIStateManager {
             // Cleanup and return to hub
             this.removeRetreatButton();
 
-            // Shutdown old TestMenu to prevent it from reacting to stale state emissions
-            const oldTestMenu = this.scene.scene.get('TestMenu') as TestMenu;
-            if (oldTestMenu && oldTestMenu.shutdown) {
-                oldTestMenu.shutdown();
+            // Shutdown old MainMenu to prevent it from reacting to stale state emissions
+            const oldMainMenu = this.scene.scene.get('MainMenu') as MainMenu;
+            if (oldMainMenu && oldMainMenu.shutdown) {
+                oldMainMenu.shutdown();
             }
 
-            // Create new TestMenu and mark battle as retreated to ignore stale states
-            this.scene.scene.remove('TestMenu');
-            const newTestMenu = new TestMenu(this.api, updatedState);
-            newTestMenu.markBattleAsRetreated(battleId);
+            // Create new MainMenu
+            this.scene.scene.remove('MainMenu');
+            const newMainMenu = new MainMenu(this.api, updatedState);
 
-            this.scene.scene.add('TestMenu', newTestMenu);
-            this.scene.scene.start('TestMenu');
+            this.scene.scene.add('MainMenu', newMainMenu);
+
+            // Stop the current battle scene before starting MainMenu
+            this.scene.scene.stop();
+            this.scene.scene.start('MainMenu');
         } catch (err) {
             logger.network.error(`Error retreating from battle: ${err}`);
             // Stop loader on error

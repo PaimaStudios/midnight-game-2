@@ -3,7 +3,7 @@ import { BIOME_ID, biomeToName } from "../battle/biome";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH, fontStyle } from "../main";
-import { TestMenu } from "./main";
+import { MainMenu } from "./main";
 import { LevelSelectMenu } from "./level-select";
 import { DungeonScene } from "./dungeon-scene";
 import { TopBar } from "../widgets/top-bar";
@@ -82,9 +82,9 @@ export class BiomeSelectMenu extends Phaser.Scene {
                     this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
                     this.scene.start('QuestsMenu');
                 } else {
-                    this.scene.remove('TestMenu');
-                    this.scene.add('TestMenu', new TestMenu(this.api!, this.state));
-                    this.scene.start('TestMenu');
+                    this.scene.remove('MainMenu');
+                    this.scene.add('MainMenu', new MainMenu(this.api!, this.state));
+                    this.scene.start('MainMenu');
                 }
             }, 'Return to Hub');
     }
