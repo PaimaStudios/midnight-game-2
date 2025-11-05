@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 // https://github.com/vitejs/vite/blob/ec7ee22cf15bed05a6c55693ecbac27cfd615118/packages/vite/src/node/plugins/workerImportMetaUrl.ts#L127-L128
 const workerImportMetaUrlRE =
@@ -31,6 +32,8 @@ export default defineConfig({
   worker: {
     format: "es",
     plugins: [
+      wasm(),
+      topLevelAwait(),
       {
         name: "foo",
         enforce: "pre",

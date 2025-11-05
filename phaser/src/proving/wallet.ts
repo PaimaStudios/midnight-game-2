@@ -1,6 +1,6 @@
 import { type DeployedGame2API, Game2API, type Game2Providers } from 'game2-api';
 import { CompactTypeBytes, transientCommit, type ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import { logger } from './main';
+import { logger } from '../main';
 import {
   concatMap,
   filter,

@@ -6,7 +6,7 @@
  * This contains a list of active quests as well as buttons to initiate new quests or new battles.
  */
 import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { BrowserDeploymentManager } from "../wallet";
+import { BrowserDeploymentManager } from "../proving/wallet";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
