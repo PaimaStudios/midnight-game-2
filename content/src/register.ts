@@ -206,6 +206,83 @@ export async function registerStartingContent(
     ice_def: Def.NEUTRAL,
   };
 
+  // MINI-BOSSES
+  const goblinChief: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 9,
+    hp: 120,
+    moves: [{ attack: 10, block_self: 15 }, { attack: 25 }, { attack: 15, block_self: 10 }],
+    physical_def: Def.EFFECTIVE,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.EFFECTIVE,
+  };
+
+  const tentacles: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 10,
+    hp: 80,
+    moves: [{ attack: 15, heal_self: 10 }, { block_self: 15, heal_self: 10 }, { attack: 10, block_self: 5, heal_self: 10 }],
+    physical_def: Def.WEAK,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.NEUTRAL,
+  };
+
+  const hellspawn: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 6,
+    hp: 80,
+    moves: [{ attack: 40, block_self: 1 }, { attack: 30, heal_self: 10 }],
+    physical_def: Def.IMMUNE,
+    fire_def: Def.WEAK,
+    ice_def: Def.SUPEREFFECTIVE,
+  };
+  const hellspawnStrong: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 6,
+    hp: 120,
+    moves: [{ attack: 60, block_self: 2 }, { attack: 45, heal_self: 15 }],
+    physical_def: Def.IMMUNE,
+    fire_def: Def.WEAK,
+    ice_def: Def.SUPEREFFECTIVE,
+  };
+  const hellspawnElite: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 6,
+    hp: 160,
+    moves: [{ attack: 80, block_self: 5 }, { attack: 60, heal_self: 20 }],
+    physical_def: Def.IMMUNE,
+    fire_def: Def.WEAK,
+    ice_def: Def.SUPEREFFECTIVE,
+  };
+
+  const iceGolem: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 5,
+    hp: 80,
+    moves: [{ attack: 5, block_self: 15 }, { block_self: 40 }, { attack: 10, block_self: 10 }],
+    physical_def: Def.WEAK,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.IMMUNE,
+  };
+  const iceGolemStrong: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 5,
+    hp: 120,
+    moves: [{ attack: 8, block_self: 22 }, { block_self: 60 }, { attack: 15, block_self: 15 }],
+    physical_def: Def.WEAK,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.IMMUNE,
+  };
+  const iceGolemElite: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.miniboss,
+    enemy_type: 5,
+    hp: 160,
+    moves: [{ attack: 10, block_self: 30 }, { block_self: 80 }, { attack: 20, block_self: 20 }],
+    physical_def: Def.WEAK,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.IMMUNE,
+  };
+
   // NORMAL ENEMIES
   const goblin: EnemyStatsConfig = {
     enemy_type: 0,
@@ -307,34 +384,6 @@ export async function registerStartingContent(
     ice_def: Def.EFFECTIVE,
   };
 
-  const hellspawn: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 6,
-    hp: 80,
-    moves: [{ attack: 40, block_self: 1 }, { attack: 30, heal_self: 10 }],
-    physical_def: Def.IMMUNE,
-    fire_def: Def.WEAK,
-    ice_def: Def.SUPEREFFECTIVE,
-  };
-  const hellspawnStrong: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 6,
-    hp: 120,
-    moves: [{ attack: 60, block_self: 2 }, { attack: 45, heal_self: 15 }],
-    physical_def: Def.IMMUNE,
-    fire_def: Def.WEAK,
-    ice_def: Def.SUPEREFFECTIVE,
-  };
-  const hellspawnElite: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 6,
-    hp: 160,
-    moves: [{ attack: 80, block_self: 5 }, { attack: 60, heal_self: 20 }],
-    physical_def: Def.IMMUNE,
-    fire_def: Def.WEAK,
-    ice_def: Def.SUPEREFFECTIVE,
-  };
-
   const goblinPriest: EnemyStatsConfig = {
     enemy_type: 7,
     hp: 30,
@@ -385,34 +434,6 @@ export async function registerStartingContent(
     ice_def: Def.NEUTRAL,
   };
 
-  const iceGolem: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 0,
-    hp: 80,
-    moves: [{ attack: 5, block_self: 15 }, { block_self: 40 }, { attack: 10, block_self: 10 }],
-    physical_def: Def.WEAK,
-    fire_def: Def.EFFECTIVE,
-    ice_def: Def.IMMUNE,
-  };
-  const iceGolemStrong: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 0,
-    hp: 120,
-    moves: [{ attack: 8, block_self: 22 }, { block_self: 60 }, { attack: 15, block_self: 15 }],
-    physical_def: Def.WEAK,
-    fire_def: Def.EFFECTIVE,
-    ice_def: Def.IMMUNE,
-  };
-  const iceGolemElite: EnemyStatsConfig = {
-    boss_type: BOSS_TYPE.miniboss,
-    enemy_type: 0,
-    hp: 160,
-    moves: [{ attack: 10, block_self: 30 }, { block_self: 80 }, { attack: 20, block_self: 20 }],
-    physical_def: Def.WEAK,
-    fire_def: Def.EFFECTIVE,
-    ice_def: Def.IMMUNE,
-  };
-
   const snowman: EnemyStatsConfig = {
     enemy_type: 3,
     hp: 25,
@@ -436,6 +457,15 @@ export async function registerStartingContent(
     physical_def: Def.NEUTRAL,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.WEAK,
+  };
+
+  const tentacle: EnemyStatsConfig = {
+    enemy_type: 11,
+    hp: 30,
+    moves: [{ attack: 10, heal_self: 5 }, { block_self: 10, heal_self: 5 }, { attack: 5, block_self: 5, heal_self: 5 }],
+    physical_def: Def.WEAK,
+    fire_def: Def.EFFECTIVE,
+    ice_def: Def.NEUTRAL,
   };
 
   // Define all level configurations
@@ -486,71 +516,75 @@ export async function registerStartingContent(
       // Grasslands
       [grass1, [snowman, fireSprite]],
       [grass1, [goblinSwordmaster, goblin, goblinSwordmaster]],
+      [grass1, [tentacle, goblin]],
+      [grass1, [goblinPriest, goblinSwordmaster]],
+      [grass1, [goblinChief]], // miniboss
 
       [grass2, [goblinStrong, goblinPriestStrong, goblinStrong]],
       [grass2, [snowmanStrong, fireSpriteStrong]],
-      [grass2, [iceGolemStrong, goblinStrong]],
+      [grass2, [iceGolemStrong, goblinStrong]], // miniboss
       [grass2, [goblinSwordmasterStrong, goblinSwordmasterStrong, goblinPriestStrong]],
 
       [grass3, [goblinElite, goblinPriestElite, goblinElite]],
       [grass3, [snowmanElite, fireSpriteElite]],
-      [grass3, [iceGolemElite, goblinElite]],
+      [grass3, [iceGolemElite, goblinElite]], // miniboss
       [grass3, [goblinSwordmasterElite, goblinSwordmasterElite, goblinSwordmasterElite]],
 
       // Desert
       [desert1, [fireSprite, fireSprite]],
       [desert1, [goblin, fireSprite, coyote]],
       [desert1, [pyramid, coyote, goblinPriest]],
-      [desert1, [hellspawn, coyote]],
+      [desert1, [hellspawn, coyote]], // miniboss
       [desert1, [goblinSwordmaster, coyote, goblinSwordmaster]],
 
       [desert2, [fireSpriteStrong, fireSpriteStrong, coyoteStrong]],
       [desert2, [goblinStrong, fireSpriteStrong, goblinPriestStrong]],
       [desert2, [goblinStrong, fireSpriteStrong, pyramidStrong]],
       [desert2, [fireSpriteStrong, fireSpriteStrong, goblinStrong]],
-      [desert2, [hellspawnStrong, coyoteStrong]],
+      [desert2, [hellspawnStrong, coyoteStrong]], // miniboss
       [desert2, [goblinSwordmasterStrong, pyramidStrong, goblinSwordmasterStrong]],
 
       [desert3, [fireSpriteElite, fireSpriteElite]],
       [desert3, [goblinElite, fireSpriteElite, coyoteElite]],
       [desert3, [fireSpriteElite, goblinPriestElite, goblinElite]],
       [desert3, [fireSpriteElite, pyramidElite, goblinElite]],
-      [desert1, [hellspawnElite, coyoteElite]],
+      [desert3, [hellspawnElite, coyoteElite]], // miniboss
       [desert3, [goblinSwordmasterElite, coyoteElite, goblinSwordmasterElite]],
 
       // Tundra
       [tundra1, [snowman, snowman, snowman]],
-      [tundra1, [iceGolem, snowman]],
+      [tundra1, [iceGolem, snowman]], // miniboss
 
       [tundra2, [snowmanStrong, snowmanStrong, snowmanStrong]],
-      [tundra2, [iceGolemStrong, snowmanStrong]],
-      [tundra2, [iceGolemStrong, iceGolemStrong]],
+      [tundra2, [iceGolemStrong, snowmanStrong]], // miniboss
+      [tundra2, [iceGolemStrong, iceGolemStrong]], // miniboss
 
       [tundra3, [snowmanElite, snowmanElite, snowmanElite]],
-      [tundra3, [iceGolemElite, snowmanElite]],
-      [tundra3, [iceGolemElite, iceGolemElite]],
+      [tundra3, [iceGolemElite, snowmanElite]], // miniboss
+      [tundra3, [iceGolemElite, iceGolemElite]], // miniboss
 
       // Cave
       [cave1, [goblin, fireSprite, goblin]],
       [cave1, [goblin, goblin, goblin]],
       [cave1, [goblin, goblinPriest, goblin]],
-      [cave1, [goblin, hellspawn]],
-      [cave1, [goblin, hellspawn, goblinPriest]],
+      [cave1, [goblin, hellspawn]], // miniboss
+      [cave1, [goblin, hellspawn, goblinPriest]], // miniboss
       [cave1, [goblinSwordmaster, goblinSwordmaster, goblinPriest]],
+      [cave1, [tentacles]], // miniboss
 
       [cave2, [goblinStrong, fireSpriteStrong, goblinStrong]],
       [cave2, [goblinStrong, goblinStrong, goblinStrong]],
       [cave2, [goblinStrong, goblinPriestStrong, goblinStrong]],
-      [cave2, [iceGolemStrong, fireSpriteStrong]],
-      [cave2, [hellspawnStrong, goblinStrong, goblinPriestStrong]],
+      [cave2, [iceGolemStrong, fireSpriteStrong]], // miniboss
+      [cave2, [hellspawnStrong, goblinStrong, goblinPriestStrong]], // miniboss
       [cave2, [goblinSwordmasterStrong, goblinSwordmasterStrong, goblinSwordmasterStrong]],
 
       [cave3, [goblinElite, fireSpriteElite, goblinElite]],
       [cave3, [goblinElite, goblinElite, goblinElite]],
       [cave3, [goblinElite, goblinPriestElite, goblinElite]],
-      [cave3, [iceGolemElite, fireSpriteElite]],
-      [cave3, [hellspawnElite, goblinElite]],
-      [cave3, [hellspawnElite, goblinElite, goblinPriestElite]],
+      [cave3, [iceGolemElite, fireSpriteElite]], // miniboss
+      [cave3, [hellspawnElite, goblinElite]], // miniboss
+      [cave3, [hellspawnElite, goblinElite, goblinPriestElite]], // miniboss
       [cave3, [goblinSwordmasterElite, goblinPriestElite, goblinSwordmasterElite]]
     );
   }

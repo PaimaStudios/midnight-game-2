@@ -77,14 +77,18 @@ export class MainMenu extends Phaser.Scene {
 
         // Enemy Sprites
         this.load.spritesheet('enemy-goblin', 'enemy-goblin.png', { frameWidth: 32, frameHeight: 28 });
-        this.load.spritesheet('enemy-hellspawn', 'enemy-hellspawn.png', { frameWidth: 70, frameHeight: 51 });
+        this.load.spritesheet('enemy-hellspawn', 'enemy-hellspawn.png', { frameWidth: 61, frameHeight: 47 });
         this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 43, frameHeight: 35 });
         this.load.spritesheet('enemy-ice-golem', 'enemy-ice-golem.png', { frameWidth: 44, frameHeight: 40 });
         this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
         this.load.spritesheet('enemy-coyote', 'enemy-coyote.png', { frameWidth: 60, frameHeight: 35 });
         this.load.spritesheet('enemy-pyramid', 'enemy-pyramid.png', { frameWidth: 80, frameHeight: 80 });
         this.load.spritesheet('enemy-goblin-priest', 'enemy-goblin-priest.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('enemy-goblin-swordmaster', 'enemy-goblin-swordmaster.png', { frameWidth: 47, frameHeight: 32  });
+	this.load.spritesheet('enemy-goblin-swordmaster', 'enemy-goblin-swordmaster.png', { frameWidth: 47, frameHeight: 32  });
+        this.load.spritesheet('enemy-tentacle', 'enemy-tentacle.png', { frameWidth: 18, frameHeight: 57  });
+        this.load.spritesheet('enemy-miniboss-goblin-chief', 'enemy-miniboss-goblin-chief.png', { frameWidth: 64, frameHeight: 56  });
+        this.load.spritesheet('enemy-miniboss-tentacles', 'enemy-miniboss-tentacles.png', { frameWidth: 64, frameHeight: 64 });
+
         this.load.spritesheet('enemy-boss-enigma', 'enemy-boss-enigma-1.png', { frameWidth: 152, frameHeight: 95 });
         this.load.spritesheet('enemy-boss-dragon', 'enemy-boss-dragon-1.png', { frameWidth: 145, frameHeight: 97 });
         this.load.spritesheet('enemy-boss-abominable', 'enemy-boss-abominable.png', { frameWidth: 130, frameHeight: 98 });
