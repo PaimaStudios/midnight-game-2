@@ -8,7 +8,7 @@ import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, BehaviorSubject } from "rxjs";
-import { combat_round_logic, initBattlestate } from "./battle/logic";
+import { combat_round_logic, initBattlestate, battleRewards } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
 
@@ -290,7 +290,25 @@ export class MockGame2API implements DeployedGame2API {
         }, 5);
     }
 
-
+    // not a part of the regular api - just here for testing
+    public quickTestBattle(level: Level, isQuest: boolean) {
+        const configs = this.mockState.levels.get(level.biome)!.get(level.difficulty)!;
+        const config = isQuest
+                     ? this.mockState.bosses.get(level.biome)!.get(level.difficulty)
+                     : configs.get(BigInt(Phaser.Math.Between(0, configs.size - 1)));
+        const reward = battleRewards(this.mockState, level, config!);
+        this.addRewards(reward);
+        if (isQuest) {
+            if (!this.mockState.playerBossProgress.has(level.biome)) {
+                this.mockState.playerBossProgress.set(level.biome, new Map());
+            }
+            this.mockState.playerBossProgress.get(level.biome)!.set(level.difficulty, true);
+        }
+        this.mockState.player!.rng = randomBytes(32);
+        setTimeout(() => {
+            this.stateSubject.next(this.mockState);
+        }, 50);
+    }
 
     private addRewards(rewards: BattleRewards) {
         this.mockState.player!.gold += rewards.gold;
