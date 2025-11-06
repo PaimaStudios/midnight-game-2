@@ -5,10 +5,10 @@
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
 import { ContractAddress } from "@midnight-ntwrk/ledger";
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleConfig, BattleRewards, EFFECT_TYPE, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { Observable, Subscriber, Subject, BehaviorSubject } from "rxjs";
-import { combat_round_logic, initBattlestate, randomAbility } from "./battle/logic";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
+import { Ability, BattleConfig, BattleRewards, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
+import { Observable, BehaviorSubject } from "rxjs";
+import { combat_round_logic, initBattlestate } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
 
@@ -145,6 +145,20 @@ export class MockGame2API implements DeployedGame2API {
                 }
                 return ret;
             });
+        });
+    }
+
+    public retreat_from_battle(battle_id: bigint): Promise<void> {
+        return this.response(async () => {
+            const battleConfig = this.mockState.activeBattleConfigs.get(battle_id);
+            if (!battleConfig) {
+                throw new Error("Battle not found");
+            }
+
+            // Abilities remain in player inventory (they were never removed when battle started)
+            // Just remove the battle config and state to free up the loadout
+            this.mockState.activeBattleConfigs.delete(battle_id);
+            this.mockState.activeBattleStates.delete(battle_id);
         });
     }
 
