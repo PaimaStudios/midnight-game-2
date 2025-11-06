@@ -9,7 +9,7 @@ import { Loader } from "./loader";
 import { NetworkError } from "./network-error";
 import { Color } from "../constants/colors";
 import { isStartingAbility, sortedAbilities } from "./pre-battle";
-import { TestMenu } from "./main";
+import { MainMenu } from "./main";
 import { addScaledImage } from "../utils/scaleImage";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { TopBar } from "../widgets/top-bar";
@@ -42,9 +42,9 @@ export class ShopMenu extends Phaser.Scene {
 
         this.topBar = new TopBar(this, true, this.api, this.state)
             .back(() => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                this.scene.start('TestMenu');
+                this.scene.remove('MainMenu');
+                this.scene.add('MainMenu', new MainMenu(this.api, this.state));
+                this.scene.start('MainMenu');
             }, 'Return to Hub');
 
         this.onStateChange(this.state);

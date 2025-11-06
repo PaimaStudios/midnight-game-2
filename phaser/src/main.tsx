@@ -36,7 +36,7 @@ logger.debugging.info(`VITE: [\n${JSON.stringify(import.meta.env)}\n]`);
 import 'phaser';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin'
 import BBCodeTextPlugin from 'phaser3-rex-plugins/plugins/bbcodetext-plugin.js';
-import { TestMenu } from './menus/main';
+import { BootScene } from './menus/boot';
 import { Loader } from './menus/loader';
 import { Color } from './constants/colors';
 
@@ -70,7 +70,7 @@ const config = {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     scene: [
-        TestMenu,
+        BootScene,
         Loader,
     ],
     render: {

@@ -3,7 +3,7 @@ import { Subscription } from "rxjs";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
 import { Button } from "../../widgets/button";
 import { Color } from "../../constants/colors";
-import { TestMenu } from "../main";
+import { MainMenu } from "../main";
 import { addScaledImage } from "../../utils/scaleImage";
 import { TopBar } from "../../widgets/top-bar";
 import { SellSpiritsMenu } from "./sell";
@@ -36,9 +36,9 @@ export class ShopMenu extends Phaser.Scene {
     create() {
         this.topBar = new TopBar(this, true, this.api, this.state)
             .back(() => {
-                this.scene.remove('TestMenu');
-                this.scene.add('TestMenu', new TestMenu(this.api, this.state));
-                this.scene.start('TestMenu');
+                this.scene.remove('MainMenu');
+                this.scene.add('MainMenu', new MainMenu(this.api, this.state));
+                this.scene.start('MainMenu');
             }, 'Return to Hub');
 
         this.add.text(

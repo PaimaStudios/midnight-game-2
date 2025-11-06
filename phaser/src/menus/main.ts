@@ -1,56 +1,38 @@
 /**
- * Main hub menu.
- * 
- * For now this also contains both deploying and player registration but that can be refactored later.
- * 
+ * Main hub menu - the primary game menu after boot/initialization.
+ *
  * This contains a list of active quests as well as buttons to initiate new quests or new battles.
  */
-import { DeployedGame2API, Game2DerivedState, safeJSONString } from "game2-api";
-import { BrowserDeploymentManager } from "../wallet";
+import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Button } from "../widgets/button";
 import { Loader } from "./loader";
 import { Subscription } from "rxjs";
-import { MockGame2API } from "../mockapi";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
-import { Color, colorToNumber } from "../constants/colors";
 import { ShopMenu } from "./shop/shop";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
-import { registerStartingContent } from "game-content";
 import { DungeonScene } from "./dungeon-scene";
-import { RainbowText } from "../widgets/rainbow-text";
 import { TopBar } from "../widgets/top-bar";
 import { NetworkError } from "./network-error";
-import { ActiveBattle } from "./battle";
-import { pureCircuits } from "game2-contract";
 
-export class TestMenu extends Phaser.Scene {
-    deployProvider: BrowserDeploymentManager;
-    api: DeployedGame2API | undefined;
+export class MainMenu extends Phaser.Scene {
+    api: DeployedGame2API;
     subscription: Subscription | undefined;
     state: Game2DerivedState | undefined;
     topBar: TopBar | undefined;
-    new_button: Button | undefined;
     buttons: Button[];
-    firstRun: boolean;
     menuMusic: Phaser.Sound.BaseSound | undefined;
 
-    constructor(api: DeployedGame2API | undefined, state?: Game2DerivedState) {
-        super('TestMenu');
+    constructor(api: DeployedGame2API, state?: Game2DerivedState) {
+        super('MainMenu');
+        this.api = api;
         this.buttons = [];
-        this.firstRun = api == undefined;
         this.state = state;
-        if (api != undefined) {
-            setTimeout(() => {
-                this.initApi(api);
-                if (state != undefined) {
-                    this.onStateChange(state);
-                }
-            }, 100);
-        }
-        this.deployProvider = new BrowserDeploymentManager(logger.pino);
+        setTimeout(() => {
+            this.initApi();
+        }, 100);
     }
 
     preload() {
@@ -99,7 +81,7 @@ export class TestMenu extends Phaser.Scene {
         this.load.spritesheet('enemy-fire-sprite', 'enemy-fire-sprite.png', { frameWidth: 43, frameHeight: 35 });
         this.load.spritesheet('enemy-ice-golem', 'enemy-ice-golem.png', { frameWidth: 44, frameHeight: 40 });
         this.load.spritesheet('enemy-snowman', 'enemy-snowman.png', { frameWidth: 40, frameHeight: 40 });
-        this.load.spritesheet('enemy-coyote', 'enemy-coyote.png', { frameWidth: 60, frameHeight: 60 });
+        this.load.spritesheet('enemy-coyote', 'enemy-coyote.png', { frameWidth: 60, frameHeight: 35 });
         this.load.spritesheet('enemy-pyramid', 'enemy-pyramid.png', { frameWidth: 80, frameHeight: 80 });
         this.load.spritesheet('enemy-goblin-priest', 'enemy-goblin-priest.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('enemy-goblin-swordmaster', 'enemy-goblin-swordmaster.png', { frameWidth: 47, frameHeight: 32  });
@@ -157,55 +139,13 @@ export class TestMenu extends Phaser.Scene {
             this.scene.launch('DungeonScene');
         }
 
-        // should this be here or elsehwere? we did this for pvp-arena
         createSpiritAnimations(this);
         createEnemyAnimations(this);
 
-        //this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'GAME 2');
-        // deploy contract for testing
-        if (this.firstRun) {
-            // Check if we're in mock mode first - mock mode doesn't use real contracts
-            if (import.meta.env.VITE_API_FORCE_DEPLOY === 'mock') {
-                logger.network.info('==========MOCK API========');
-                this.createDefaultContent(new MockGame2API());
-            } else {
-                // Check if we should join an existing contract (only for real deployments)
-                const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-                if (contractAddress) {
-                    logger.network.info(`Joining existing contract: ${contractAddress}`);
-                    this.deployProvider.join(contractAddress).then((api) => {
-                        logger.network.info('==========JOINED CONTRACT========');
-                        this.initApi(api);
-                    }).catch((e) => logger.network.error(`Error joining contract: ${e}`));
-                } else {
-                    // Original deploy logic
-                    switch (import.meta.env.VITE_API_FORCE_DEPLOY) {
-                        case 'real':
-                            logger.network.info('~deploying~');
-                            this.deployProvider.create().then((api) => {
-                                logger.network.info('==========GOT API========');
-                                this.createDefaultContent(api);
-                            }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                            break;
-                        default:
-                            if (import.meta.env.VITE_API_FORCE_DEPLOY != undefined) {
-                                logger.debugging.error(`Unknown VITE_API_FORCE_DEPLOY: ${import.meta.env.VITE_API_FORCE_DEPLOY}`);
-                            }
-                            this.buttons.push(new Button(this, 75, 48, 128, 84, 'Deploy', 10, () => {
-                                logger.network.info('~deploying~');
-                                this.deployProvider.create().then((api) => {
-                                    logger.network.info('==========GOT API========');
-                                    this.createDefaultContent(api);
-                                }).catch((e) => logger.network.error(`Error connecting: ${e}`));
-                            }));
-                            this.buttons.push(new Button(this, 215, 48, 128, 84, 'Mock Deploy', 10, () => {
-                                logger.network.info('==========MOCK API========');
-                                this.createDefaultContent(new MockGame2API());
-                            }));
-                            break;
-                    }
-                }
-            }
+        // Initialize UI immediately since we're coming from BootScene with initialized API
+        // Scene status is CREATING during create(), so we bypass onStateChange's status check
+        if (this.state) {
+            this.initializeUI(this.state);
         }
 
         // Start menu music (check if already playing globally)
@@ -217,44 +157,86 @@ export class TestMenu extends Phaser.Scene {
         }
     }
 
-    private initApi(api: DeployedGame2API) {
-        this.api = api;
+    private initApi() {
         this.buttons.forEach((b) => b.destroy());
-        this.topBar = new TopBar(this, true, api, this.state);
-        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
+        this.topBar = new TopBar(this, true, this.api, this.state);
+        this.subscription = this.api.state$.subscribe((state) => this.onStateChange(state));
     }
 
-    private createDefaultContent(api: DeployedGame2API) {
-        // Always register full content by default
-        // To use minimal content, set VITE_MINIMAL_CONTENT=true in your .env
-        const minimalOnly = import.meta.env.VITE_MINIMAL_CONTENT === 'true';
-        registerStartingContent(api, minimalOnly, logger.network).then(() => this.initApi(api))
-    }
+    /**
+     * Initialize UI without scene status checks
+     * Used by create() when scene status is CREATING
+     */
+    private initializeUI(state: Game2DerivedState) {
+        // Destroy existing buttons and create new ones
+        this.buttons.forEach((b) => b.destroy());
+        this.buttons = [];
 
+        if (state.player !== undefined) {
+            // Main menu buttons
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
+                this.scene.remove('BiomeSelectMenu');
+                this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
+                this.scene.start('BiomeSelectMenu');
+            }));
+
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
+                this.scene.remove('QuestsMenu');
+                this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
+                this.scene.start('QuestsMenu');
+            }));
+
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
+                this.scene.remove('ShopMenu');
+                this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
+                this.scene.start('ShopMenu');
+            }));
+        } else {
+            // Register button
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
+                logger.gameState.info('Registering new player...');
+                this.scene.pause().launch('Loader');
+                const loader = this.scene.get('Loader') as Loader;
+                loader.setText("Submitting Proof");
+
+                this.events.once('stateChange', () => {
+                    logger.gameState.info('Registered new player');
+                    this.scene.resume().stop('Loader');
+                });
+
+                this.api!.register_new_player().then(() => {
+                    loader.setText("Waiting on chain update");
+                }).catch((e) => {
+                    logger.network.error(`Error registering new player: ${e}`);
+                    this.scene.resume().stop('Loader');
+
+                    if (!this.scene.get('NetworkError')) {
+                        this.scene.add('NetworkError', new NetworkError());
+                    }
+                    const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
+                    networkErrorScene.setErrorMessage('Error registering player. Please try again.');
+                    this.scene.launch('NetworkError');
+                });
+            }));
+        }
+    }
 
     private onStateChange(state: Game2DerivedState) {
         this.state = state;
 
         this.events.emit('stateChange', state);
 
-        // If TestMenu is not the active scene (but allow paused scenes for registration flow)
+        // If MainMenu is not the active scene (but allow paused scenes for registration flow)
         // This prevents interference with other scenes like ActiveBattle
         const sceneStatus = this.scene.settings.status;
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
             return;
         }
 
+        // Destroy and recreate buttons with updated state
         this.buttons.forEach((b) => b.destroy());
 
         if (state.player !== undefined) {
-            // Check if player has an active battle and rejoin if needed
-            const activeBattle = this.findPlayerActiveBattle(state);
-            if (activeBattle) {
-                logger.gameState.info('Active battle detected - rejoining battle');
-                this.rejoinBattle(activeBattle.config);
-                return; // Don't show menu buttons, redirect to battle
-            }
-
             // Main menu buttons in vertical column with proper spacing
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
                 this.scene.remove('BiomeSelectMenu');
@@ -308,43 +290,14 @@ export class TestMenu extends Phaser.Scene {
     }
 
     /**
-     * Find any active battle belonging to the current player
-     * @param state Current game state
-     * @returns The battle config and ID if found, undefined otherwise
+     * Cleanup method to unsubscribe from state updates
+     * Call this before removing the MainMenu scene to prevent stale state updates
      */
-    private findPlayerActiveBattle(state: Game2DerivedState): { config: any, id: bigint } | undefined {
-        if (!state.player || !state.playerId) {
-            return undefined;
+    public shutdown() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = undefined;
         }
-
-        // Look through all active battle configs for one belonging to this player
-        for (const [battleId, config] of state.activeBattleConfigs) {
-            if (config.player_pub_key === state.playerId) {
-                // Found an active battle for this player
-                logger.gameState.debug(`Found active battle for player: ${battleId}`);
-                return { config, id: battleId };
-            }
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Rejoin an existing active battle
-     * @param battleConfig The battle configuration to rejoin
-     */
-    private rejoinBattle(battleConfig: any) {
-        logger.gameState.info('Rejoining active battle...');
-
-        // Stop and remove any existing ActiveBattle scene
-        if (this.scene.get('ActiveBattle')) {
-            this.scene.stop('ActiveBattle');
-            this.scene.remove('ActiveBattle');
-        }
-
-        // Create and start the ActiveBattle scene
-        this.scene.add('ActiveBattle', new ActiveBattle(this.api!, battleConfig, this.state!));
-        this.scene.start('ActiveBattle');
     }
 
 }

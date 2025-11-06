@@ -101,6 +101,12 @@ export interface DeployedGame2API {
      */
     combat_round: (battle_id: bigint, ability_targets: [bigint, bigint, bigint]) => Promise<BattleRewards | undefined>;
 
+    /**
+     * Retreat from an active battle without penalty
+     * Returns the loadout to the player and removes the battle from active battles
+     * @param battle_id Battle to retreat from
+     */
+    retreat_from_battle: (battle_id: bigint) => Promise<void>;
 
     /**
      * Start a new quest
@@ -166,7 +172,7 @@ export class Game2API implements DeployedGame2API {
                 providers.publicDataProvider.contractStateObservable(this.deployedContractAddress, { type: 'latest' }).pipe(
                   map((contractState) => ledger(contractState.data)),
                   tap((ledgerState) =>
-                    logger?.trace({
+                    logger?.debug({
                       ledgerStateChanged: {
                         ledgerState: {
                           ...ledgerState,
@@ -323,6 +329,18 @@ export class Game2API implements DeployedGame2API {
         });
 
         return txData.private.result.is_some ? txData.private.result.value : undefined;
+    }
+
+    async retreat_from_battle(battle_id: bigint): Promise<void> {
+        const txData = await this.deployedContract.callTx.retreat_from_battle(battle_id);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'retreat_from_battle',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
     }
 
     async start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {

@@ -6,7 +6,6 @@ import { BattleLayout } from "./BattleLayout";
 import { Color, colorToNumber } from "../constants/colors";
 import { Def } from "../constants/def";
 import { BattleEffectType, effectTypeToIcon } from "../widgets/BattleEffect";
-import { Game2DerivedState } from "game2-api";
 
 const ENEMY_TEXTURES = [
     'enemy-goblin',

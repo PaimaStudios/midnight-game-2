@@ -45,11 +45,10 @@ export class ActiveBattle extends Phaser.Scene {
 
     constructor(api: DeployedGame2API, battle: BattleConfig, state: Game2DerivedState) {
         super("ActiveBattle");
-        
+
         logger.combat.debug('ActiveBattle constructor called');
         this.api = api;
         this.battle = battle;
-        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
         this.enemies = [];
         this.abilityIcons = [];
         this.spirits = [];
@@ -57,12 +56,15 @@ export class ActiveBattle extends Phaser.Scene {
         this.round = 0;
         this.waitingOnAnimations = false;
         this.initialized = false;
-        
-        // Initialize managers
+
+        // Initialize managers first
         this.layout = new BattleLayout(GAME_WIDTH, GAME_HEIGHT);
         this.enemyManager = new EnemyManager(this, this.layout);
         this.spiritManager = new SpiritManager(this, this.layout);
         this.uiStateManager = new UIStateManager(this, this.api);
+
+        // Subscribe to state AFTER managers are initialized
+        this.subscription = api.state$.subscribe((state) => this.onStateChange(state));
     }
 
     create() {
@@ -131,6 +133,18 @@ export class ActiveBattle extends Phaser.Scene {
         const playerDamage = Number(battleState.damage_to_player);
         this.player.hp = Math.max(0, this.player.maxHp - playerDamage);
         this.player.hpBar.setValue(this.player.hp);
+
+        // Create retreat button
+        this.uiStateManager.createRetreatButton(
+            this.battle,
+            this.state,
+            () => {
+                // Disable interactions when retreat is initiated
+                this.spiritManager.disableInteractions();
+                this.uiStateManager.destroyAbilityIcons();
+                this.spiritManager.cleanupSpirits();
+            }
+        );
 
         this.initialized = true;
     }
