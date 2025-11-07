@@ -3,8 +3,8 @@
  * or the circuit is just impure due to division witnesses
  */
 import { Game2DerivedState, safeJSONString } from "game2-api";
-import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits, BattleConfig, BattleState } from "game2-contract";
-import { logger } from '../main';
+import { Ability, BattleRewards, Effect, EFFECT_TYPE, BOSS_TYPE, pureCircuits, BattleConfig, BattleState, EnemiesConfig, Level } from "game2-contract";
+import { game, logger } from '../main';
 
 export type CombatCallbacks = {
     // triggered when an enemy blocks. enemy is the enemy that blocks, targets are who the block is applied to
@@ -79,21 +79,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
             }
             else if (battleState.damage_to_enemy_0 >= stats[0].hp && (battleState.damage_to_enemy_1 >= stats[1].hp || enemy_count < 2) && (battleState.damage_to_enemy_2 >= stats[2].hp || enemy_count < 3)) {
                 logger.combat.info(`YOU WON`);
-                let abilityReward = { is_some: false, value: BigInt(0) };
-                let reward_factor = BigInt(0);
-                for (let i = 0; i < enemy_count; ++i) {
-                    reward_factor += pureCircuits.boss_type_reward_factor(stats[i].boss_type);
-                }
-                if (reward_factor > 0) {
-                    const ability = randomAbility(gameState.player!.rng, battleConfig.level.difficulty * reward_factor);
-                    const abilityId = pureCircuits.derive_ability_id(ability);
-                    // TODO: this really shouldn't be here, should it? but if we don't do that we need to return the entire ability in the contract
-                    // if we don't return it, we need to match the logic here with the contract
-                    gameState.allAbilities.set(abilityId, ability);
-                    abilityReward.is_some = true;
-                    abilityReward.value = abilityId;
-                }
-                resolve({ alive: true, gold: BigInt(100), ability: abilityReward });
+                resolve(battleRewards(gameState, battleConfig.level, battleConfig.enemies));
             } else {
                 logger.combat.info(`CONTINUE BATTLE`);
                 resolve(undefined);
@@ -270,4 +256,24 @@ export function initBattlestate(rng: number, battle: BattleConfig): BattleState 
         enemy_move_index_1: BigInt(0),
         enemy_move_index_2: BigInt(0),
     };
+}
+
+export function battleRewards(gameState: Game2DerivedState, level: Level, enemies: EnemiesConfig): BattleRewards {
+    const enemyCount = Number(enemies.count);
+
+    let abilityReward = { is_some: false, value: BigInt(0) };
+    let reward_factor = BigInt(0);
+    for (let i = 0; i < enemyCount; ++i) {
+        reward_factor += pureCircuits.boss_type_reward_factor(enemies.stats[i].boss_type);
+    }
+    if (reward_factor > 0) {
+        const ability = randomAbility(gameState.player!.rng, level.difficulty * reward_factor);
+        const abilityId = pureCircuits.derive_ability_id(ability);
+        // TODO: should this be here? if we don't do that we need to return the entire ability in the contract
+        // if we don't return it, we need to match the logic here with the contract
+        gameState.allAbilities.set(abilityId, ability);
+        abilityReward.is_some = true;
+        abilityReward.value = abilityId;
+    }
+    return { alive: true, gold: BigInt(100), ability: abilityReward };
 }
