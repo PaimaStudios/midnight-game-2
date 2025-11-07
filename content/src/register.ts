@@ -210,8 +210,8 @@ export async function registerStartingContent(
   const goblinChief: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 9,
-    hp: 120,
-    moves: [{ attack: 10, block_self: 15 }, { attack: 25 }, { attack: 15, block_self: 10 }],
+    hp: 140,
+    moves: [{ attack: 12, block_self: 17 }, { attack: 30 }, { attack: 17, block_self: 12 }],
     physical_def: Def.EFFECTIVE,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.EFFECTIVE,
@@ -220,8 +220,8 @@ export async function registerStartingContent(
   const tentacles: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 10,
-    hp: 80,
-    moves: [{ attack: 15, heal_self: 10 }, { block_self: 15, heal_self: 10 }, { attack: 10, block_self: 5, heal_self: 10 }],
+    hp: 90,
+    moves: [{ attack: 17, heal_self: 12 }, { block_self: 17, heal_self: 12 }, { attack: 12, block_self: 6, heal_self: 12 }],
     physical_def: Def.WEAK,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.NEUTRAL,
@@ -230,8 +230,8 @@ export async function registerStartingContent(
   const hellspawn: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 6,
-    hp: 80,
-    moves: [{ attack: 40, block_self: 1 }, { attack: 30, heal_self: 10 }],
+    hp: 90,
+    moves: [{ attack: 45 }, { attack: 35, heal_self: 12 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.WEAK,
     ice_def: Def.SUPEREFFECTIVE,
@@ -239,8 +239,8 @@ export async function registerStartingContent(
   const hellspawnStrong: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 6,
-    hp: 120,
-    moves: [{ attack: 60, block_self: 2 }, { attack: 45, heal_self: 15 }],
+    hp: 140,
+    moves: [{ attack: 70 }, { attack: 50, heal_self: 17 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.WEAK,
     ice_def: Def.SUPEREFFECTIVE,
@@ -248,8 +248,8 @@ export async function registerStartingContent(
   const hellspawnElite: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 6,
-    hp: 160,
-    moves: [{ attack: 80, block_self: 5 }, { attack: 60, heal_self: 20 }],
+    hp: 185,
+    moves: [{ attack: 90 }, { attack: 70, heal_self: 23 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.WEAK,
     ice_def: Def.SUPEREFFECTIVE,
@@ -258,8 +258,8 @@ export async function registerStartingContent(
   const iceGolem: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 5,
-    hp: 80,
-    moves: [{ attack: 5, block_self: 15 }, { block_self: 40 }, { attack: 10, block_self: 10 }],
+    hp: 90,
+    moves: [{ attack: 6, block_self: 17 }, { block_self: 45 }, { attack: 12, block_self: 12 }],
     physical_def: Def.WEAK,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.IMMUNE,
@@ -267,8 +267,8 @@ export async function registerStartingContent(
   const iceGolemStrong: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 5,
-    hp: 120,
-    moves: [{ attack: 8, block_self: 22 }, { block_self: 60 }, { attack: 15, block_self: 15 }],
+    hp: 140,
+    moves: [{ attack: 9, block_self: 25 }, { block_self: 70 }, { attack: 17, block_self: 17 }],
     physical_def: Def.WEAK,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.IMMUNE,
@@ -276,8 +276,8 @@ export async function registerStartingContent(
   const iceGolemElite: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.miniboss,
     enemy_type: 5,
-    hp: 160,
-    moves: [{ attack: 10, block_self: 30 }, { block_self: 80 }, { attack: 20, block_self: 20 }],
+    hp: 185,
+    moves: [{ attack: 12, block_self: 35 }, { block_self: 90 }, { attack: 23, block_self: 23 }],
     physical_def: Def.WEAK,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.IMMUNE,
@@ -286,24 +286,24 @@ export async function registerStartingContent(
   // NORMAL ENEMIES
   const goblin: EnemyStatsConfig = {
     enemy_type: 0,
-    hp: 30,
-    moves: [{ attack: 5, block_self: 5 }, { attack: 10 }, { block_self: 10 }],
+    hp: 35,
+    moves: [{ attack: 6, block_self: 6 }, { attack: 12 }, { block_self: 12 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const goblinStrong: EnemyStatsConfig = {
     enemy_type: 0,
-    hp: 45,
-    moves: [{ attack: 10, block_self: 5 }, { attack: 15 }, { block_self: 15 }],
+    hp: 50,
+    moves: [{ attack: 12, block_self: 6 }, { attack: 17 }, { block_self: 17 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const goblinElite: EnemyStatsConfig = {
     enemy_type: 0,
-    hp: 60,
-    moves: [{ attack: 10, block_self: 10 }, { attack: 20 }, { block_self: 20 }],
+    hp: 70,
+    moves: [{ attack: 12, block_self: 12 }, { attack: 23 }, { block_self: 23 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
@@ -311,24 +311,24 @@ export async function registerStartingContent(
 
   const fireSprite: EnemyStatsConfig = {
     enemy_type: 1,
-    hp: 25,
-    moves: [{ attack: 20 }],
+    hp: 30,
+    moves: [{ attack: 23 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.IMMUNE,
     ice_def: Def.EFFECTIVE,
   };
   const fireSpriteStrong: EnemyStatsConfig = {
     enemy_type: 1,
-    hp: 38,
-    moves: [{ attack: 30 }],
+    hp: 45,
+    moves: [{ attack: 35 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.IMMUNE,
     ice_def: Def.EFFECTIVE,
   };
   const fireSpriteElite: EnemyStatsConfig = {
     enemy_type: 1,
-    hp: 50,
-    moves: [{ attack: 40 }],
+    hp: 60,
+    moves: [{ attack: 45 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.IMMUNE,
     ice_def: Def.EFFECTIVE,
@@ -336,24 +336,24 @@ export async function registerStartingContent(
 
   const coyote: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 50,
-    moves: [{ attack: 20 }],
+    hp: 60,
+    moves: [{ attack: 23 }],
     physical_def: Def.EFFECTIVE,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const coyoteStrong: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 75,
-    moves: [{ attack: 30, block_self: 1 }],
+    hp: 85,
+    moves: [{ attack: 35 }],
     physical_def: Def.EFFECTIVE,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const coyoteElite: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 100,
-    moves: [{ attack: 40, block_self: 2 }],
+    hp: 115,
+    moves: [{ attack: 45 }],
     physical_def: Def.EFFECTIVE,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
@@ -361,24 +361,24 @@ export async function registerStartingContent(
 
   const pyramid: EnemyStatsConfig = {
     enemy_type: 4,
-    hp: 50,
-    moves: [{ attack: 20 }, { block_allies: 10 }, { heal_allies: 10 }],
+    hp: 60,
+    moves: [{ attack: 23 }, { block_allies: 12 }, { heal_allies: 12 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.EFFECTIVE,
   };
   const pyramidStrong: EnemyStatsConfig = {
     enemy_type: 4,
-    hp: 75,
-    moves: [{ attack: 30 }, { block_allies: 15 }, { heal_allies: 15 }],
+    hp: 85,
+    moves: [{ attack: 35 }, { block_allies: 17 }, { heal_allies: 17 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.EFFECTIVE,
   };
   const pyramidElite: EnemyStatsConfig = {
     enemy_type: 4,
-    hp: 100,
-    moves: [{ attack: 40 }, { block_allies: 20 }, { heal_allies: 20 }],
+    hp: 115,
+    moves: [{ attack: 45 }, { block_allies: 23 }, { heal_allies: 23 }],
     physical_def: Def.IMMUNE,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.EFFECTIVE,
@@ -386,24 +386,24 @@ export async function registerStartingContent(
 
   const goblinPriest: EnemyStatsConfig = {
     enemy_type: 7,
-    hp: 30,
-    moves: [{ block_self: 5, block_allies: 10 }, { heal_allies: 15 }, { attack: 10, block_allies: 5 }],
+    hp: 35,
+    moves: [{ block_self: 6, block_allies: 12 }, { heal_allies: 17 }, { attack: 12, block_allies: 6 }],
     physical_def: Def.SUPEREFFECTIVE,
     fire_def: Def.WEAK,
     ice_def: Def.WEAK,
   };
   const goblinPriestStrong: EnemyStatsConfig = {
     enemy_type: 7,
-    hp: 45,
-    moves: [{ block_self: 7, block_allies: 15 }, { heal_allies: 23 }, { attack: 15, block_allies: 8 }],
+    hp: 50,
+    moves: [{ block_self: 8, block_allies: 17 }, { heal_allies: 25 }, { attack: 17, block_allies: 9 }],
     physical_def: Def.SUPEREFFECTIVE,
     fire_def: Def.WEAK,
     ice_def: Def.WEAK,
   };
   const goblinPriestElite: EnemyStatsConfig = {
     enemy_type: 7,
-    hp: 60,
-    moves: [{ block_self: 10, block_allies: 20 }, { heal_allies: 30 }, { attack: 20, block_allies: 10 }],
+    hp: 70,
+    moves: [{ attack: 23, block_allies: 12 }, { heal_allies: 35 }, { block_self: 12, block_allies: 23 }],
     physical_def: Def.SUPEREFFECTIVE,
     fire_def: Def.WEAK,
     ice_def: Def.WEAK,
@@ -411,24 +411,24 @@ export async function registerStartingContent(
 
   const goblinSwordmaster: EnemyStatsConfig = {
     enemy_type: 8,
-    hp: 20,
-    moves: [{ attack: 10, block_self: 2 }, { attack: 10 }, { attack: 15 }],
+    hp: 23,
+    moves: [{ attack: 12, block_self: 3 }, { attack: 12 }, { attack: 17 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const goblinSwordmasterStrong: EnemyStatsConfig = {
     enemy_type: 8,
-    hp: 35,
-    moves: [{ attack: 25, block_self: 5 }, { attack: 15 }, { attack: 23 }],
+    hp: 40,
+    moves: [{ attack: 30, block_self: 6 }, { attack: 17 }, { attack: 25 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
   };
   const goblinSwordmasterElite: EnemyStatsConfig = {
     enemy_type: 8,
-    hp: 50,
-    moves: [{ attack: 45, block_self: 9 }, { attack: 20 }, { attack: 30 }],
+    hp: 60,
+    moves: [{ attack: 50, block_self: 10 }, { attack: 23 }, { attack: 35 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
     ice_def: Def.NEUTRAL,
@@ -436,24 +436,24 @@ export async function registerStartingContent(
 
   const snowman: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 25,
-    moves: [{ attack: 20 }, { attack: 15, block_self: 5 }, { attack: 10 }],
+    hp: 30,
+    moves: [{ attack: 23 }, { attack: 17, block_self: 6 }, { attack: 12 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.WEAK,
   };
   const snowmanStrong: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 38,
-    moves: [{ attack: 30 }, { attack: 22, block_self: 8 }, { attack: 15 }],
+    hp: 45,
+    moves: [{ attack: 35 }, { attack: 25, block_self: 9 }, { attack: 17 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.WEAK,
   };
   const snowmanElite: EnemyStatsConfig = {
     enemy_type: 3,
-    hp: 50,
-    moves: [{ attack: 40 }, { attack: 30, block_self: 10 }, { attack: 20 }],
+    hp: 60,
+    moves: [{ attack: 45 }, { attack: 35, block_self: 12 }, { attack: 23 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.WEAK,
@@ -461,8 +461,8 @@ export async function registerStartingContent(
 
   const tentacle: EnemyStatsConfig = {
     enemy_type: 11,
-    hp: 30,
-    moves: [{ attack: 10, heal_self: 5 }, { block_self: 10, heal_self: 5 }, { attack: 5, block_self: 5, heal_self: 5 }],
+    hp: 35,
+    moves: [{ attack: 12, heal_self: 6 }, { block_self: 12, heal_self: 6 }, { attack: 6, block_self: 6, heal_self: 6 }],
     physical_def: Def.WEAK,
     fire_def: Def.EFFECTIVE,
     ice_def: Def.NEUTRAL,
