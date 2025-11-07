@@ -136,7 +136,116 @@ export class CombatAnimationManager {
         }
     }
 
+    /**
+     * Creates minimal callbacks that instantly resolve for debug/testing purposes
+     * All necessary state updates are still performed, but animations are skipped
+     */
+    private createDebugCallbacks(): CombatCallbacks {
+        return {
+            onEnemyBlock: (enemy: number, targets: number[], amount: number) => {
+                logger.combat.debug(`[DEBUG] enemy [${enemy}] blocked for ${amount}`);
+                if (targets.length == 1 && targets[0] == enemy) {
+                    this.enemies[enemy].clearBlockSelfPlan();
+                } else {
+                    this.enemies[enemy].clearBlockAlliesPlan();
+                }
+                targets.forEach((target) => {
+                    this.enemies[target].addBlock(amount);
+                });
+                return Promise.resolve();
+            },
+
+            onEnemyAttack: (enemy: number, amount: number) => {
+                logger.combat.debug(`[DEBUG] enemy [${enemy}] attacked for ${amount}`);
+                this.enemies[enemy].clearAttackPlan();
+                this.player?.damage(amount);
+                return Promise.resolve();
+            },
+
+            onEnemyHeal: (enemy: number, targets: number[], amount: number) => {
+                logger.combat.debug(`[DEBUG] enemy [${enemy}] healed for ${amount}`);
+                if (targets.length == 1 && targets[0] == enemy) {
+                    this.enemies[enemy].clearHealSelfPlan();
+                } else {
+                    this.enemies[enemy].clearHealAlliesPlan();
+                }
+                targets.forEach((target) => {
+                    this.enemies[target].heal(amount);
+                });
+                return Promise.resolve();
+            },
+
+            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => {
+                logger.combat.debug(`[DEBUG] player effect from spirit ${source}, type ${effectType}`);
+                switch (effectType) {
+                    case EFFECT_TYPE.attack_fire:
+                    case EFFECT_TYPE.attack_ice:
+                    case EFFECT_TYPE.attack_phys:
+                        targets.forEach((target, i) => {
+                            this.enemies[target].damage(amounts[i]);
+                        });
+                        break;
+                    case EFFECT_TYPE.block:
+                        this.player?.addBlock(amounts[0]);
+                        break;
+                }
+                return Promise.resolve();
+            },
+
+            onDrawAbilities: (abilities: Ability[]) => {
+                logger.combat.debug(`[DEBUG] drawing ${abilities.length} abilities`);
+                // Only create ability cards and spirits if they don't already exist
+                if (this.abilityIcons.length === 0) {
+                    this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this.scene, (this.scene.game.config.width as number) * (i + 0.5) / abilities.length, this.layout.abilityIdleY(), ability));
+                }
+                if (this.spirits.length === 0) {
+                    this.spirits = abilities.map((ability, i) => new SpiritWidget(this.scene, (this.scene.game.config.width as number) * (i + 0.5) / abilities.length, this.layout.spiritY(), ability));
+                }
+                return Promise.resolve();
+            },
+
+            onUseAbility: (abilityIndex: number, energy?: number) => {
+                logger.combat.debug(`[DEBUG] using ability ${abilityIndex}${energy !== undefined ? ` with energy ${energy}` : ''}`);
+                // Just scale down the orb if energy was used (no animation)
+                if (energy != undefined && this.spirits[abilityIndex]?.orbs[energy]) {
+                    this.spirits[abilityIndex].orbs[energy]!.setScale(1);
+                }
+                return Promise.resolve();
+            },
+
+            afterUseAbility: (abilityIndex: number) => {
+                logger.combat.debug(`[DEBUG] after using ability ${abilityIndex}`);
+                return Promise.resolve();
+            },
+
+            onEnergyTrigger: (source: number, color: number) => {
+                logger.combat.debug(`[DEBUG] energy trigger from spirit ${source}, color ${color}`);
+                // Scale up target orbs that receive energy
+                const targets = [0, 1, 2]
+                    .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
+                targets.forEach((a) => {
+                    const orb = this.spirits[a].orbs[color]!;
+                    orb.setScale(1.5);
+                });
+                return Promise.resolve();
+            },
+
+            onEndOfRound: () => {
+                logger.combat.debug(`[DEBUG] end of round`);
+                this.enemies.forEach((enemy) => enemy.endOfRound());
+                this.player?.endOfRound();
+                return Promise.resolve();
+            },
+        };
+    }
+
     public createCombatCallbacks(): CombatCallbacks {
+        // Check if we should skip animations for faster testing
+        if (import.meta.env.VITE_SKIP_BATTLE_ANIMATIONS === 'true') {
+            logger.combat.info('[DEBUG MODE] Using instant-resolve animation callbacks');
+            return this.createDebugCallbacks();
+        }
+
         return {
             onEnemyBlock: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
