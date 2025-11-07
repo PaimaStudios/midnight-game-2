@@ -97,6 +97,19 @@ export class ActiveBattle extends Phaser.Scene {
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
+        // Guard: Check if scene is still valid and active before processing state changes
+        if (!this.scene || !this.scene.settings) {
+            logger.combat.debug('ActiveBattle.onStateChange() called but scene is destroyed, ignoring');
+            return;
+        }
+
+        const sceneStatus = this.scene.settings.status;
+        // Only process updates if scene is active (RUNNING or PAUSED, but not STOPPED or DESTROYED)
+        if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
+            logger.combat.debug(`ActiveBattle.onStateChange() called but scene status is ${sceneStatus}, ignoring`);
+            return;
+        }
+
         this.state = structuredClone(state);
 
         if (!this.initialized) {
