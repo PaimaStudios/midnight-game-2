@@ -17,6 +17,9 @@ const ENEMY_TEXTURES = [
     'enemy-hellspawn',
     'enemy-goblin-priest',
     'enemy-goblin-swordmaster',
+    'enemy-miniboss-goblin-chief',
+    'enemy-miniboss-tentacles',
+    'enemy-tentacle',
 ];
 
 const BOSS_TEXTURES = [
