@@ -11,6 +11,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { Color } from "../constants/colors";
 import { addTooltip } from "../widgets/tooltip";
 import { LEVEL_COUNT_PER_BIOME } from "game2-contract";
+import { MockGame2API } from "../mockapi";
 
 export class LevelSelectMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -122,6 +123,25 @@ export class LevelSelectMenu extends Phaser.Scene {
                     }
                 },
             );
+
+            // to quickly test for balance we can instantly get rewards from battles or quests here
+            // this only works on mock api
+            if (import.meta.env.VITE_QUICK_TEST_REWARDS && isUnlocked) {
+                new Button(
+                    this,
+                    GAME_WIDTH / 2 + buttonWidth / 2 + 48 + 16,
+                    startY + (level - 1) * spacingY,
+                    96,
+                    buttonHeight,
+                    "Auto\nWin",
+                    8,
+                    () => {
+                        const levelId = { biome: BigInt(this.biome), difficulty: BigInt(level) };
+                        // this gives rewards and also unlocks next boss - note: you need to back out to refresh it unlocking next boss though
+                        (this.api as MockGame2API).quickTestBattle(levelId, this.isQuest);
+                    },
+                );
+            }
 
             // Disable button if level is locked
             if (isUnlocked) {
