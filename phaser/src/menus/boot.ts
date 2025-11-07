@@ -23,6 +23,9 @@ export class BootScene extends Phaser.Scene {
         this.deployProvider = new BrowserDeploymentManager(logger.pino);
     }
 
+    // BootScene doesn't load assets - that's done in MainMenu's preload()
+    // This allows the SDK to initialize properly without interference from asset loading
+
     create() {
         // Check if we're in mock mode first - mock mode doesn't use real contracts
         if (import.meta.env.VITE_API_FORCE_DEPLOY === 'mock') {
@@ -89,6 +92,9 @@ export class BootScene extends Phaser.Scene {
             // Unsubscribe immediately
             this.subscription?.unsubscribe();
             this.subscription = undefined;
+
+            // Debug logging
+            logger.gameState.info(`Boot state check: player=${state.player !== undefined}, playerId=${state.playerId}, activeBattles=${state.activeBattleConfigs.size}`);
 
             // Check if player has an active battle
             if (state.player !== undefined) {

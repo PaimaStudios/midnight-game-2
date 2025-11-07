@@ -9,13 +9,13 @@ import { Loader } from "./loader";
 import { Subscription } from "rxjs";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { ShopMenu } from "./shop/shop";
-import { createSpiritAnimations } from "../animations/spirit";
-import { createEnemyAnimations } from "../animations/enemy";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { DungeonScene } from "./dungeon-scene";
 import { TopBar } from "../widgets/top-bar";
 import { NetworkError } from "./network-error";
+import { createSpiritAnimations } from "../animations/spirit";
+import { createEnemyAnimations } from "../animations/enemy";
 
 export class MainMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -129,6 +129,10 @@ export class MainMenu extends Phaser.Scene {
     }
 
     create() {
+        // Create animations
+        createSpiritAnimations(this);
+        createEnemyAnimations(this);
+
         // Add and launch dungeon background scene first (shared across hub scenes)
         if (!this.scene.get('DungeonScene')) {
             this.scene.add('DungeonScene', new DungeonScene());
@@ -138,9 +142,6 @@ export class MainMenu extends Phaser.Scene {
         if (dungeonScene && !dungeonScene.scene.isActive()) {
             this.scene.launch('DungeonScene');
         }
-
-        createSpiritAnimations(this);
-        createEnemyAnimations(this);
 
         // Initialize UI immediately since we're coming from BootScene with initialized API
         // Scene status is CREATING during create(), so we bypass onStateChange's status check
@@ -193,8 +194,9 @@ export class MainMenu extends Phaser.Scene {
             }));
         } else {
             // Register button
-            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
+            this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, async () => {
                 logger.gameState.info('Registering new player...');
+                logger.gameState.info(`API instance check: ${this.api !== undefined}, type: ${typeof this.api}`);
                 this.scene.pause().launch('Loader');
                 const loader = this.scene.get('Loader') as Loader;
                 loader.setText("Submitting Proof");
@@ -204,10 +206,13 @@ export class MainMenu extends Phaser.Scene {
                     this.scene.resume().stop('Loader');
                 });
 
-                this.api!.register_new_player().then(() => {
+                try {
+                    await this.api!.register_new_player();
                     loader.setText("Waiting on chain update");
-                }).catch((e) => {
+                } catch (e: any) {
                     logger.network.error(`Error registering new player: ${e}`);
+                    logger.network.error(`Error type: ${e.constructor?.name}`);
+                    if (e.stack) logger.network.error(`Error stack: ${e.stack}`);
                     this.scene.resume().stop('Loader');
 
                     if (!this.scene.get('NetworkError')) {
@@ -216,7 +221,7 @@ export class MainMenu extends Phaser.Scene {
                     const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
                     networkErrorScene.setErrorMessage('Error registering player. Please try again.');
                     this.scene.launch('NetworkError');
-                });
+                }
             }));
         }
     }
