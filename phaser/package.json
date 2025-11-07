@@ -14,9 +14,7 @@
     "build-batcher": "tsc && vite build --mode batcher-undeployed && cp -r ../contract/dist/managed/game2/keys ./dist/keys && cp -r ../contract/dist/managed/game2/zkir ./dist/zkir",
     "build-mock": "tsc && vite build --mode mock",
     "preview": "vite build --mode mock --watch & vite preview --mode mock",
-    "preview:fast": "VITE_SKIP_BATTLE_ANIMATIONS=true vite build --mode mock --watch & VITE_SKIP_BATTLE_ANIMATIONS=true vite preview --mode mock",
     "workaround": "vite preview",
-    "workaround:fast": "VITE_SKIP_BATTLE_ANIMATIONS=true vite preview",
     "lint": "eslint ./src",
     "test": "jest --passWithNoTests"
   },
