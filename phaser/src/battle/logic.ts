@@ -232,7 +232,7 @@ export function randomAbility(rng: Uint8Array, difficulty: bigint): Ability {
 export function randomEffect(rng: number, factor: bigint): Effect {
     const effect_type = (rng % 4) as EFFECT_TYPE;
     const is_aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
-    const block_factor = BigInt(effect_type != EFFECT_TYPE.block ? 1 : 5);
+    const block_factor = BigInt(effect_type != EFFECT_TYPE.block ? 1 : 2);
     const final_factor = factor * block_factor * BigInt(is_aoe ? 1 : 2);
     const amount = final_factor + BigInt(rng % Number(final_factor));
     return {
