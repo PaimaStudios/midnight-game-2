@@ -173,6 +173,8 @@ export class MockGame2API implements DeployedGame2API {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
+                ready_block_time: pureCircuits.quest_wait_time(level),
+
             };
             const questId = pureCircuits.derive_quest_id(quest);
             this.mockState.quests.set(questId, quest);
@@ -180,26 +182,6 @@ export class MockGame2API implements DeployedGame2API {
             this.questReadiness.set(questId, false);
             this.questStartTimes.set(questId, Date.now());
             return questId;
-        });
-    }
-
-    public is_quest_ready(quest_id: bigint): Promise<boolean> {
-        return this.response(async () => {
-            // Check if already marked as ready
-            let isReady = this.questReadiness.get(quest_id) ?? false;
-            
-            if (!isReady) {
-                // Check if 5 seconds have passed since quest creation
-                const TIME_TO_WAIT = 5000; // 5 seconds
-                const startTime = this.questStartTimes.get(quest_id);
-                if (startTime && (Date.now() - startTime) >= TIME_TO_WAIT) {
-                    // Mark as ready and keep it ready
-                    this.questReadiness.set(quest_id, true);
-                    isReady = true;
-                }
-            }
-            
-            return isReady;
         });
     }
 
