@@ -329,4 +329,9 @@ export class ActiveBattle extends Phaser.Scene {
             }
         }
     }
+
+    shutdown() {
+        this.subscription?.unsubscribe();
+    }
+
 }
