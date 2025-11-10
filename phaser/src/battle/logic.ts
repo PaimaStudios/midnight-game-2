@@ -77,7 +77,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 logger.combat.info(`YOU DIED`);
                 resolve({ alive: false, gold: BigInt(0), ability: { is_some: false, value: BigInt(0) } });
             }
-            else if (battleState.damage_to_enemy_0 >= stats[0].hp && (battleState.damage_to_enemy_1 >= stats[1].hp || enemy_count < 2) && (battleState.damage_to_enemy_2 >= stats[2].hp || enemy_count < 3)) {
+            else if (battleState.damage_to_enemy_0 >= BigInt(stats[0].hp) && (enemy_count < 2 || battleState.damage_to_enemy_1 >= BigInt(stats[1].hp)) && (enemy_count < 3 || battleState.damage_to_enemy_2 >= BigInt(stats[2].hp))) {
                 logger.combat.info(`YOU WON`);
                 resolve(battleRewards(gameState, battleConfig.level, battleConfig.enemies));
             } else {
@@ -90,7 +90,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
 
         // Enemy block phase
         for (let i = 0; i < enemy_count; ++i) {
-            if (old_damage_to_enemy[i] < stats[i].hp) {
+            if (old_damage_to_enemy[i] < BigInt(stats[i].hp)) {
                 // do not change vars for block since it's directly checked during player against enemy damage code
                 const selfBlock = Number(moves[i].block_self);
                 if (selfBlock != 0) {
@@ -98,7 +98,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
                 }
                 const alliesBlock = Number(moves[i].block_allies);
                 if (alliesBlock != 0) {
-                    await uiHooks?.onEnemyBlock(i, enemies.filter((e) => e != i && old_damage_to_enemy[e] < stats[e].hp), alliesBlock);
+                    await uiHooks?.onEnemyBlock(i, enemies.filter((e) => e != i && old_damage_to_enemy[e] < BigInt(stats[e].hp)), alliesBlock);
                 }
             }
         }
@@ -106,7 +106,7 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         const aliveTargets = new Array(enemy_count)
             .fill(0)
             .map((_, i) => i)
-            .filter((i) => old_damage_to_enemy[i] < stats[i].hp);
+            .filter((i) => old_damage_to_enemy[i] < BigInt(stats[i].hp));
 
         // Player abilities with player-selected targets (key difference!)
         const resolveEffect = async (effect: { is_some: boolean, value: Effect }, source: number, target: number) => {
@@ -133,8 +133,8 @@ export function combat_round_logic(battle_id: bigint, gameState: Game2DerivedSta
         };
 
         // base effects
-        const isEnemyDead = (i: number) => round_damage_to_enemy[i] + old_damage_to_enemy[i] - enemy_block[i] >= stats[i].hp;
-        const allEnemiesDead = () => isEnemyDead(0) && (isEnemyDead(1) || enemy_count < 2) && (isEnemyDead(2) || enemy_count < 3);
+        const isEnemyDead = (i: number) => round_damage_to_enemy[i] + old_damage_to_enemy[i] - enemy_block[i] >= BigInt(stats[i].hp);
+        const allEnemiesDead = () => isEnemyDead(0) && (enemy_count < 2 || isEnemyDead(1)) && (enemy_count < 3 || isEnemyDead(2));
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
             await uiHooks?.onUseAbility(i, undefined);

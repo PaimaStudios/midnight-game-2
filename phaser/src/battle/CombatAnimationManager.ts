@@ -20,6 +20,7 @@ export class CombatAnimationManager {
     private player: Actor;
     private battle: BattleConfig;
     private background: Phaser.GameObjects.GameObject | null = null;
+    private readonly skipAnimations: boolean;
 
     constructor(
         scene: Phaser.Scene,
@@ -39,20 +40,27 @@ export class CombatAnimationManager {
         this.player = player;
         this.battle = battle;
         this.background = background || null;
+        this.skipAnimations = import.meta.env.VITE_SKIP_BATTLE_ANIMATIONS === 'true';
+
+        if (this.skipAnimations) {
+            logger.combat.info('[DEBUG MODE] Battle animations disabled - state updates only');
+        }
     }
 
     private shakeScreen(intensity: number = 5, duration: number = 500) {
+        if (this.skipAnimations) return;
+
         // Get all game objects except background (properly exclude the background object)
         const objectsToShake = this.scene.children.list.filter((child) => {
             // Skip the background object if we have a reference to it
             return child !== this.background;
         }).filter(child => 'x' in child && 'y' in child) as Array<Phaser.GameObjects.GameObject & { x: number, y: number }>;
-        
+
         if (objectsToShake.length === 0) return;
-        
+
         // Store original positions
         const originalPositions = objectsToShake.map(obj => ({ x: obj.x, y: obj.y }));
-        
+
         // Create shake effect with easing out
         const shakeData = { intensity: intensity, progress: 0 };
         this.scene.tweens.add({
@@ -101,29 +109,31 @@ export class CombatAnimationManager {
     };
 
     private showEffectivenessText(x: number, y: number, defenseLevel: Def) {
+        if (this.skipAnimations) return;
+
         const display = CombatAnimationManager.EFFECTIVENESS_DISPLAY[defenseLevel];
         if (!display) return;
-        
+
         const { text, color, useRainbow, sound, shake } = display;
-        
+
         // Play sound effect
         this.scene.sound.play(sound, { volume: defenseLevel >= Def.EFFECTIVE ? 1.0 : 0.8 });
-        
+
         // Shake screen for stronger attacks
         if (shake.intensity > 0) {
             this.shakeScreen(shake.intensity, shake.duration);
         }
         if (text) {
-            const effectivenessText = useRainbow 
+            const effectivenessText = useRainbow
                 ? new RainbowText(this.scene, x, y - 40, text, 6, fontStyle(16), true)
                 : new Phaser.GameObjects.Text(this.scene, x, y - 40, text, {
                     ...fontStyle(16),
                     color: color,
                     align: 'center'
                 }).setOrigin(0.5).setStroke(Color.Licorice, 10);
-            
+
             this.scene.add.existing(effectivenessText);
-            
+
             // Animate the text
             this.scene.tweens.add({
                 targets: effectivenessText,
@@ -138,104 +148,140 @@ export class CombatAnimationManager {
 
     public createCombatCallbacks(): CombatCallbacks {
         return {
-            onEnemyBlock: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
+            onEnemyBlock: (enemy: number, targets: number[], amount: number) => {
                 logger.combat.debug(`enemy [${enemy}] blocked for ${amount} | ${this.enemies.length}`);
+
+                // Clear planned action
                 if (targets.length == 1 && targets[0] == enemy) {
                     this.enemies[enemy].clearBlockSelfPlan();
                 } else {
                     this.enemies[enemy].clearBlockAlliesPlan();
                 }
-                // TODO: block animations?
+
+                // Apply state updates
                 targets.forEach((target) => {
                     this.enemies[target].addBlock(amount);
-                    
-                    // Show block effect on enemy
-                    new BattleEffect(
-                        this.scene,
-                        this.layout.enemyX(this.battle, target),
-                        this.layout.enemyY() - 20,
-                        BattleEffectType.BLOCK,
-                        amount,
-                        () => resolve()
-                    );
                 });
-                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
-            }),
 
-            onEnemyAttack: (enemy: number, amount: number) => new Promise((resolve) => {
+                // Skip animations if debug flag is set
+                if (this.skipAnimations) {
+                    return Promise.resolve();
+                }
+
+                // Show block effect animation
+                return new Promise((resolve) => {
+                    targets.forEach((target) => {
+                        new BattleEffect(
+                            this.scene,
+                            this.layout.enemyX(this.battle, target),
+                            this.layout.enemyY() - 20,
+                            BattleEffectType.BLOCK,
+                            amount,
+                            () => resolve()
+                        );
+                    });
+                    this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
+                });
+            },
+
+            onEnemyAttack: (enemy: number, amount: number) => {
                 this.enemies[enemy].clearAttackPlan();
-                this.enemies[enemy].performAttackAnimation().then(() => {
-                    const fist = addScaledImage(this.scene, this.layout.enemyX(this.battle, enemy), this.layout.enemyY(), 'physical');
-                    this.scene.tweens.add({
-                        targets: fist,
-                        x: this.layout.playerX(),
-                        y: this.layout.playerY(),
-                        duration: 100,
-                        onComplete: () => {
-                            fist.destroy();
-                            this.player?.damage(amount);
-                            
-                            // Shake screen when player is attacked
-                            this.shakeScreen(4, 200);
-                            
-                            // Play neutral attack sound when player is hit
-                            this.scene.sound.play('attack-neutral', { volume: 0.5 });
-                            
-                            // Show damage effect on player
-                            new BattleEffect(
-                                this.scene, 
-                                this.layout.playerX(), 
-                                this.layout.playerY() - 20, 
-                                BattleEffectType.ATTACK_PHYS,
-                                amount, 
-                                () => resolve()
-                            );
-                            this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
-                        }
+
+                // Skip animations if debug flag is set
+                if (this.skipAnimations) {
+                    this.player?.damage(amount);
+                    return Promise.resolve();
+                }
+
+                // Play attack animation
+                return new Promise((resolve) => {
+                    this.enemies[enemy].performAttackAnimation().then(() => {
+                        const fist = addScaledImage(this.scene, this.layout.enemyX(this.battle, enemy), this.layout.enemyY(), 'physical');
+                        this.scene.tweens.add({
+                            targets: fist,
+                            x: this.layout.playerX(),
+                            y: this.layout.playerY(),
+                            duration: 100,
+                            onComplete: () => {
+                                fist.destroy();
+                                this.player?.damage(amount);
+
+                                // Shake screen when player is attacked
+                                this.shakeScreen(4, 200);
+
+                                // Play neutral attack sound when player is hit
+                                this.scene.sound.play('attack-neutral', { volume: 0.5 });
+
+                                // Show damage effect on player
+                                new BattleEffect(
+                                    this.scene,
+                                    this.layout.playerX(),
+                                    this.layout.playerY() - 20,
+                                    BattleEffectType.ATTACK_PHYS,
+                                    amount,
+                                    () => resolve()
+                                );
+                                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
+                            }
+                        });
                     });
                 });
-            }),
+            },
 
-            onEnemyHeal: (enemy: number, targets: number[], amount: number) => new Promise((resolve) => {
+            onEnemyHeal: (enemy: number, targets: number[], amount: number) => {
                 logger.combat.debug(`enemy [${enemy}] healed for ${amount} | ${this.enemies.length}`);
+
+                // Clear planned action
                 if (targets.length == 1 && targets[0] == enemy) {
                     this.enemies[enemy].clearHealSelfPlan();
                 } else {
                     this.enemies[enemy].clearHealAlliesPlan();
                 }
-                this.enemies[enemy].castHealAnimation().then(() => {
-                    if (targets.length == 1 && enemy == targets[0]) {
-                        new BattleEffect(
-                            this.scene,
-                            this.layout.enemyX(this.battle, enemy),
-                            this.layout.enemyY() - 20,
-                            BattleEffectType.HEAL,
-                            amount,
-                            () => {
-                                this.enemies[enemy].heal(amount);
-                                resolve();
-                            }
-                        )
-                    } else {
-                        targets.forEach((target) => {
-                            this.enemies[target].beingHealedAnimation().then(() => new BattleEffect(
+
+                // Apply state updates immediately if skipping animations
+                if (this.skipAnimations) {
+                    targets.forEach((target) => {
+                        this.enemies[target].heal(amount);
+                    });
+                    return Promise.resolve();
+                }
+
+                // Play heal animation
+                return new Promise((resolve) => {
+                    this.enemies[enemy].castHealAnimation().then(() => {
+                        if (targets.length == 1 && enemy == targets[0]) {
+                            new BattleEffect(
                                 this.scene,
-                                this.layout.enemyX(this.battle, target),
+                                this.layout.enemyX(this.battle, enemy),
                                 this.layout.enemyY() - 20,
                                 BattleEffectType.HEAL,
                                 amount,
                                 () => {
-                                    this.enemies[target].heal(amount);
+                                    this.enemies[enemy].heal(amount);
                                     resolve();
                                 }
-                            ));
-                        });
-                    }
+                            )
+                        } else {
+                            targets.forEach((target) => {
+                                this.enemies[target].beingHealedAnimation().then(() => new BattleEffect(
+                                    this.scene,
+                                    this.layout.enemyX(this.battle, target),
+                                    this.layout.enemyY() - 20,
+                                    BattleEffectType.HEAL,
+                                    amount,
+                                    () => {
+                                        this.enemies[target].heal(amount);
+                                        resolve();
+                                    }
+                                ));
+                            });
+                        }
+                    });
+                    this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
                 });
-                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
-            }),
+            },
 
-            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => new Promise((resolve) => {
+            onPlayerEffect: (source: number, targets: number[], effectType: EFFECT_TYPE, amounts: number[]) => {
                 let damageType = undefined;
                 switch (effectType) {
                     case EFFECT_TYPE.attack_fire:
@@ -249,61 +295,81 @@ export class CombatAnimationManager {
                         break;
                     case EFFECT_TYPE.block:
                         this.player?.addBlock(amounts[0]);
+
+                        // Skip animations if debug flag is set
+                        if (this.skipAnimations) {
+                            return Promise.resolve();
+                        }
+
                         // Show block effect
                         new BattleEffect(
-                            this.scene, 
-                            this.layout.playerX(), 
-                            this.layout.playerY() - 20, 
+                            this.scene,
+                            this.layout.playerX(),
+                            this.layout.playerY() - 20,
                             BattleEffectType.BLOCK,
-                            amounts[0], 
+                            amounts[0],
                             () => {}
                         );
                         this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
                         break;
                 }
+
                 if (damageType != undefined) {
-                    for (let i = 0; i < targets.length; ++i) {
-                        const target = targets[i];
-                        const amount = amounts[i];
-                        const bullet = addScaledImage(this.scene, this.layout.spiritX(source), this.layout.spiritY(), damageType);
-                        this.scene.tweens.add({
-                            targets: bullet,
-                            x: this.layout.enemyX(this.battle, target),
-                            y: this.layout.enemyY(),
-                            duration: 150,
-                            onComplete: () => {
-                                this.enemies[target].damage(amount);
-                                this.enemies[target].takeDamageAnimation();
-                                bullet.destroy();
-                                
-                                // Get defense level from enemy and show all effectiveness feedback
-                                const defenseLevel = this.enemies[target].getDefenseAgainst(effectType);
-                                this.showEffectivenessText(
-                                    this.layout.enemyX(this.battle, target),
-                                    this.layout.enemyY(),
-                                    defenseLevel
-                                );
-                                
-                                // Show damage number effect
-                                new BattleEffect(
-                                    this.scene, 
-                                    this.layout.enemyX(this.battle, target), 
-                                    this.layout.enemyY() - 20,
-                                    Number(effectType) as BattleEffectType,
-                                    amount, 
-                                    () => resolve()
-                                );
-                                this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
-                            },
-                        });
+                    // Apply damage immediately if skipping animations
+                    if (this.skipAnimations) {
+                        for (let i = 0; i < targets.length; ++i) {
+                            const target = targets[i];
+                            const amount = amounts[i];
+                            this.enemies[target].damage(amount);
+                        }
+                        return Promise.resolve();
                     }
+
+                    // Play attack animation
+                    return new Promise((resolve) => {
+                        for (let i = 0; i < targets.length; ++i) {
+                            const target = targets[i];
+                            const amount = amounts[i];
+                            const bullet = addScaledImage(this.scene, this.layout.spiritX(source), this.layout.spiritY(), damageType);
+                            this.scene.tweens.add({
+                                targets: bullet,
+                                x: this.layout.enemyX(this.battle, target),
+                                y: this.layout.enemyY(),
+                                duration: 150,
+                                onComplete: () => {
+                                    this.enemies[target].damage(amount);
+                                    this.enemies[target].takeDamageAnimation();
+                                    bullet.destroy();
+
+                                    // Get defense level from enemy and show all effectiveness feedback
+                                    const defenseLevel = this.enemies[target].getDefenseAgainst(effectType);
+                                    this.showEffectivenessText(
+                                        this.layout.enemyX(this.battle, target),
+                                        this.layout.enemyY(),
+                                        defenseLevel
+                                    );
+
+                                    // Show damage number effect
+                                    new BattleEffect(
+                                        this.scene,
+                                        this.layout.enemyX(this.battle, target),
+                                        this.layout.enemyY() - 20,
+                                        Number(effectType) as BattleEffectType,
+                                        amount,
+                                        () => resolve()
+                                    );
+                                    this.scene.add.existing(this.scene.children.list[this.scene.children.list.length - 1]);
+                                },
+                            });
+                        }
+                    });
                 } else {
                     // Resolve immediately for block effects
-                    resolve();
+                    return Promise.resolve();
                 }
-            }),
+            },
 
-            onDrawAbilities: (abilities: Ability[]) => new Promise((resolve) => {
+            onDrawAbilities: (abilities: Ability[]) => {
                 // Only create ability cards if they don't already exist (from targeting phase)
                 if (this.abilityIcons.length === 0) {
                     this.abilityIcons = abilities.map((ability, i) => new AbilityWidget(this.scene, (this.scene.game.config.width as number) * (i + 0.5) / abilities.length, this.layout.abilityIdleY(), ability).setAlpha(0));
@@ -315,7 +381,7 @@ export class CombatAnimationManager {
                         abilityIcon.setAlpha(1);
                     });
                 }
-                
+
                 // Only create spirits if they don't already exist (from targeting phase)
                 if (this.spirits.length === 0) {
                     this.spirits = abilities.map((ability, i) => new SpiritWidget(this.scene, (this.scene.game.config.width as number) * (i + 0.5) / abilities.length, this.layout.spiritY(), ability).setAlpha(0));
@@ -327,94 +393,129 @@ export class CombatAnimationManager {
                         spirit.setAlpha(1);
                     });
                 }
-                
-                this.scene.tweens.add({
-                    targets: [...this.abilityIcons, ...this.spirits],
-                    alpha: 1,
-                    duration: 500,
-                    onComplete: () => {
-                        resolve();
-                    },
-                });
-            }),
 
-            onUseAbility: (abilityIndex: number, energy?: number) => new Promise((resolve) => {
+                // Skip fade-in animation if debug flag is set
+                if (this.skipAnimations) {
+                    this.abilityIcons.forEach(icon => icon.setAlpha(1));
+                    this.spirits.forEach(spirit => spirit.setAlpha(1));
+                    return Promise.resolve();
+                }
+
+                // Fade in abilities and spirits
+                return new Promise((resolve) => {
+                    this.scene.tweens.add({
+                        targets: [...this.abilityIcons, ...this.spirits],
+                        alpha: 1,
+                        duration: 500,
+                        onComplete: () => {
+                            resolve();
+                        },
+                    });
+                });
+            },
+
+            onUseAbility: (abilityIndex: number, energy?: number) => {
                 const abilityIcon = this.abilityIcons[abilityIndex];
                 const spirit = this.spirits[abilityIndex];
-                
-                if (spirit && spirit.spirit) {
-                    const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
-                    const attackAnimKey = `spirit-${spiritType}-attack`;
-                    const idleAnimKey = `spirit-${spiritType}`;
-                    
-                    // Play attack sound when spirit animation starts
-                    if (spiritType === 'atk-phys') {
-                        this.scene.sound.play('battle-phys-attack', { volume: 0.8 });
-                    }
-                    else if (spiritType === 'atk-ice') {
-                        this.scene.sound.play('battle-ice-attack', { volume: 0.8 });
-                    } 
-                    else if (spiritType === 'atk-fire') {
-                        this.scene.sound.play('battle-fire-attack', { volume: 0.8 });
-                    }
-                    else if (spiritType === 'def') {
-                        this.scene.sound.play('battle-def', { volume: 0.8 });
+
+                // Scale down orb immediately if energy was used
+                if (energy != undefined && this.spirits[abilityIndex]?.orbs[energy]) {
+                    this.spirits[abilityIndex].orbs[energy]!.setScale(1);
+                }
+
+                // Skip animations if debug flag is set
+                if (this.skipAnimations) {
+                    return Promise.resolve();
+                }
+
+                // Play ability use animation
+                return new Promise((resolve) => {
+                    if (spirit && spirit.spirit) {
+                        const spiritType = effectTypeFileAffix(spirit.ability.effect.value.effect_type);
+                        const attackAnimKey = `spirit-${spiritType}-attack`;
+                        const idleAnimKey = `spirit-${spiritType}`;
+
+                        // Play attack sound when spirit animation starts
+                        if (spiritType === 'atk-phys') {
+                            this.scene.sound.play('battle-phys-attack', { volume: 0.8 });
+                        }
+                        else if (spiritType === 'atk-ice') {
+                            this.scene.sound.play('battle-ice-attack', { volume: 0.8 });
+                        }
+                        else if (spiritType === 'atk-fire') {
+                            this.scene.sound.play('battle-fire-attack', { volume: 0.8 });
+                        }
+                        else if (spiritType === 'def') {
+                            this.scene.sound.play('battle-def', { volume: 0.8 });
+                        }
+
+                        if (this.scene.anims.exists(attackAnimKey)) {
+                            spirit.spirit.anims.play(attackAnimKey);
+                            this.scene.time.delayedCall(1000, () => {
+                                if (spirit.spirit && this.scene.anims.exists(idleAnimKey)) {
+                                    spirit.spirit.anims.play(idleAnimKey);
+                                }
+                            });
+                        }
                     }
 
-                    if (this.scene.anims.exists(attackAnimKey)) {
-                        spirit.spirit.anims.play(attackAnimKey);
-                        this.scene.time.delayedCall(1000, () => {
-                            if (spirit.spirit && this.scene.anims.exists(idleAnimKey)) {
-                                spirit.spirit.anims.play(idleAnimKey);
-                            }
-                        });
-                    }
-                }
-                
-                this.scene.tweens.add({
-                    targets: [abilityIcon],
-                    y: this.layout.abilityInUseY(),
-                    delay: 150,
-                    duration: 250,
-                    onComplete: () => {
-                        const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
-                        this.scene.tweens.add({
-                            targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
-                            scale: 1.5,
-                            yoyo: true,
-                            delay: 100,
-                            duration: 200,
-                            onComplete: () => resolve(),
-                        });
-                    },
-                });
-                if (energy != undefined) {
-                    const orb = this.spirits[abilityIndex].orbs[energy]!;
                     this.scene.tweens.add({
-                        targets: orb,
-                        scale: 1,
+                        targets: [abilityIcon],
+                        y: this.layout.abilityInUseY(),
+                        delay: 150,
                         duration: 250,
+                        onComplete: () => {
+                            const uiElement = energy != undefined ? abilityIcon.energyEffectUI[energy] : abilityIcon.baseEffectUI;
+                            this.scene.tweens.add({
+                                targets: energy != undefined ? [uiElement, spirit.orbs[energy]?.aura] : [uiElement],
+                                scale: 1.5,
+                                yoyo: true,
+                                delay: 100,
+                                duration: 200,
+                                onComplete: () => resolve(),
+                            });
+                        },
                     });
-                }
-            }),
-
-            afterUseAbility: (abilityIndex: number) => new Promise((resolve) => {
-                this.scene.tweens.add({
-                    targets: [this.abilityIcons[abilityIndex]],
-                    y: this.layout.abilityIdleY(),
-                    delay: 150,
-                    duration: 250,
-                    onComplete: () => {
-                        resolve();
-                    },
                 });
-            }),
+            },
 
-            onEnergyTrigger: (source: number, color: number) => new Promise((resolve) => {
+            afterUseAbility: (abilityIndex: number) => {
+                // Skip animations if debug flag is set
+                if (this.skipAnimations) {
+                    return Promise.resolve();
+                }
+
+                // Move ability card back to idle position
+                return new Promise((resolve) => {
+                    this.scene.tweens.add({
+                        targets: [this.abilityIcons[abilityIndex]],
+                        y: this.layout.abilityIdleY(),
+                        delay: 150,
+                        duration: 250,
+                        onComplete: () => {
+                            resolve();
+                        },
+                    });
+                });
+            },
+
+            onEnergyTrigger: (source: number, color: number) => {
                 const aura = this.spirits[source].aura!;
                 const targets = [0, 1, 2]
                     .filter((a) => a != source && this.spirits[a].orbs[color] != undefined);
-                if (targets.length > 0) {
+
+                // Scale up target orbs immediately
+                targets.forEach((a) => {
+                    const orb = this.spirits[a].orbs[color]!;
+                    orb.setScale(1.5);
+                });
+
+                if (targets.length === 0 || this.skipAnimations) {
+                    return Promise.resolve();
+                }
+
+                // Play energy transfer animation
+                return new Promise((resolve) => {
                     logger.animation.debug(`[ENERGY-UI] charge!`);
                     aura.anims.play(chargeAnimKey);
                     this.scene.tweens.add({
@@ -443,27 +544,19 @@ export class CombatAnimationManager {
                                         logger.animation.debug(`[ENERGY-UI] DESTROYED BULLET ${source} -> ${a}`);
                                         bullet.destroy();
                                         resolve();
-                                        const orb = target.orbs[color]!;
-                                        this.scene.tweens.add({
-                                            targets: orb,
-                                            scale: 1.5,
-                                            duration: 500,
-                                        });
                                     },
                                 });
                             });
                         },
                     });
-                } else {
-                    resolve();
-                }
-            }),
+                });
+            },
 
-            onEndOfRound: () => new Promise((resolve) => {
+            onEndOfRound: () => {
                 this.enemies.forEach((enemy) => enemy.endOfRound());
                 this.player?.endOfRound();
-                resolve();
-            }),
+                return Promise.resolve();
+            },
         };
     }
 }
