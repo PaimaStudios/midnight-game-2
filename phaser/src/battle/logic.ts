@@ -254,7 +254,7 @@ export function initBattlestate(rng: Uint8Array, battle: BattleConfig): BattleSt
         damage_to_enemy_2: BigInt(0),
         enemy_move_index_0: battle.enemies.count >= 1 ? (BigInt(rng[2]) % battle.enemies.stats[0].move_count) : BigInt(0),
         enemy_move_index_1: battle.enemies.count >= 2 ? (BigInt(rng[3]) % battle.enemies.stats[1].move_count) : BigInt(0),
-        enemy_move_index_2: battle.enemies.count >= 3 ? (BigInt(rng[3]) % battle.enemies.stats[2].move_count) : BigInt(0),
+        enemy_move_index_2: battle.enemies.count >= 3 ? (BigInt(rng[4]) % battle.enemies.stats[2].move_count) : BigInt(0),
     };
 }
 
