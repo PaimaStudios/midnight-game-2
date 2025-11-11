@@ -8,7 +8,7 @@ import { ContractAddress } from "@midnight-ntwrk/ledger";
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, BehaviorSubject } from "rxjs";
-import { combat_round_logic, initBattlestate, battleRewards } from "./battle/logic";
+import { combat_round_logic, initBattlestate, battleRewards, abilityValue, computeUpgradedAbility } from "./battle/logic";
 import { logger } from "./main";
 import { randomBytes } from "game2-api/dist/utils";
 
@@ -89,7 +89,7 @@ export class MockGame2API implements DeployedGame2API {
             };
             const id = pureCircuits.derive_battle_id(battle);
             logger.gameState.info(`new battle: ${id}`);
-            this.mockState.activeBattleStates.set(id, initBattlestate(Phaser.Math.Between(0, 255), battle));
+            this.mockState.activeBattleStates.set(id, initBattlestate(randomBytes(32), battle));
             this.mockState.activeBattleConfigs.set(id, battle);
             return battle;
         });
@@ -221,7 +221,7 @@ export class MockGame2API implements DeployedGame2API {
 
                 const battleId = pureCircuits.derive_battle_id(battle_config);
 
-                this.mockState.activeBattleStates.set(battleId, initBattlestate(Phaser.Math.Between(0, 255), battle_config));
+                this.mockState.activeBattleStates.set(battleId, initBattlestate(randomBytes(32), battle_config));
                 this.mockState.activeBattleConfigs.set(battleId, battle_config);
 
                 return battleId;
@@ -234,7 +234,7 @@ export class MockGame2API implements DeployedGame2API {
         return this.response(async () => {
             const id = pureCircuits.derive_ability_id(ability);
             this.removePlayerAbility(id);
-            this.mockState.player!.gold += pureCircuits.ability_value(ability);
+            this.mockState.player!.gold += abilityValue(ability);
         });
     }
 
@@ -250,12 +250,12 @@ export class MockGame2API implements DeployedGame2API {
             const sacrifice_id = pureCircuits.derive_ability_id(sacrifice);
             this.removePlayerAbility(ability_id);
             this.removePlayerAbility(sacrifice_id);
-            const cost = pureCircuits.upgrade_ability_cost(ability);
+            const cost = abilityValue(ability);
             if (this.mockState.player!.gold < cost) {
                 throw new Error("Insufficient gold for upgrade");
             }
             this.mockState.player!.gold -= cost;
-            const upgraded = pureCircuits.compute_upgraded_ability(ability);
+            const upgraded = computeUpgradedAbility(ability);
             const upgraded_id = pureCircuits.derive_ability_id(upgraded);
             this.mockState.allAbilities.set(upgraded_id, upgraded);
             this.mockState.playerAbilities.set(upgraded_id, (this.mockState.playerAbilities.get(upgraded_id) ?? BigInt(0)) + BigInt(1));

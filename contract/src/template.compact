@@ -176,7 +176,7 @@ export pure circuit derive_player_pub_key(sk: Bytes<32>): Field {
     return transientCommit<Bytes<32>>(sk, 1024);
 }
 
-// indexed by user ID then by battle ID (TODO: look up proof invalidation - are other players insulated from this by first indexing by user ID?)
+// indexed by user ID then by battle ID
 
 // index by battle id
 export ledger active_battle_states: Map<Field, BattleState>;
@@ -282,9 +282,9 @@ circuit return_loadout(loadout: PlayerLoadout): [] {
     }
 }
 
-export pure circuit ability_value(ability: Ability): Uint<32> {
+circuit ability_value(ability: Ability): Uint<32> {
     const score = ability_score(ability);
-    return (score * score + score) as Uint<32>;
+    return div((score * score) as Uint<32>, 500);
 }
 
 export circuit sell_ability(ability: Ability): [] {
@@ -302,7 +302,7 @@ export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
     const player_id = derive_player_pub_key(disclose(player_secret_key()));
     const score = ability_score(ability);
     const sacrifice_score = ability_score(sacrifice);
-    const upgrade_cost = upgrade_ability_cost(disclose(ability));
+    const upgrade_cost = ability_value(disclose(ability));
 
     assert(players.lookup(player_id).gold >= upgrade_cost, "Insufficient gold for upgrade");
 
@@ -319,10 +319,6 @@ export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
 
     assert(ability.upgrade_level < 3, "Ability can't be upgraded any more");
 
-    // TODO: look into dynamic witnesses to do the actual implementations that don't just double
-    // also maybe randomize parts e.g. to add generation or new triggers?
-    // we can do this when byte indexing is fixed
-
     const upgraded = compute_upgraded_ability(disclose(ability));
     const upgraded_id = derive_ability_id(upgraded);
 
@@ -330,12 +326,6 @@ export circuit upgrade_ability(ability: Ability, sacrifice: Ability): Field {
     player_add_ability(player_id, upgraded_id);
 
     return upgraded_id;
-}
-
-export pure circuit upgrade_ability_cost(ability: Ability): Uint<32> {
-    // TODO: use this or another method?
-    // just here separately for API reasons
-    return ability_value(ability);
 }
 
 circuit player_add_ability(player_id: Field, ability_id: Field): [] {
@@ -353,7 +343,7 @@ circuit player_remove_ability(player_id: Field, ability_id: Field): [] {
     }
 }
 
-export pure circuit compute_upgraded_ability(ability: Ability): Ability {
+circuit compute_upgraded_ability(ability: Ability): Ability {
     return Ability {
         effect: compute_upgraded_effect(ability.effect),
         on_energy: [compute_upgraded_effect(ability.on_energy[0]), compute_upgraded_effect(ability.on_energy[1]), compute_upgraded_effect(ability.on_energy[2])],
@@ -362,11 +352,11 @@ export pure circuit compute_upgraded_ability(ability: Ability): Ability {
     };
 }
 
-pure circuit compute_upgraded_effect(effect: Maybe<Effect>): Maybe<Effect> {
+circuit compute_upgraded_effect(effect: Maybe<Effect>): Maybe<Effect> {
     if (effect.is_some) {
         return some<Effect>(Effect {
             effect_type: effect.value.effect_type,
-            amount: (2 * effect.value.amount) as Uint<32>,
+            amount: (div((13 * effect.value.amount) as Uint<32>, 10)) as Uint<32>,
             is_aoe: effect.value.is_aoe,
         });
     }
@@ -438,7 +428,7 @@ circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
     // damage needs to be half that of block due to resistance calculations. see Effect comment
     const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
     const final_factor = factor * block_factor * (aoe ? 1 : 2);
-    const amount = final_factor + mod(rng, final_factor as Uint<32>);
+    const amount = div((4 * final_factor + mod(rng, final_factor as Uint<32>)) as Uint<32>, 5);
     return Effect {
         effect_type,
         amount as Uint<32>,
@@ -494,7 +484,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
         quest.loadout
     };
     const battle_id = derive_battle_id(battle_config);
-    active_battle_states.insert(battle_id, init_battlestate(rng[0], battle_config));
+    active_battle_states.insert(battle_id, init_battlestate(rng, battle_config));
     active_battle_configs.insert(battle_id, battle_config);
 
     quests.remove(disclose(quest_id));
@@ -524,7 +514,7 @@ export circuit start_new_battle(loadout: PlayerLoadout, level: Level): BattleCon
         disclose(loadout)
     };
     const battle_id = derive_battle_id(disclose(battle));
-    active_battle_states.insert(disclose(battle_id), init_battlestate(rng[1], disclose(battle)));
+    active_battle_states.insert(disclose(battle_id), init_battlestate(rng, disclose(battle)));
     active_battle_configs.insert(disclose(battle_id), disclose(battle));
 
     return battle;
@@ -547,18 +537,18 @@ circuit random_deck_indices(rng: Uint<8>): Vector<3, Uint<32>> {
     return [2 as Uint<8>, 1 as Uint<8>, 0 as Uint<8>];
 }
 
-circuit init_battlestate(rng: Uint<8>, battle: BattleConfig): BattleState {
+export circuit init_battlestate(rng: Vector<32, Uint<8>>, battle: BattleConfig): BattleState {
     return BattleState {
         0,
-        random_deck_indices(rng),
+        random_deck_indices(rng[1]),
         0,
         0,
         0,
         0,
-        // TODO: should these be randomized? (probably)
-        0,
-        0,
-        0
+        // this is to avoid division by 0
+        mod(rng[2], (battle.enemies.stats[0].move_count + ((battle.enemies.count < 1) as Uint<1>)) as Uint<32>),
+        mod(rng[3], (battle.enemies.stats[1].move_count + ((battle.enemies.count < 2) as Uint<1>)) as Uint<32>),
+        mod(rng[4], (battle.enemies.stats[2].move_count + ((battle.enemies.count < 3) as Uint<1>)) as Uint<32>)
     };
 }
 
@@ -612,6 +602,10 @@ export pure circuit boss_type_reward_factor(boss_type: BOSS_TYPE): Uint<8> {
     return 0;
 }
 
+export pure circuit battle_gold_reward(reward_factor: Uint<32>, difficulty: Uint<32>): Uint<32> {
+    return ((10 + reward_factor * 5) * difficulty * difficulty) as Uint<32>;
+}
+
 export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
@@ -638,7 +632,6 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
             none<Field>()
         });
     } else if (result.damage_to_enemy_0 >= config.enemies.stats[0].hp && (config.enemies.count < 2 || result.damage_to_enemy_1 >= config.enemies.stats[1].hp) && (config.enemies.count < 3 || result.damage_to_enemy_2 >= config.enemies.stats[2].hp)) {
-        // TODO: should you lose all abilities if you die?
         return_loadout(loadout);
 
         const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
@@ -663,8 +656,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
 
         const reward = BattleRewards {
             true,
-            // TODO: how much gold to give?
-            100,
+            battle_gold_reward(reward_factor, config.level.difficulty),
             reward_factor > 0 ? some<Field>(reward_ability_id) : none<Field>()
         };
         const player_stats = players.lookup(derive_player_pub_key(disclose(player_secret_key())));
@@ -800,7 +792,7 @@ circuit get_random_enemy_config(rng: Uint<8>, level: Level): EnemiesConfig {
 sealed ledger deployer: Field;
 
 export struct Level {
-    // this is not an enum to allow for updating the game without the contract changing. TODO: look into signature verification
+    // this is not an enum to allow for updating the game without the contract changing.
     biome: Uint<32>,
     difficulty: Uint<32>,
 }
