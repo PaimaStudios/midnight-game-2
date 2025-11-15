@@ -14,6 +14,7 @@ import { addScaledImage } from "../utils/scaleImage";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { TopBar } from "../widgets/top-bar";
 import { addTooltip } from "../widgets/tooltip";
+import { abilityValue } from "../battle/logic";
 
 const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be sold";
 
@@ -76,7 +77,7 @@ export class ShopMenu extends Phaser.Scene {
         const abilities = sortedAbilities(state); // Show all abilities, not just sellable ones
         for (let i = 0; i < abilities.length; ++i) {
             const ability = abilities[i];
-            const value = Number(pureCircuits.ability_value(ability));
+            const value = Number(abilityValue(ability));
             const isStarting = isStartingAbility(ability);
 
             const abilityWidget = new AbilityWidget(this, 0, 80, ability);
