@@ -1,6 +1,10 @@
-import { Game2CircuitKeys, safeJSONString, type Game2Providers } from "game2-api";
+import {
+    Game2CircuitKeys,
+    safeJSONString,
+    type Game2Providers,
+} from "game2-api";
 import { type Logger } from "pino";
-import { logger } from '../main';
+import { logger } from "../main";
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
@@ -16,21 +20,14 @@ import {
     Transaction,
     TransactionId,
     UnprovenTransaction,
-    NetworkId as LedgerNetworkId,
 } from "@midnight-ntwrk/ledger";
 import { getRuntimeNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
-import init, {
-    initThreadPool,
-    WasmProver,
-    MidnightWasmParamsProvider,
-    Rng,
-    NetworkId,
-    ZkConfig,
-} from "@paima/midnight-vm-bindings";
-import { proveTxLocally } from "./local-proving";
+import { ProverMessage, ProverResponse } from "./worker-types";
 
 type WebWorkerPromiseCallbacks = {
-    resolve: (value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>) => void;
+    resolve: (
+        value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>
+    ) => void;
     reject: (reason?: any) => void;
 };
 
@@ -44,59 +41,129 @@ class WebWorkerLocalProofServer implements ProofProvider<Game2CircuitKeys> {
         this.requests = new Map();
 
         if (window.Worker) {
-            console.log(`creating web worker`);
-            this.worker = new Worker(new URL('./prover-worker.js', import.meta.url));
-            this.worker.onmessage = (event) => {
-                console.log(`got message from worker: ${JSON.stringify(event.data)}!`);
-                if (event.data.type == 'success') {
-                    this.requests.get(event.data.requestId)?.resolve(event.data.tx);
-                } else {
-                    this.requests.get(event.data.requestId)?.reject(event.data.error);
-                }
-                this.requests.delete(event.data.requestId);
-            };
-            this.worker.onerror = function(error) {
-                logger.network.error(`general web worker error: ${error.message} | ${safeJSONString(error)}`);
-            };
+            console.log(`creating web worker now`);
+            this.worker = new Worker(
+                new URL("./prover-worker.ts", import.meta.url),
+                { type: "module" }
+            );
         }
+    }
+
+    async setupResponseHandler() {
+        this.worker!.onmessage = (event: MessageEvent<ProverResponse>) => {
+            const { type, data, message, requestId } = event.data;
+
+            const callbacks = this.requests.get(requestId!);
+            switch (type) {
+                case "log":
+                    console.log(message);
+                    break;
+                case "success":
+                    if (callbacks) {
+                        const unbalancedTx = Transaction.deserialize(
+                            data!,
+                            getRuntimeNetworkId()
+                        );
+
+                        callbacks.resolve(createUnbalancedTx(unbalancedTx));
+
+                        this.requests.delete(requestId!);
+                    }
+                    break;
+                case "error":
+                    callbacks?.reject(new Error(message));
+                    break;
+            }
+        };
+
+        this.worker!.onerror = (error) => {
+            logger.network.error(
+                `general web worker error: ${error.message} | ${safeJSONString(error)}`
+            );
+        };
+    }
+
+    async initializeWorker<K extends string>() {
+        const baseUrl = new URL(window.location.href).toString();
+        console.log(`baseUrl: ${baseUrl}`);
+
+        let readyResolve: (value: void) => void;
+        let paramsResolve: (value: void) => void;
+
+        const wasmReady = new Promise<void>((resolve, _reject) => {
+            readyResolve = resolve;
+        });
+        const paramsReady = new Promise<void>((resolve, _reject) => {
+            paramsResolve = resolve;
+        });
+
+        this.worker!.onmessage = (event: MessageEvent<ProverResponse>) => {
+            const { type, message } = event.data;
+
+            switch (type) {
+                case "wasm-ready":
+                    readyResolve();
+                    break;
+                case "params-ready":
+                    paramsResolve();
+                    break;
+                case "log":
+                    console.log(message);
+                    break;
+            }
+        };
+
+        await wasmReady;
+
+        this.worker!.postMessage({
+            type: "params",
+            baseUrl,
+        } as ProverMessage<K>);
+
+        await paramsReady;
+
+        logger.network.info("Worker initialized and ready for proving");
     }
 
     async proveTx<K extends string>(
         tx: UnprovenTransaction,
         proveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
-        const baseUrl = new URL(window.location.href).toString();
         if (this.worker != undefined) {
             return new Promise((resolve, reject) => {
                 this.requests.set(this.nextId, { resolve, reject });
 
+                const serializedTx = tx.serialize(getRuntimeNetworkId());
+
                 this.worker!.postMessage({
-                    baseUrl,
-                    tx,
-                    proveTxConfig
-                });
-                
+                    type: "prove",
+                    serializedTx,
+                    proveTxConfig,
+                    requestId: this.nextId,
+                } as ProverMessage<K>);
+
                 ++this.nextId;
             });
         } else {
-            return proveTxLocally(baseUrl, tx, proveTxConfig);
+            return new Promise((_resolve, reject) => {
+                reject("worker not initialized");
+            });
         }
     }
 }
-
-
 
 /** @internal */
 export const initializeProviders = async (
     logger: Logger
 ): Promise<Game2Providers> => {
-    await init();
-
-    await initThreadPool(navigator.hardwareConcurrency);
-
     const batcherAddress = await getBatcherAddress();
 
     const batcherAddressParts = batcherAddress.split("|");
+
+    const webWorkerProofProvider = new WebWorkerLocalProofServer();
+
+    await webWorkerProofProvider.initializeWorker();
+    await webWorkerProofProvider.setupResponseHandler();
 
     return {
         privateStateProvider: levelPrivateStateProvider({
@@ -106,7 +173,7 @@ export const initializeProviders = async (
             window.location.origin,
             fetch.bind(window)
         ),
-        proofProvider: new WebWorkerLocalProofServer(),
+        proofProvider: webWorkerProofProvider,
         publicDataProvider: indexerPublicDataProvider(
             import.meta.env.VITE_BATCHER_MODE_INDEXER_HTTP_URL!,
             import.meta.env.VITE_BATCHER_MODE_INDEXER_WS_URL!
@@ -155,7 +222,7 @@ async function postTxToBatcher(
         fetch(batcherUrl, {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({ tx: uint8ArrayToHex(deploy_tx) }),
         });
