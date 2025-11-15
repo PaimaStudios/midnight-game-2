@@ -207,8 +207,8 @@ export function randomAbility(rng: Uint8Array, difficulty: bigint): Ability {
         effect: { is_some: true, value: main_effect },
         on_energy: [
             { is_some: trigger1, value: randomEffect(rng[5], trigger_factor) },
-            { is_some: trigger1, value: randomEffect(rng[6], trigger_factor) },
-            { is_some: trigger1, value: randomEffect(rng[7], trigger_factor) },
+            { is_some: trigger2, value: randomEffect(rng[6], trigger_factor) },
+            { is_some: trigger3, value: randomEffect(rng[7], trigger_factor) },
         ],
         generate_color: { is_some: color <= 2, value: BigInt(color % 3) },
         upgrade_level: BigInt(0),
@@ -218,9 +218,9 @@ export function randomAbility(rng: Uint8Array, difficulty: bigint): Ability {
 export function randomEffect(rng: number, factor: bigint): Effect {
     const effect_type = (rng % 4) as EFFECT_TYPE;
     const is_aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
-    const block_factor = BigInt(effect_type != EFFECT_TYPE.block ? 1 : 2);
-    const final_factor = factor * block_factor * BigInt(is_aoe ? 1 : 2);
-    const amount = final_factor + BigInt(rng % Number(final_factor));
+    const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
+    const final_factor = Number(factor) * block_factor * (is_aoe ? 1 : 2);
+    const amount = BigInt(Math.floor((4 * final_factor + (rng % final_factor)) / 5));
     return {
         effect_type,
         amount,
@@ -244,17 +244,17 @@ function randomDeckIndices(rng: number): number[] {
     return [2, 1, 0];
 }
 
-export function initBattlestate(rng: number, battle: BattleConfig): BattleState {
+export function initBattlestate(rng: Uint8Array, battle: BattleConfig): BattleState {
     return {
         round: BigInt(0),
-        deck_indices: randomDeckIndices(rng).map(BigInt),
+        deck_indices: randomDeckIndices(rng[1]).map(BigInt),
         damage_to_player: BigInt(0),
         damage_to_enemy_0: BigInt(0),
         damage_to_enemy_1: BigInt(0),
         damage_to_enemy_2: BigInt(0),
-        enemy_move_index_0: BigInt(0),
-        enemy_move_index_1: BigInt(0),
-        enemy_move_index_2: BigInt(0),
+        enemy_move_index_0: battle.enemies.count >= 1 ? (BigInt(rng[2]) % battle.enemies.stats[0].move_count) : BigInt(0),
+        enemy_move_index_1: battle.enemies.count >= 2 ? (BigInt(rng[3]) % battle.enemies.stats[1].move_count) : BigInt(0),
+        enemy_move_index_2: battle.enemies.count >= 3 ? (BigInt(rng[4]) % battle.enemies.stats[2].move_count) : BigInt(0),
     };
 }
 
@@ -275,5 +275,33 @@ export function battleRewards(gameState: Game2DerivedState, level: Level, enemie
         abilityReward.is_some = true;
         abilityReward.value = abilityId;
     }
-    return { alive: true, gold: BigInt(100), ability: abilityReward };
+    return { alive: true, gold: pureCircuits.battle_gold_reward(reward_factor, level.difficulty), ability: abilityReward };
+}
+
+export function abilityValue(ability: Ability): bigint {
+    const score = pureCircuits.ability_score(ability);
+    return (score * score) / BigInt(500);
+}
+
+export function computeUpgradedAbility(ability: Ability): Ability {
+    return {
+        effect: computeUpgradedEffect(ability.effect),
+        on_energy: ability.on_energy.map(computeUpgradedEffect),
+        generate_color: ability.generate_color,
+        upgrade_level: ability.upgrade_level + BigInt(1),
+    };
+}
+
+function computeUpgradedEffect(effect: { is_some: boolean, value: Effect }): { is_some: boolean, value: Effect } {
+    if (!effect.is_some) {
+        return effect;
+    }
+    return {
+        is_some: true,
+        value: {
+            effect_type: effect.value.effect_type,
+            amount: BigInt(Math.floor(1.3 * Number(effect.value.amount))),
+            is_aoe: effect.value.is_aoe,
+        }
+    };
 }

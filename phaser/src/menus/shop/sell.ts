@@ -14,6 +14,7 @@ import { ScrollablePanel } from "../../widgets/scrollable";
 import { TopBar } from "../../widgets/top-bar";
 import { addTooltip } from "../../widgets/tooltip";
 import { ShopMenu } from "./shop";
+import { abilityValue } from "../../battle/logic";
 
 // Constants
 const UNSELLABLE_TOOLTIP_TEXT = "Starting spirits cannot be sold";
@@ -112,7 +113,7 @@ export class SellSpiritsMenu extends Phaser.Scene {
 
         const abilities = sortedAbilities(state);
         for (const ability of abilities) {
-            const value = Number(pureCircuits.ability_value(ability));
+            const value = Number(abilityValue(ability));
             const isStarting = isStartingAbility(ability);
 
             const abilityWidget = new AbilityWidget(this, 0, ABILITY_WIDGET_Y, ability);

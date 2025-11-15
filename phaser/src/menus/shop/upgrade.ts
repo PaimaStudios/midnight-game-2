@@ -17,6 +17,7 @@ import { ShopMenu } from "./shop";
 import { UpgradeSparkleParticleSystem } from "../../particles/upgrade-sparkle";
 import { SacrificeDissolveParticleSystem } from "../../particles/sacrifice-dissolve";
 import { UpgradeSuccessScreen } from "./upgrade-success";
+import { abilityValue } from "../../battle/logic";
 
 // Enums
 enum SlotType {
@@ -831,7 +832,7 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
         const bothSpiritsSelected = this.upgradingSpirit !== undefined && this.sacrificingSpirit !== undefined;
 
         if (bothSpiritsSelected && this.upgradingSpirit && this.sacrificingSpirit) {
-            const cost = pureCircuits.upgrade_ability_cost(this.upgradingSpirit);
+            const cost = abilityValue(this.upgradingSpirit);
             const currentGold = this.state.player?.gold ?? BigInt(0);
             const hasEnoughGold = currentGold >= cost;
 
