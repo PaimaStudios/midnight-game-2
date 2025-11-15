@@ -20,22 +20,16 @@ import { logger } from "../logger";
 
 export async function proveTxLocally<K extends string>(
     baseUrl: string,
-    tx: UnprovenTransaction,
-    proveTxConfig?: ProveTxConfig<K>): Promise<UnbalancedTransaction> {
-    console.log(`proveTxLocally started`);
-    //const baseUrl = new URL(window.location.href).toString();
-
+    tx: Uint8Array,
+    proveTxConfig?: ProveTxConfig<K>
+): Promise<Uint8Array> {
     const pp = MidnightWasmParamsProvider.new(baseUrl);
 
-    console.log(`creating prover`);
     const prover = WasmProver.new();
-console.log(`creating rng`);
     const rng = Rng.new();
 
     const networkId = getRuntimeNetworkId();
 
-    const rawTx = tx.serialize(networkId);
-console.log(`rawTx made`);
     const zkConfig = (() => {
         if (proveTxConfig) {
             return ZkConfig.new(
@@ -49,13 +43,15 @@ console.log(`rawTx made`);
         }
     })();
 
-    logger.network.info(`Starting ZK proof [${navigator.hardwareConcurrency} threads]`);
+    logger.network.info(
+        `Starting ZK proof [${navigator.hardwareConcurrency} threads]`
+    );
 
     const startTime = performance.now();
 
     let unbalancedTxRaw = await prover.prove_tx(
         rng,
-        rawTx,
+        tx,
         networkId === LedgerNetworkId.Undeployed
             ? NetworkId.undeployed()
             : NetworkId.testnet(),
@@ -68,10 +64,5 @@ console.log(`rawTx made`);
         `Proved unbalanced tx in: ${Math.floor(endTime - startTime)} ms`
     );
 
-    const unbalancedTx = Transaction.deserialize(
-        unbalancedTxRaw,
-        getRuntimeNetworkId()
-    );
-
-    return createUnbalancedTx(unbalancedTx);
+    return unbalancedTxRaw;
 }
