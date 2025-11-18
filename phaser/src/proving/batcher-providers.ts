@@ -23,18 +23,11 @@ import {
 } from "@midnight-ntwrk/ledger";
 import { getRuntimeNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { ProverMessage, ProverResponse } from "./worker-types";
-import init, {
-    initThreadPool,
-    WasmProver,
-    MidnightWasmParamsProvider,
-    Rng,
-    NetworkId,
-    ZkConfig,
-} from "@paima/midnight-vm-bindings";
-import { proveTxLocally } from "./local-proving";
 
 type WebWorkerPromiseCallbacks = {
-    resolve: (value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>) => void;
+    resolve: (
+        value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>
+    ) => void;
     reject: (reason?: any) => void;
 };
 
@@ -136,7 +129,6 @@ class WebWorkerLocalProofServer implements ProofProvider<Game2CircuitKeys> {
         tx: UnprovenTransaction,
         proveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
-        const baseUrl = new URL(window.location.href).toString();
         if (this.worker != undefined) {
             return new Promise((resolve, reject) => {
                 this.requests.set(this.nextId, { resolve, reject });
@@ -164,10 +156,6 @@ class WebWorkerLocalProofServer implements ProofProvider<Game2CircuitKeys> {
 export const initializeProviders = async (
     logger: Logger
 ): Promise<Game2Providers> => {
-    await init();
-
-    await initThreadPool(navigator.hardwareConcurrency);
-
     const batcherAddress = await getBatcherAddress();
 
     const batcherAddressParts = batcherAddress.split("|");
