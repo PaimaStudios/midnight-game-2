@@ -20,6 +20,7 @@ import { fontStyle } from "../main";
 import { Color } from "../constants/colors";
 import { QuestConfig } from "game2-contract";
 import { TopBar } from "../widgets/top-bar";
+import { getCurrentBlockHeight } from "../utils/chainState";
 
 export class QuestMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -192,23 +193,26 @@ export class QuestMenu extends Phaser.Scene {
             return;
         }
 
-        this.api.is_quest_ready(this.questId).then((isReady) => {
-            // Check again before updating UI in case scene was stopped
-            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
+        
+        // Check again before updating UI in case scene was stopped
+        if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
 
-            // Hide loader once we have the result
-            this.scene.resume().stop('Loader');
+        // Hide loader once we have the result
+        this.scene.resume().stop('Loader');
 
-            if (isReady) {
+        getCurrentBlockHeight().then((currentBlockHeight) => {
+            if (currentBlockHeight > quest.ready_block_time) {
                 this.statusText!.setText('Quest completed! Ready to fight the boss.');
                 this.initiateButton!.setEnabled(true);
                 this.initiateButton!.setAlpha(1.0);
             } else {
-                this.statusText!.setText('Quest in progress... Check back later.');
+                // TODO: adjust for blocks vs time
+                this.statusText!.setText(`Quest in progress... Check back in ${quest.ready_block_time - currentBlockHeight} blocks`);
                 this.initiateButton!.setEnabled(false);
                 this.initiateButton!.setAlpha(0.5);
             }
-        }).catch((err) => {
+        });
+        /*} else {
             // Check again before updating UI in case scene was stopped
             if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
 
@@ -227,7 +231,7 @@ export class QuestMenu extends Phaser.Scene {
 
             this.initiateButton!.setEnabled(false);
             this.initiateButton!.setAlpha(0.5);
-        });
+        });*/
     }
 
     private startBossBattle() {

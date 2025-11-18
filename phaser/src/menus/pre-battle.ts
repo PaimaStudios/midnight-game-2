@@ -18,6 +18,7 @@ import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { TOP_BAR_OFFSET, TOP_BAR_WIDTH, TopBar } from "../widgets/top-bar";
 import { LevelSelectMenu } from "./level-select";
+import { getCurrentBlockHeight } from "../utils/chainState";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -175,7 +176,9 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
                 const level = { biome: BigInt(this.biome), difficulty: BigInt(this.difficulty) };
                 if (this.isQuest) {
-                    this.api.start_new_quest(this.loadout, level).then((questId) => {
+                    getCurrentBlockHeight()
+                        .then((currentBlockHeight) => this.api.start_new_quest(this.loadout, level, currentBlockHeight))
+                        .then((questId) => {
                         this.scene.remove('QuestsMenu');
                         this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
                         this.scene.start('QuestsMenu');
