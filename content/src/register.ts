@@ -97,7 +97,7 @@ export async function registerStartingContent(
   const dragon: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.boss,
     enemy_type: 0,
-    hp: 300,
+    hp: 3,
     moves: [{ attack: 30 }, { attack: 15, block_self: 15 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.WEAK,
@@ -286,7 +286,7 @@ export async function registerStartingContent(
   // NORMAL ENEMIES
   const goblin: EnemyStatsConfig = {
     enemy_type: 0,
-    hp: 30,
+    hp: 3,
     moves: [{ attack: 5, block_self: 5 }, { attack: 10 }, { block_self: 10 }],
     physical_def: Def.NEUTRAL,
     fire_def: Def.NEUTRAL,
@@ -386,7 +386,7 @@ export async function registerStartingContent(
 
   const goblinPriest: EnemyStatsConfig = {
     enemy_type: 7,
-    hp: 30,
+    hp: 3,
     moves: [{ block_self: 5, block_allies: 10 }, { heal_allies: 15 }, { attack: 10, block_allies: 5 }],
     physical_def: Def.SUPEREFFECTIVE,
     fire_def: Def.WEAK,

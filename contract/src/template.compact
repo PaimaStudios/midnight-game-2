@@ -402,14 +402,14 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     return quest_id;
 }
 
-circuit random_ability(rng: Vector<32, Uint<8>>, difficulty: Uint<32>): Ability {
+circuit random_ability(rng: Vector<32, Uint<8>>, factor: Uint<32>): Ability {
     const color = mod(rng[0], 6);
     const trigger1 = color != 0 && mod(rng[1], 3) == 0;
     const trigger2 = color != 1 && mod(rng[2], 3) == 0;
     const trigger3 = color != 2 && mod(rng[3], 3) == 0;
-    const main_factor = difficulty * (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1);
+    const main_factor = factor * (1 + (trigger1 ? 0 : 1) + (trigger2 ? 0 : 1) + (trigger3 ? 0 : 1) + (color <= 2 ? 0 : 1));
     const main_effect = random_effect(rng[4], main_factor as Uint<32>);
-    const trigger_factor = (2 * difficulty) as Uint<32>;
+    const trigger_factor = (2 * factor) as Uint<32>;
     return Ability {
         some<Effect>(main_effect),
         [
@@ -428,7 +428,7 @@ circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
     // damage needs to be half that of block due to resistance calculations. see Effect comment
     const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
     const final_factor = factor * block_factor * (aoe ? 1 : 2);
-    const amount = div((4 * final_factor + mod(rng, final_factor as Uint<32>)) as Uint<32>, 5);
+    const amount = div((4 * final_factor/* + mod(rng, final_factor as Uint<32>)*/) as Uint<32>, 5);
     return Effect {
         effect_type,
         amount as Uint<32>,
@@ -637,14 +637,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         const reward_factor = boss_type_reward_factor(config.enemies.stats[0].boss_type)
                             + boss_type_reward_factor(config.enemies.count >= 2 ? config.enemies.stats[1].boss_type : BOSS_TYPE.normal)
                             + boss_type_reward_factor(config.enemies.count >= 3 ? config.enemies.stats[2].boss_type : BOSS_TYPE.normal);
-        const reward_ability = random_ability(rng, (config.level.difficulty * reward_factor) as Uint<8>);
-        const reward_ability_id = derive_ability_id(reward_ability);
-        if (reward_factor > 0) {
-            if (!all_abilities.member(reward_ability_id)) {
-                all_abilities.insert(reward_ability_id, reward_ability);
-            }
-            player_add_ability(player_pub_key, reward_ability_id);
-        }
+        const reward_ability_id = give_random_ability_if_applicable(reward_factor, config.level.difficulty, rng, player_pub_key);
 
         // Mark boss completion if this was a boss battle
         if (config.enemies.stats[0].boss_type == BOSS_TYPE.boss) {
@@ -657,7 +650,7 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         const reward = BattleRewards {
             true,
             battle_gold_reward(reward_factor, config.level.difficulty),
-            reward_factor > 0 ? some<Field>(reward_ability_id) : none<Field>()
+            reward_ability_id
         };
         const player_stats = players.lookup(derive_player_pub_key(disclose(player_secret_key())));
 
@@ -668,6 +661,21 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
         return some<BattleRewards>(reward);
     }
     return none<BattleRewards>();
+}
+
+circuit give_random_ability_if_applicable(reward_factor: Uint<32>, difficulty: Uint<32>, rng: Vector<32, Uint<8>>, player_pub_key: Field): Maybe<Field> {
+    if (reward_factor == 0) {
+        return none<Field>();
+    }
+    const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
+    const reward_ability_id = derive_ability_id(reward_ability);
+    if (reward_factor > 0) {
+        if (!all_abilities.member(reward_ability_id)) {
+            all_abilities.insert(reward_ability_id, reward_ability);
+        }
+        player_add_ability(player_pub_key, reward_ability_id);
+    }
+    return some<Field>(reward_ability_id);
 }
 
 /**
