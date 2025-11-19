@@ -4,6 +4,7 @@
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import '@midnight-ntwrk/dapp-connector-api';
 import './globals';
+import './debug-zswap'; // Debug ZSwap deserialization errors
 import { logger } from './logger';
 
 // Export the logger for use throughout the application

@@ -26,7 +26,7 @@ import {
 } from 'game2-contract';
 import * as utils from './utils/index.js';
 import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { combineLatest, map, tap, from, type Observable } from 'rxjs';
+import { combineLatest, map, tap, from, type Observable, catchError, throwError } from 'rxjs';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */
@@ -170,7 +170,55 @@ export class Game2API implements DeployedGame2API {
             [
                 // Combine public (ledger) state with...
                 providers.publicDataProvider.contractStateObservable(this.deployedContractAddress, { type: 'latest' }).pipe(
-                  map((contractState) => ledger(contractState.data)),
+                  tap((contractState) => {
+                    // Debug log the raw state before ledger() call
+                    try {
+                      const stateStr = String(contractState.data);
+                      logger?.debug({
+                        rawContractState: {
+                          dataType: typeof contractState.data,
+                          dataStringLength: stateStr.length,
+                          dataPreview: stateStr.substring(0, 100),
+                        },
+                      });
+                      console.log('Contract state received - type:', typeof contractState.data, 'length:', stateStr.length);
+                    } catch (e) {
+                      logger?.error({ errorLoggingState: String(e) });
+                    }
+                  }),
+                  map((contractState) => {
+                    try {
+                      return ledger(contractState.data);
+                    } catch (error) {
+                      // Log detailed error information
+                      const stateStr = String(contractState.data);
+                      const errorMsg = error instanceof Error ? error.message : String(error);
+                      const errorStack = error instanceof Error ? error.stack : undefined;
+
+                      logger?.error({
+                        deserializationError: {
+                          error: errorMsg,
+                          stack: errorStack,
+                          stateDataLength: stateStr.length,
+                          stateDataPreview: stateStr.substring(0, 200),
+                          stateDataSuffix: stateStr.substring(Math.max(0, stateStr.length - 200)),
+                        }
+                      });
+
+                      console.error('=====================================');
+                      console.error('STATE DESERIALIZATION ERROR');
+                      console.error('=====================================');
+                      console.error('Error:', errorMsg);
+                      console.error('Stack:', errorStack);
+                      console.error('State data type:', typeof contractState.data);
+                      console.error('State data length:', stateStr.length);
+                      console.error('State data (first 500 chars):', stateStr.substring(0, 500));
+                      console.error('State data (last 500 chars):', stateStr.substring(Math.max(0, stateStr.length - 500)));
+                      console.error('=====================================');
+
+                      throw error;
+                    }
+                  }),
                   tap((ledgerState) =>
                     logger?.debug({
                       ledgerStateChanged: {
@@ -182,6 +230,14 @@ export class Game2API implements DeployedGame2API {
                       },
                     }),
                   ),
+                  catchError((error) => {
+                    logger?.error({
+                      stateObservableError: {
+                        error: error instanceof Error ? error.message : String(error),
+                      }
+                    });
+                    return throwError(() => error);
+                  })
                 ),
                 // TODO: update this comment since this does change but we worked around it in pvp-arena
                 // ...private state...
@@ -305,42 +361,121 @@ export class Game2API implements DeployedGame2API {
     }
 
     async start_new_battle(loadout: PlayerLoadout, level: Level): Promise<BattleConfig> {
-        const txData = await this.deployedContract.callTx.start_new_battle(loadout, level);
+        try {
+            console.log('start_new_battle: Starting battle', { loadout, level });
+            const txData = await this.deployedContract.callTx.start_new_battle(loadout, level);
+            console.log('start_new_battle: Transaction succeeded');
 
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'start_new_battle',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
+            this.logger?.trace({
+                transactionAdded: {
+                    circuit: 'start_new_battle',
+                    txHash: txData.public.txHash,
+                    blockHeight: txData.public.blockHeight,
+                },
+            });
 
-        return txData.private.result;
+            return txData.private.result;
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+
+            console.error('=====================================');
+            console.error('START_NEW_BATTLE ERROR');
+            console.error('=====================================');
+            console.error('Loadout:', loadout);
+            console.error('Level:', level);
+            console.error('Error:', errorMsg);
+            console.error('Stack:', errorStack);
+            console.error('Error object:', error);
+            console.error('=====================================');
+
+            this.logger?.error({
+                start_new_battle_error: {
+                    error: errorMsg,
+                    stack: errorStack,
+                }
+            });
+
+            throw error;
+        }
     }
     async combat_round(battle_id: bigint, ability_targets: [bigint, bigint, bigint]): Promise<BattleRewards | undefined> {
-        const txData = await this.deployedContract.callTx.combat_round(battle_id, ability_targets);
+        try {
+            console.log('combat_round: Starting combat round', { battle_id, ability_targets });
+            const txData = await this.deployedContract.callTx.combat_round(battle_id, ability_targets);
+            console.log('combat_round: Transaction succeeded');
 
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'combat_round',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
+            this.logger?.trace({
+                transactionAdded: {
+                    circuit: 'combat_round',
+                    txHash: txData.public.txHash,
+                    blockHeight: txData.public.blockHeight,
+                },
+            });
 
-        return txData.private.result.is_some ? txData.private.result.value : undefined;
+            return txData.private.result.is_some ? txData.private.result.value : undefined;
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+
+            console.error('=====================================');
+            console.error('COMBAT_ROUND ERROR');
+            console.error('=====================================');
+            console.error('Battle ID:', battle_id);
+            console.error('Ability targets:', ability_targets);
+            console.error('Error:', errorMsg);
+            console.error('Stack:', errorStack);
+            console.error('Error object:', error);
+            console.error('=====================================');
+
+            this.logger?.error({
+                combat_round_error: {
+                    battle_id: battle_id.toString(),
+                    error: errorMsg,
+                    stack: errorStack,
+                }
+            });
+
+            throw error;
+        }
     }
 
     async retreat_from_battle(battle_id: bigint): Promise<void> {
-        const txData = await this.deployedContract.callTx.retreat_from_battle(battle_id);
+        try {
+            console.log('retreat_from_battle: Starting retreat for battle_id:', battle_id);
+            const txData = await this.deployedContract.callTx.retreat_from_battle(battle_id);
+            console.log('retreat_from_battle: Transaction succeeded');
 
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'retreat_from_battle',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
+            this.logger?.trace({
+                transactionAdded: {
+                    circuit: 'retreat_from_battle',
+                    txHash: txData.public.txHash,
+                    blockHeight: txData.public.blockHeight,
+                },
+            });
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+
+            console.error('=====================================');
+            console.error('RETREAT_FROM_BATTLE ERROR');
+            console.error('=====================================');
+            console.error('Battle ID:', battle_id);
+            console.error('Error:', errorMsg);
+            console.error('Stack:', errorStack);
+            console.error('Error object:', error);
+            console.error('=====================================');
+
+            this.logger?.error({
+                retreat_from_battle_error: {
+                    battle_id: battle_id.toString(),
+                    error: errorMsg,
+                    stack: errorStack,
+                }
+            });
+
+            throw error;
+        }
     }
 
     async start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
