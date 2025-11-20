@@ -196,12 +196,34 @@ export pure circuit ability_demo_starting_3(): Ability {
     };
 }
 
+export pure circuit ability_reward(): Ability {
+    return Ability {
+        some<Effect>(Effect {
+            EFFECT_TYPE.attack_fire,
+            13,
+            true
+        }),
+        [none<Effect>(), some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            21,
+            false
+        }), some<Effect>(Effect {
+            EFFECT_TYPE.attack_ice,
+            7,
+            true
+        })],
+        none<Uint<0..2>>(),
+        0
+    };
+}
+
 constructor() {
     deployer = derive_player_pub_key(disclose(player_secret_key()));
     ability_base_phys_id = register_ability(ability_base_phys());
     ability_base_block_id = register_ability(ability_base_block());
     ability_base_fire_aoe_id = register_ability(ability_base_fire_aoe());
     ability_base_ice_id = register_ability(ability_base_ice());
+    ability_reward_id = register_ability(ability_reward());
     ability_demo_starting_1_id = register_ability(ability_demo_starting_1());
     ability_demo_starting_2_id = register_ability(ability_demo_starting_2());
     ability_demo_starting_3_id = register_ability(ability_demo_starting_3());
@@ -731,8 +753,9 @@ circuit give_random_ability_if_applicable(reward_factor: Uint<32>, difficulty: U
     if (reward_factor == 0) {
         return none<Field>();
     }
-    const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
-    const reward_ability_id = derive_ability_id(reward_ability);
+    // const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
+    // const reward_ability_id = derive_ability_id(reward_ability);
+    const reward_ability_id = ability_reward_id;
     if (!all_abilities.member(reward_ability_id)) {
         all_abilities.insert(reward_ability_id, reward_ability);
     }
