@@ -105,7 +105,6 @@ export class ActiveBattle extends Phaser.Scene {
         }
 
         // Guard: Check if scene is still valid and active before processing state changes
-        // Store settings in variable to avoid TOCTOU race condition
         const sceneSettings = this.scene?.settings;
         if (!this.scene || !sceneSettings) {
             logger.combat.debug('ActiveBattle.onStateChange() called but scene is destroyed, ignoring');
