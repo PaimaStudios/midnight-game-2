@@ -22,6 +22,7 @@ export class MainMenu extends Phaser.Scene {
     topBar: TopBar | undefined;
     buttons: Button[];
     menuMusic: Phaser.Sound.BaseSound | undefined;
+    private isDestroyed: boolean = false;
 
     constructor(api: DeployedGame2API, state?: Game2DerivedState) {
         super('MainMenu');
@@ -128,9 +129,21 @@ export class MainMenu extends Phaser.Scene {
 
         this.events.emit('stateChange', state);
 
+        // Guard: Check if scene has been destroyed
+        if (this.isDestroyed) {
+            return;
+        }
+
+        // Guard: Check if scene is still valid and active before processing state changes
+        // Store settings in variable to avoid TOCTOU race condition
+        const sceneSettings = this.scene?.settings;
+        if (!this.scene || !sceneSettings) {
+            return;
+        }
+
         // If MainMenu is not the active scene (but allow paused scenes for registration flow)
         // This prevents interference with other scenes like ActiveBattle
-        const sceneStatus = this.scene.settings.status;
+        const sceneStatus = sceneSettings.status;
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
             return;
         }
@@ -196,6 +209,10 @@ export class MainMenu extends Phaser.Scene {
      * Call this before removing the MainMenu scene to prevent stale state updates
      */
     public shutdown() {
+        // Mark scene as destroyed to prevent any further state updates from processing
+        this.isDestroyed = true;
+
+        // Unsubscribe from state updates
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = undefined;

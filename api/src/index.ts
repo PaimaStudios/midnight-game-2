@@ -26,7 +26,7 @@ import {
 } from 'game2-contract';
 import * as utils from './utils/index.js';
 import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { combineLatest, map, tap, from, type Observable } from 'rxjs';
+import { combineLatest, map, tap, from, type Observable, shareReplay } from 'rxjs';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */
@@ -273,11 +273,12 @@ export class Game2API implements DeployedGame2API {
                     bosses: extractBossesFromLedgerState(),
                     playerBossProgress: extractPlayerBossProgressFromLedgerState(),
                 };
-                // can't use regular logging from this module
-                // TODO: remove this once we're done debugging the on-chain stuff
-                console.log(`newState = ${safeJSONString(newState)}`);
                 return newState;
             },
+        ).pipe(
+            // Share the subscription among all subscribers to prevent hammering the indexer
+            // with 14+ concurrent GraphQL subscriptions (one per scene)
+            shareReplay({ bufferSize: 1, refCount: true })
         );
     }
 

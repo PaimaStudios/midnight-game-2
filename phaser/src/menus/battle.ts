@@ -35,7 +35,8 @@ export class ActiveBattle extends Phaser.Scene {
     rewards: BattleRewards | undefined;
     waitingOnAnimations: boolean;
     initialized: boolean;
-    
+    private isDestroyed: boolean = false;
+
     // Managers
     private layout: BattleLayout;
     private combatAnimationManager!: CombatAnimationManager;
@@ -97,13 +98,20 @@ export class ActiveBattle extends Phaser.Scene {
     private onStateChange(state: Game2DerivedState) {
         logger.gameState.debug(`ActiveBattle.onStateChange(): ${safeJSONString(state)}`);
 
-        // Guard: Check if scene is still valid and active before processing state changes
-        if (!this.scene || !this.scene.settings) {
+        // Guard: Check if scene has been destroyed
+        if (this.isDestroyed) {
             logger.combat.debug('ActiveBattle.onStateChange() called but scene is destroyed, ignoring');
             return;
         }
 
-        const sceneStatus = this.scene.settings.status;
+        // Guard: Check if scene is still valid and active before processing state changes
+        const sceneSettings = this.scene?.settings;
+        if (!this.scene || !sceneSettings) {
+            logger.combat.debug('ActiveBattle.onStateChange() called but scene is destroyed, ignoring');
+            return;
+        }
+
+        const sceneStatus = sceneSettings.status;
         // Only process updates if scene is active (RUNNING or PAUSED, but not STOPPED or DESTROYED)
         if (sceneStatus !== Phaser.Scenes.RUNNING && sceneStatus !== Phaser.Scenes.PAUSED) {
             logger.combat.debug(`ActiveBattle.onStateChange() called but scene status is ${sceneStatus}, ignoring`);
@@ -331,7 +339,13 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     shutdown() {
-        this.subscription?.unsubscribe();
+        // Mark scene as destroyed to prevent any further state updates from processing
+        this.isDestroyed = true;
+
+        // Unsubscribe from state updates
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+        }
     }
 
 }
