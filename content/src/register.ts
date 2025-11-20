@@ -285,6 +285,7 @@ export async function registerStartingContent(
 
   // NORMAL ENEMIES
   const goblin: EnemyStatsConfig = {
+    boss_type: BOSS_TYPE.boss,
     enemy_type: 0,
     hp: 3,
     moves: [{ attack: 5, block_self: 5 }, { attack: 10 }, { block_self: 10 }],
