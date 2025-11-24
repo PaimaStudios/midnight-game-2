@@ -65,4 +65,15 @@ export default defineConfig({
       usePolling: true
     },
   },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+    allowedHosts: [
+      ".ngrok-free.dev",
+      ".ngrok.app",
+      ".ngrok.io",
+    ],
+  },
 });
