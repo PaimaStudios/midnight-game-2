@@ -3,7 +3,7 @@
  * Runs once at startup, then redirects to MainMenu or rejoins active battle
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
-import { BrowserDeploymentManager } from "../wallet";
+import { BrowserDeploymentManager } from "../proving/wallet";
 import { Button } from "../widgets/button";
 import { logger } from "../main";
 import { MockGame2API } from "../mockapi";
