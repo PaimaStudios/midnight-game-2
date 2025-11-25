@@ -113,17 +113,10 @@ export interface DeployedGame2API {
      * 
      * @param loadout Abilities used in this quest. They will be (temporarily) removed until battle end.
      * @param level The level (biome / difficulty) to start the quest in
+     * @param current_block_time Current block height. Will be verified. Passing it in is the only way to get this in Compact
      * @returns The quest ID of the new quest
      */
-    start_new_quest: (loadout: PlayerLoadout, level: Level) => Promise<bigint>;
-
-    /**
-     * Check if a quest is ready to be finalized (without actually finalizing it)
-     * 
-     * @param quest_id Quest to check readiness for
-     * @returns True if quest is ready to be finalized, false otherwise
-     */
-    is_quest_ready: (quest_id: bigint) => Promise<boolean>;
+    start_new_quest: (loadout: PlayerLoadout, level: Level, current_block_time: bigint) => Promise<bigint>;
 
     /**
      * Attempt to finalize a quest (enter into the boss battle)
@@ -295,6 +288,9 @@ export class Game2API implements DeployedGame2API {
    
     async register_new_player(): Promise<void> {
         const txData = await this.deployedContract.callTx.register_new_player();
+        // this was trying to see what the conversion from block height to block time is
+        //const txData = await this.deployedContract.callTx.find_block_time();
+        console.log(`found block result ? ${txData.private.result}`);
 
         this.logger?.trace({
             transactionAdded: {
@@ -344,26 +340,12 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
-        const txData = await this.deployedContract.callTx.start_new_quest(loadout, level);
+    async start_new_quest(loadout: PlayerLoadout, level: Level, current_block_time: bigint): Promise<bigint> {
+        const txData = await this.deployedContract.callTx.start_new_quest(loadout, level, current_block_time);
 
         this.logger?.trace({
             transactionAdded: {
                 circuit: 'start_new_quest',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
-
-        return txData.private.result;
-    }
-
-    async is_quest_ready(quest_id: bigint): Promise<boolean> {
-        const txData = await this.deployedContract.callTx.is_quest_ready(quest_id);
-
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'is_quest_ready',
                 txHash: txData.public.txHash,
                 blockHeight: txData.public.blockHeight,
             },
