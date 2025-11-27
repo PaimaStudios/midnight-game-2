@@ -175,7 +175,11 @@ export class StartBattleMenu extends Phaser.Scene {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
                 const level = { biome: BigInt(this.biome), difficulty: BigInt(this.difficulty) };
                 if (this.isQuest) {
+                    this.scene.pause().launch('Loader');
+                    this.loader = this.scene.get('Loader') as Loader;
+                    this.loader.setText("Submitting Proof");
                     this.api.start_new_quest(this.loadout, level).then((questId) => {
+                        this.scene.resume().stop('Loader');
                         this.scene.remove('QuestsMenu');
                         this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
                         this.scene.start('QuestsMenu');
@@ -397,6 +401,10 @@ export class StartBattleMenu extends Phaser.Scene {
             .getChildren()
             .map((widget) => (widget as Phaser.GameObjects.Container))
             .map(((container) => container.list[0] as AbilityWidget));
+    }
+
+    shutdown() {
+        this.subscription?.unsubscribe();
     }
 }
 

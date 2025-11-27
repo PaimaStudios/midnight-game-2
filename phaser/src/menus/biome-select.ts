@@ -88,4 +88,8 @@ export class BiomeSelectMenu extends Phaser.Scene {
                 }
             }, 'Return to Hub');
     }
+
+    shutdown() {
+        this.subscription?.unsubscribe();
+    }
 }

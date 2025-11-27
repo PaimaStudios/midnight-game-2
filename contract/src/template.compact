@@ -417,7 +417,8 @@ circuit random_ability(rng: Vector<32, Uint<8>>, factor: Uint<32>): Ability {
             trigger2 ? some<Effect>(random_effect(rng[6], trigger_factor)) : none<Effect>(),
             trigger3 ? some<Effect>(random_effect(rng[7], trigger_factor)) : none<Effect>()
         ],
-        color <= 2 ? some<Uint<0..2>>(color as Uint<0..2>) : none<Uint<0..2>>(),
+        // this color > 2 check is also to prevent the bounds check triggering in non-executed branches
+        color <= 2 ? some<Uint<0..2>>((color > 2 ? 0 : color) as Uint<0..2>) : none<Uint<0..2>>(),
         0
     };
 }
@@ -428,7 +429,7 @@ circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
     // damage needs to be half that of block due to resistance calculations. see Effect comment
     const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
     const final_factor = factor * block_factor * (aoe ? 1 : 2);
-    const amount = div((4 * final_factor/* + mod(rng, final_factor as Uint<32>)*/) as Uint<32>, 5);
+    const amount = div((4 * final_factor + mod(rng, final_factor as Uint<32>)) as Uint<32>, 5);
     return Effect {
         effect_type,
         amount as Uint<32>,
@@ -667,7 +668,9 @@ circuit give_random_ability_if_applicable(reward_factor: Uint<32>, difficulty: U
     if (reward_factor == 0) {
         return none<Field>();
     }
-    const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
+    // this gets bounds-checked even when the above branch is the one that is hit, so we just pass in a non-zero
+    // in that case just so this doesn't break
+    const reward_ability = random_ability(rng, (reward_factor == 0 ? 1 : (difficulty * reward_factor)) as Uint<8>);
     const reward_ability_id = derive_ability_id(reward_ability);
     if (reward_factor > 0) {
         if (!all_abilities.member(reward_ability_id)) {
