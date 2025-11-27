@@ -192,42 +192,15 @@ export class QuestMenu extends Phaser.Scene {
             return;
         }
 
-        this.api.is_quest_ready(this.questId).then((isReady) => {
             // Check again before updating UI in case scene was stopped
             if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
 
             // Hide loader once we have the result
             this.scene.resume().stop('Loader');
 
-            if (isReady) {
-                this.statusText!.setText('Quest completed! Ready to fight the boss.');
-                this.initiateButton!.setEnabled(true);
-                this.initiateButton!.setAlpha(1.0);
-            } else {
-                this.statusText!.setText('Quest in progress... Check back later.');
-                this.initiateButton!.setEnabled(false);
-                this.initiateButton!.setAlpha(0.5);
-            }
-        }).catch((err) => {
-            // Check again before updating UI in case scene was stopped
-            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
-
-            // Hide loader on error too
-            this.scene.resume().stop('Loader');
-
-            logger.network.error(`Error checking quest readiness: ${err}`);
-
-            // Show network error overlay
-            if (!this.scene.get('NetworkError')) {
-                this.scene.add('NetworkError', new NetworkError());
-            }
-            const networkErrorScene = this.scene.get('NetworkError') as NetworkError;
-            networkErrorScene.setErrorMessage('Error checking quest status. Please try again.');
-            this.scene.launch('NetworkError');
-
-            this.initiateButton!.setEnabled(false);
-            this.initiateButton!.setAlpha(0.5);
-        });
+            this.statusText!.setText('Quest completed! Ready to fight the boss.');
+            this.initiateButton!.setEnabled(true);
+            this.initiateButton!.setAlpha(1.0);
     }
 
     private startBossBattle() {
