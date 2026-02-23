@@ -754,13 +754,14 @@ circuit give_random_ability_if_applicable(reward_factor: Uint<32>, difficulty: U
     if (reward_factor == 0) {
         return none<Field>();
     }
-    // const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
-    // const reward_ability_id = derive_ability_id(reward_ability);
-    const reward_ability_id = ability_reward_id;
-    // if (!all_abilities.member(reward_ability_id)) {
-    //     all_abilities.insert(reward_ability_id, reward_ability);
-    // }
-    player_add_ability(player_pub_key, reward_ability_id);
+    const reward_ability = random_ability(rng, (difficulty * reward_factor) as Uint<8>);
+    const reward_ability_id = derive_ability_id(reward_ability);
+    if (reward_factor > 0) {
+        if (!all_abilities.member(reward_ability_id)) {
+            all_abilities.insert(reward_ability_id, reward_ability);
+        }
+        player_add_ability(player_pub_key, reward_ability_id);
+    }
     return some<Field>(reward_ability_id);
 }
 
