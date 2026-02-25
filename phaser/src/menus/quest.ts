@@ -201,6 +201,7 @@ export class QuestMenu extends Phaser.Scene {
             this.statusText!.setText('Quest completed! Ready to fight the boss.');
             this.initiateButton!.setEnabled(true);
             this.initiateButton!.setAlpha(1.0);
+
     }
 
     private startBossBattle() {

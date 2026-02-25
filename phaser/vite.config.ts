@@ -2,10 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteCommonjs } from "@originjs/vite-plugin-commonjs";
 import wasm from 'vite-plugin-wasm';
-
-// https://github.com/vitejs/vite/blob/ec7ee22cf15bed05a6c55693ecbac27cfd615118/packages/vite/src/node/plugins/workerImportMetaUrl.ts#L127-L128
-const workerImportMetaUrlRE =
-  /\bnew\s+(?:Worker|SharedWorker)\s*\(\s*(new\s+URL\s*\(\s*('[^']+'|"[^"]+"|`[^`]+`)\s*,\s*import\.meta\.url\s*\))/g;
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,7 +16,8 @@ export default defineConfig({
     react({
       include: "**/*.tsx",
     }),
-    viteCommonjs()
+    viteCommonjs(),
+    topLevelAwait(),
   ],
   optimizeDeps: {
     esbuildOptions: {
@@ -30,24 +28,9 @@ export default defineConfig({
   assetsInclude: ['**/*.bin'],
   worker: {
     format: "es",
-    plugins: [
-      {
-        name: "foo",
-        enforce: "pre",
-        transform(code, id) {
-          if (
-            code.includes("new Worker") &&
-            code.includes("new URL") &&
-            code.includes("import.meta.url")
-          ) {
-            const result = code.replace(
-              workerImportMetaUrlRE,
-              `((() => { throw new Error('Nested workers are disabled') })()`
-            );
-            return result;
-          }
-        },
-      },
+    plugins: () => [
+      wasm(),
+      topLevelAwait(),
     ],
     rollupOptions: {
       output: {

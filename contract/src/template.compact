@@ -71,6 +71,10 @@ export sealed ledger ability_base_phys_id: Field;
 export sealed ledger ability_base_block_id: Field;
 export sealed ledger ability_base_fire_aoe_id: Field;
 export sealed ledger ability_base_ice_id: Field;
+export sealed ledger ability_reward_id: Field;
+export sealed ledger ability_demo_starting_1_id: Field;
+export sealed ledger ability_demo_starting_2_id: Field;
+export sealed ledger ability_demo_starting_3_id: Field;
 
 // ranks how "good" an ability is. higher is better. useful for ordering in the UI
 export pure circuit ability_score(ability: Ability): Uint<32> {
@@ -138,12 +142,92 @@ export pure circuit ability_base_ice(): Ability {
     };
 }
 
+export pure circuit ability_demo_starting_1(): Ability {
+    return Ability {
+        some<Effect>(Effect {
+            EFFECT_TYPE.attack_fire,
+            23,
+            false
+        }),
+        [none<Effect>(), some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            35,
+            false
+        }), none<Effect>()],
+        some<Uint<0..2>>(0),
+        0
+    };
+}
+
+export pure circuit ability_demo_starting_2(): Ability {
+    return Ability {
+        some<Effect>(Effect {
+            EFFECT_TYPE.attack_ice,
+            11,
+            false
+        }),
+        [some<Effect>(Effect {
+            EFFECT_TYPE.attack_phys,
+            15,
+            false
+        }), none<Effect>(), some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            20,
+            false
+        })],
+        some<Uint<0..2>>(1),
+        0
+    };
+}
+
+export pure circuit ability_demo_starting_3(): Ability {
+    return Ability {
+        some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            20,
+            false
+        }),
+        [none<Effect>(), some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            35,
+            false
+        }), none<Effect>()],
+        some<Uint<0..2>>(2),
+        0
+    };
+}
+
+export pure circuit ability_reward(): Ability {
+    return Ability {
+        some<Effect>(Effect {
+            EFFECT_TYPE.attack_fire,
+            13,
+            true
+        }),
+        [none<Effect>(), some<Effect>(Effect {
+            EFFECT_TYPE.block,
+            21,
+            false
+        }), some<Effect>(Effect {
+            EFFECT_TYPE.attack_ice,
+            7,
+            true
+        })],
+        none<Uint<0..2>>(),
+        0
+    };
+}
+
 constructor() {
     deployer = derive_player_pub_key(disclose(player_secret_key()));
     ability_base_phys_id = register_ability(ability_base_phys());
     ability_base_block_id = register_ability(ability_base_block());
     ability_base_fire_aoe_id = register_ability(ability_base_fire_aoe());
     ability_base_ice_id = register_ability(ability_base_ice());
+    ability_reward_id = register_ability(ability_reward());
+    ability_demo_starting_1_id = register_ability(ability_demo_starting_1());
+    ability_demo_starting_2_id = register_ability(ability_demo_starting_2());
+    ability_demo_starting_3_id = register_ability(ability_demo_starting_3());
     players.resetToDefault();
 }
 
@@ -263,6 +347,9 @@ export circuit register_new_player(): [] {
     player_abilities.lookup(player_id).insert(ability_base_block_id, 4);
     player_abilities.lookup(player_id).insert(ability_base_ice_id, 1);
     player_abilities.lookup(player_id).insert(ability_base_fire_aoe_id, 1);
+    player_abilities.lookup(player_id).insert(ability_demo_starting_1_id, 1);
+    player_abilities.lookup(player_id).insert(ability_demo_starting_2_id, 1);
+    player_abilities.lookup(player_id).insert(ability_demo_starting_3_id, 1);
     player_boss_progress.insertDefault(player_id);
 }
 

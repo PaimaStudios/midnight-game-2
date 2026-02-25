@@ -55,6 +55,7 @@ export const witnesses = {
     const yn = Number(y);
     const remainder = xn % yn;
     const quotient = Math.floor(xn / yn);
+    console.log(`dyn witness _divMod(${x}, ${y}) = [${quotient}, ${remainder}]`);
     return [context.privateState, [BigInt(quotient), BigInt(remainder)]];
   }
 };
