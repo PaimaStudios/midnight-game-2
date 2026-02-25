@@ -402,6 +402,10 @@ export class StartBattleMenu extends Phaser.Scene {
             .map((widget) => (widget as Phaser.GameObjects.Container))
             .map(((container) => container.list[0] as AbilityWidget));
     }
+
+    shutdown() {
+        this.subscription?.unsubscribe();
+    }
 }
 
 // TODO: is this a performance issue?
