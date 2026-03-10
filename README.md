@@ -1,5 +1,9 @@
 # Midnight Game 2
 
+This project is built on the Midnight Network.
+
+This is a singleplayer fully on-chain game written in Compact. It is a deck-building dungeon-crawler where you can gain new, stronger spirits to battle with, or level up your existing ones. Use these new, stronger spirits to complete quests against stronger and stronger boss enemies.
+
 ## Building
 
 ```bash
