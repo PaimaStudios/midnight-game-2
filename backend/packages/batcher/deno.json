@@ -1,0 +1,9 @@
+{
+  "name": "@dust2dust-backend/batcher",
+  "version": "0.1.0",
+  "exports": "./main.ts",
+  "tasks": {
+  },
+  "imports": {
+  }
+}

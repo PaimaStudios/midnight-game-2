@@ -1,0 +1,7 @@
+node_modules
+.yarn
+.turbo
+dist
+.DS_Store
+.vite
+.env

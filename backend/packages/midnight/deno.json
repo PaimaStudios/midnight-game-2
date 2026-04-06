@@ -1,0 +1,29 @@
+{
+  "name": "@dust2dust-backend/midnight-contracts",
+  "version": "0.1.0",
+  "exports": {
+    "./game2": "./contract-game2/src/index.ts"
+  },
+  "tasks": {
+    "compact": "cd contract-game2 && npm run compact",
+    "contract-game2:deploy": "deno --unstable-detect-cjs -A contract-game2-deploy.ts",
+    "contract-game2:admin": "deno --unstable-detect-cjs -A contract-game2-admin.ts"
+  },
+  "imports": {
+    "@midnight-ntwrk/compact-runtime": "npm:@midnight-ntwrk/compact-runtime@^0.9.0",
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger@^4.0.0",
+    "@midnight-ntwrk/midnight-js-contracts": "npm:@midnight-ntwrk/midnight-js-contracts@2.0.0",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "npm:@midnight-ntwrk/midnight-js-indexer-public-data-provider@2.0.0",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "npm:@midnight-ntwrk/midnight-js-level-private-state-provider@2.0.0",
+    "@midnight-ntwrk/midnight-js-network-id": "npm:@midnight-ntwrk/midnight-js-network-id@2.0.0",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "npm:@midnight-ntwrk/midnight-js-node-zk-config-provider@2.0.0",
+    "@midnight-ntwrk/midnight-js-types": "npm:@midnight-ntwrk/midnight-js-types@2.0.0",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "npm:@midnight-ntwrk/midnight-js-http-client-proof-provider@2.0.0",
+    "@midnight-ntwrk/midnight-js-utils": "npm:@midnight-ntwrk/midnight-js-utils@2.0.0",
+    "@midnight-ntwrk/wallet-api": "npm:@midnight-ntwrk/wallet-api@^5.0.0",
+    "@std/path": "jsr:@std/path",
+    "rxjs": "npm:rxjs@^7.8.1",
+    "pino": "npm:pino@^8.16.0",
+    "pino-pretty": "npm:pino-pretty@^10.2.3"
+  }
+}

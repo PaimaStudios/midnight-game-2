@@ -1,0 +1,18 @@
+{
+  "workspace": [
+    "./packages/**/*"
+  ],
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "build:midnight": "deno task -f @dust2dust-backend/midnight compact"
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-explicit-any",
+        "no-unused-vars"
+      ]
+    }
+  },
+  "allowScripts": ["npm:classic-level@2.0.0", "npm:fsevents@2.3.3", "npm:protobufjs@7.5.4"]
+}

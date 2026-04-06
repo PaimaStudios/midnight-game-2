@@ -154,7 +154,7 @@ export pure circuit ability_demo_starting_1(): Ability {
             35,
             false
         }), none<Effect>()],
-        some<Uint<0..2>>(0),
+        some<Uint<0..2>>(0 as Uint<0..2>),
         0
     };
 }
@@ -175,7 +175,7 @@ export pure circuit ability_demo_starting_2(): Ability {
             20,
             false
         })],
-        some<Uint<0..2>>(1),
+        some<Uint<0..2>>(1 as Uint<0..2>),
         0
     };
 }
@@ -192,7 +192,7 @@ export pure circuit ability_demo_starting_3(): Ability {
             35,
             false
         }), none<Effect>()],
-        some<Uint<0..2>>(2),
+        some<Uint<0..2>>(2 as Uint<0..2>),
         0
     };
 }

@@ -1,11 +1,10 @@
 {
   "packageManager": "yarn@4.1.0",
   "workspaces": [
-    "api",
-    "cli",
-    "content",
-    "contract",
-    "phaser"
+    "src/contract",
+    "src/api",
+    "src/content",
+    "src/phaser"
   ],
   "scripts": {
     "compact": "turbo run compact",
@@ -13,9 +12,7 @@
     "test": "turbo run test",
     "test-e2e": "turbo run test-e2e",
     "lint": "turbo run lint",
-    "check": "turbo run check --ignore packages/dao-ui-tests",
-    "deploy": "yarn workspace dust-to-dust-cli run build && node cli/dist/deploy.js deploy",
-    "admin": "yarn workspace dust-to-dust-cli run build && node cli/dist/admin.js"
+    "check": "turbo run check"
   },
   "resolutions": {
     "@midnight-ntwrk/zswap": "^4.0.0"

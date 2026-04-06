@@ -13,11 +13,10 @@
     }
   },
   "scripts": {
-    "compact": "npm run gen && compact compile src/game2.compact ./src/managed/game2",
+    "compact": "echo 'Contract is compiled by the backend. Run the compact command from backend/ first.'",
     "test": "jest --passWithNoTests",
     "prepack": "yarn build",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp ./src/game2.compact ./dist",
-    "gen": "node src/generate.js",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
