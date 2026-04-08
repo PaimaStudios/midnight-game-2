@@ -38,6 +38,8 @@ export class QuestMenu extends Phaser.Scene {
     initiateButton: Button | undefined;
     topBar: TopBar | undefined;
 
+    private sceneCreated: boolean = false;
+
     constructor(api: DeployedGame2API, questId: bigint, state: Game2DerivedState) {
         super('QuestMenu');
 
@@ -59,6 +61,9 @@ export class QuestMenu extends Phaser.Scene {
         const loader = this.scene.get('Loader') as Loader;
         loader.setText("Checking quest status...");
         
+        // Mark scene as created so onStateChange can safely manipulate game objects
+        this.sceneCreated = true;
+
         // Initialize with the state we already have
         this.onStateChange(this.state);
     }
@@ -67,6 +72,9 @@ export class QuestMenu extends Phaser.Scene {
         logger.gameState.info(`QuestMenu.onStateChange() called, quest exists: ${state.quests.has(this.questId)}`);
 
         this.state = state;
+
+        // Don't manipulate game objects before create() has run
+        if (!this.sceneCreated) return;
 
         // Set background based on quest biome (only once)
         if (!this.backgroundSet) {
@@ -192,16 +200,36 @@ export class QuestMenu extends Phaser.Scene {
             return;
         }
 
+        // Check if quest timer has elapsed
+        this.api.is_quest_ready(this.questId).then((ready) => {
             // Check again before updating UI in case scene was stopped
             if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
 
             // Hide loader once we have the result
             this.scene.resume().stop('Loader');
 
-            this.statusText!.setText('Quest completed! Ready to fight the boss.');
-            this.initiateButton!.setEnabled(true);
-            this.initiateButton!.setAlpha(1.0);
-
+            if (ready) {
+                this.statusText!.setText('Quest completed! Ready to fight the boss.');
+                this.initiateButton!.setEnabled(true);
+                this.initiateButton!.setAlpha(1.0);
+            } else {
+                const elapsedSec = Math.floor(Date.now() / 1000) - Number(quest.start_time);
+                const questDurationSec = 1200; // 20 minutes default
+                const remainingSec = Math.max(0, questDurationSec - elapsedSec);
+                const minutes = Math.floor(remainingSec / 60);
+                const seconds = remainingSec % 60;
+                this.statusText!.setText(`Quest in progress... ${minutes}m ${seconds}s remaining`);
+                this.initiateButton!.setEnabled(false);
+                this.initiateButton!.setAlpha(0.5);
+            }
+        }).catch((err) => {
+            logger.network.error(`Error checking quest readiness: ${err}`);
+            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
+            this.scene.resume().stop('Loader');
+            this.statusText!.setText('Checking quest status...');
+            this.initiateButton!.setEnabled(false);
+            this.initiateButton!.setAlpha(0.5);
+        });
     }
 
     private startBossBattle() {

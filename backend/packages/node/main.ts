@@ -18,7 +18,6 @@ import type { GrammarDefinition } from "@paimaexample/concise";
 import { type SyncStateUpdateStream, World } from "@paimaexample/coroutine";
 import { PaimaSTM } from "@paimaexample/sm";
 import type { BaseStfInput } from "@paimaexample/sm";
-import { AddressType } from "@paimaexample/utils";
 import { Type } from "@sinclair/typebox";
 import {
   midnightNetworkConfig,
@@ -28,6 +27,15 @@ import { readMidnightContract } from "@paimaexample/midnight-contracts/read-cont
 import * as path from "@std/path";
 import { builtinGrammars } from "@paimaexample/sm/grammar";
 import { valueToBigInt } from "@midnight-ntwrk/compact-runtime";
+import {
+  ensureTables,
+  processLedgerSnapshot,
+  getPlayers,
+  getPlayerDetail,
+  getActiveBattles,
+  getActiveQuests,
+  getGameStats,
+} from "./game-db.ts";
 import type { AlignedValue, StateValue } from "@midnight-ntwrk/ledger-v8";
 
 // ---------------------------------------------------------------------------
@@ -252,10 +260,39 @@ function parseStateValue(sv: StateValue): any {
 
 export const ledgerParser = (state: StateValue) => parseStateValue(state);
 
+// Shared DB connection — set by apiRouter before any blocks are processed
+let dbConn: any = null;
+
+async function waitForDb() {
+  while (!dbConn) {
+    console.log("Waiting for db connection...");
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
+// Sequential queue: each DB write waits for the previous to finish,
+// preventing concurrent writes across consecutive blocks.
+let dbQueue = Promise.resolve();
+
 const stm = new PaimaSTM<typeof grammar, {}>(grammar);
 stm.addStateTransition("midnightContractState", function* (data) {
   const { payload } = data.parsedInput;
-  console.log(`[ledger] block processed at height ${data.blockHeight}`);
+
+  try {
+    yield* World.promise(waitForDb());
+    dbQueue = dbQueue
+      .then(async () => {
+        const t0 = performance.now();
+        await processLedgerSnapshot(dbConn, payload);
+        const elapsed = (performance.now() - t0).toFixed(1);
+        console.log(`[ledger] block processed at height ${data.blockHeight} in ${elapsed}ms`);
+      })
+      .catch((err) => {
+        console.error("[game-db] processLedgerSnapshot failed:", err);
+      });
+  } catch (err) {
+    console.error("[game-db] processLedgerSnapshot failed:", err);
+  }
 });
 
 export const gameStateTransitions: StartConfigGameStateTransitions = function* (
@@ -273,9 +310,43 @@ export const apiRouter: StartConfigApiRouter = async function (
   server: any,
   db: any,
 ): Promise<void> {
+  dbConn = db;
+  await ensureTables(db);
+
+  // --- existing primitive accounting endpoint ---
   server.get("/fetch-primitive-accounting", async () => {
     const result = await db.query(`SELECT * FROM effectstream.primitive_accounting`);
     return result.rows;
+  });
+
+  // --- GET /game/players ---
+  server.get("/game/players", async () => {
+    return getPlayers(db);
+  });
+
+  // --- GET /game/players/:id ---
+  server.get("/game/players/:id", async (request: any) => {
+    const { id } = request.params;
+    const detail = await getPlayerDetail(db, id);
+    if (!detail) return { error: "Player not found" };
+    return detail;
+  });
+
+  // --- GET /game/battles ---
+  server.get("/game/battles", async (request: any) => {
+    const playerId = request.query?.player_id;
+    return getActiveBattles(db, playerId);
+  });
+
+  // --- GET /game/quests ---
+  server.get("/game/quests", async (request: any) => {
+    const playerId = request.query?.player_id;
+    return getActiveQuests(db, playerId);
+  });
+
+  // --- GET /game/stats ---
+  server.get("/game/stats", async () => {
+    return getGameStats(db);
   });
 };
 

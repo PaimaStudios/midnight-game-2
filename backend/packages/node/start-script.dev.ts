@@ -8,12 +8,12 @@ import { launchMidnight } from "@paimaexample/orchestrator/start-midnight";
 
 const config = Value.Parse(OrchestratorConfig, {
   packageName: "@paimaexample",
-  logs: "stdout",
+  // logs: "stdout",
   processes: {
     [ComponentNames.EFFECTSTREAM_PGLITE]: true,
     [ComponentNames.COLLECTOR]: false,
-    [ComponentNames.TMUX]: false,
-    [ComponentNames.TUI]: false,
+    [ComponentNames.TMUX]: true,
+    [ComponentNames.TUI]: true,
   },
 
   processesToLaunch: [
