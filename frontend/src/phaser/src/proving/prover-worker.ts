@@ -14,11 +14,14 @@ let wasmInitialized = false;
 let configuredBaseUrl: string | undefined;
 
 const fetchBinary = async (url: string): Promise<ArrayBuffer> => {
+  console.log(`[wasm-prover] fetching ${url}`);
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
   }
-  return await response.arrayBuffer();
+  const buffer = await response.arrayBuffer();
+  console.log(`[wasm-prover] fetched ${url} (${buffer.byteLength} bytes)`);
+  return buffer;
 };
 
 const createResolver = (baseUrl: string): WasmResolver => {
@@ -63,6 +66,7 @@ const initializeWasm = async () => {
   rng = Rng.new();
 
   if (self.crossOriginIsolated) {
+    console.log(`[wasm-prover] crossOriginIsolated=true, initializing thread pool with ${threadCount()} threads`);
     await initThreadPool(threadCount());
   } else {
     console.warn('[wasm-prover] crossOriginIsolated=false, skipping rayon thread pool init');
@@ -98,11 +102,13 @@ self.onmessage = async (event: MessageEvent<ProverRequest>) => {
         }
 
         const startedAt = performance.now();
+        console.log(`[wasm-prover] starting prove, inputBytes=${message.serializedTx.byteLength}`);
         const provenTx = await prover.prove(
           rng,
           message.serializedTx,
           CostModel.initialCostModel(),
         );
+        console.log(`[wasm-prover] prove succeeded, outputBytes=${provenTx.byteLength}`);
 
         self.postMessage(
           {

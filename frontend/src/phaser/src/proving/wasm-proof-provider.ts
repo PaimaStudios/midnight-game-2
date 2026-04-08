@@ -5,6 +5,7 @@ import type {
   UnboundTransaction,
   ZKConfigProvider,
 } from '@midnight-ntwrk/midnight-js-types';
+import WasmProverWorker from './prover-worker?worker';
 import type { ProverRequest, ProverResponse } from './worker-types';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 
@@ -30,17 +31,12 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
 };
 
 class WasmProofWorkerClient {
-  private readonly worker: Worker;
+  private readonly worker = new WasmProverWorker();
   private readonly pending = new Map<number, { resolve: (value: ProverResponse) => void; reject: (reason?: unknown) => void }>();
   private requestId = 0;
   private readonly ready: Promise<void>;
 
   constructor(baseUrl: string) {
-    this.worker = new Worker(
-      new URL('./prover-worker.ts', import.meta.url),
-      { type: 'module' },
-    );
-
     this.worker.onmessage = (event: MessageEvent<ProverResponse>) => {
       const message = event.data;
       const pending = this.pending.get(message.requestId);
