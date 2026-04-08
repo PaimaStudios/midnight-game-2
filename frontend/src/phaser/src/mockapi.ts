@@ -4,7 +4,7 @@
  * 
  * This is helpful for development of the frontend without the latency that the on-chain API has.
  */
-import { ContractAddress } from "@midnight-ntwrk/ledger";
+import { ContractAddress } from "@midnight-ntwrk/ledger-v8";
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, BattleConfig, BattleRewards, BOSS_TYPE, Level, EnemiesConfig, PlayerLoadout, pureCircuits } from "game2-contract";
 import { Observable, BehaviorSubject } from "rxjs";
@@ -23,13 +23,11 @@ export class MockGame2API implements DeployedGame2API {
     readonly state$: Observable<Game2DerivedState>;
     private stateSubject: BehaviorSubject<Game2DerivedState>;
     mockState: Game2DerivedState;
-    questReadiness: Map<bigint, boolean>;
-    questStartTimes: Map<bigint, number>;
+    // Mock quest duration in milliseconds (5 seconds for fast dev iteration)
+    static readonly MOCK_QUEST_DURATION_MS = 5000;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
-        this.questReadiness = new Map();
-        this.questStartTimes = new Map();
 
         // Initialize mock state
         this.mockState = {
@@ -173,60 +171,48 @@ export class MockGame2API implements DeployedGame2API {
                 level,
                 player_pub_key: MOCK_PLAYER_ID,
                 loadout,
+                start_time: BigInt(Math.floor(Date.now() / 1000)),
             };
             const questId = pureCircuits.derive_quest_id(quest);
             this.mockState.quests.set(questId, quest);
-            // Quest starts not ready, record start time
-            this.questReadiness.set(questId, false);
-            this.questStartTimes.set(questId, Date.now());
             return questId;
         });
     }
 
+    private isQuestReady(quest_id: bigint): boolean {
+        const quest = this.mockState.quests.get(quest_id);
+        if (!quest) return false;
+        const elapsedMs = Date.now() - Number(quest.start_time) * 1000;
+        return elapsedMs >= MockGame2API.MOCK_QUEST_DURATION_MS;
+    }
+
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
         return this.response(async () => {
-            // Check if already marked as ready
-            let isReady = this.questReadiness.get(quest_id) ?? false;
-            
-            if (!isReady) {
-                // Check if 5 seconds have passed since quest creation
-                const TIME_TO_WAIT = 5000; // 5 seconds
-                const startTime = this.questStartTimes.get(quest_id);
-                if (startTime && (Date.now() - startTime) >= TIME_TO_WAIT) {
-                    // Mark as ready and keep it ready
-                    this.questReadiness.set(quest_id, true);
-                    isReady = true;
-                }
-            }
-            
-            return isReady;
+            return this.isQuestReady(quest_id);
         });
     }
 
     public finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
         return this.response(async () => {
-            // Use the stored readiness state instead of new random
-            if (this.questReadiness.get(quest_id) ?? false) {
-                const quest = this.mockState.quests.get(quest_id)!;
-                this.mockState.quests.delete(quest_id);
-                this.questReadiness.delete(quest_id);
-                this.questStartTimes.delete(quest_id);
-
-                const battle_config = {
-                    level: quest.level,
-                    enemies: this.mockState.bosses.get(quest.level.biome)!.get(quest.level.difficulty)!,
-                    player_pub_key: MOCK_PLAYER_ID,
-                    loadout: quest.loadout,
-                };
-
-                const battleId = pureCircuits.derive_battle_id(battle_config);
-
-                this.mockState.activeBattleStates.set(battleId, initBattlestate(randomBytes(32), battle_config));
-                this.mockState.activeBattleConfigs.set(battleId, battle_config);
-
-                return battleId;
+            if (!this.isQuestReady(quest_id)) {
+                return undefined;
             }
-            return undefined;
+            const quest = this.mockState.quests.get(quest_id)!;
+            this.mockState.quests.delete(quest_id);
+
+            const battle_config = {
+                level: quest.level,
+                enemies: this.mockState.bosses.get(quest.level.biome)!.get(quest.level.difficulty)!,
+                player_pub_key: MOCK_PLAYER_ID,
+                loadout: quest.loadout,
+            };
+
+            const battleId = pureCircuits.derive_battle_id(battle_config);
+
+            this.mockState.activeBattleStates.set(battleId, initBattlestate(randomBytes(32), battle_config));
+            this.mockState.activeBattleConfigs.set(battleId, battle_config);
+
+            return battleId;
         });
     }
 
@@ -288,6 +274,10 @@ export class MockGame2API implements DeployedGame2API {
             }
             byDifficulty.set(BigInt(byDifficulty.size), enemies);
         }, 5);
+    }
+
+    public async admin_set_quest_duration(_duration: bigint): Promise<void> {
+        // No-op in mock — quest timing uses MOCK_QUEST_DURATION_MS
     }
 
     // not a part of the regular api - just here for testing

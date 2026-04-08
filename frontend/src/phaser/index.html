@@ -17,6 +17,12 @@
   <body>
     <div id="root"></div>
     <div style="font-family:yana; position:absolute; left:-1000px; visibility:hidden;">.</div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // Buffer must be globally available before any CJS module initializes.
+      // We split the entry point so Buffer is set before the app module graph loads.
+      import { Buffer } from 'buffer';
+      globalThis.Buffer = Buffer;
+      await import('/src/main.tsx');
+    </script>
   </body>
 </html>

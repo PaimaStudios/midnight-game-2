@@ -3,277 +3,101 @@ import {
     safeJSONString,
     type Game2Providers,
 } from "game2-api";
-import { type Logger } from "pino";
 import { logger } from "../main";
-import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
+// Lazy-loaded to avoid crypto-browserify Buffer.slice crash in Vite dev mode.
+const getLevelPrivateStateProvider = async () => {
+    if (!globalThis.Buffer) {
+        const { Buffer } = await import('buffer');
+        globalThis.Buffer = Buffer;
+    }
+    return (await import('@midnight-ntwrk/midnight-js-level-private-state-provider')).levelPrivateStateProvider;
+};
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import {
-    type BalancedTransaction,
-    ProofProvider,
-    ProveTxConfig,
-    type UnbalancedTransaction,
-    createUnbalancedTx,
+    type UnboundTransaction,
+    type ZKConfigProvider,
 } from "@midnight-ntwrk/midnight-js-types";
 import {
-    CoinInfo,
+    CoinPublicKey,
+    EncPublicKey,
+    FinalizedTransaction,
     Transaction,
     TransactionId,
-    UnprovenTransaction,
-} from "@midnight-ntwrk/ledger";
-import { getRuntimeNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
-import { ProverMessage, ProverResponse } from "./worker-types";
+    ZswapSecretKeys,
+} from "@midnight-ntwrk/ledger-v8";
+import { getNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
+import { wasmProofProvider } from "./wasm-proof-provider";
+import { BatcherClient } from "./batcher-client";
 
-type WebWorkerPromiseCallbacks = {
-    resolve: (
-        value: UnbalancedTransaction | PromiseLike<UnbalancedTransaction>
-    ) => void;
-    reject: (reason?: any) => void;
+const toHex = (data: Uint8Array): string =>
+    Array.from(data)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+const fromHex = (hex: string): Uint8Array => {
+    const cleanHex = hex.startsWith("0x") ? hex.slice(2) : hex;
+    const match = cleanHex.match(/.{1,2}/g);
+    return new Uint8Array(match ? match.map((byte) => parseInt(byte, 16)) : []);
 };
 
-class WebWorkerLocalProofServer implements ProofProvider<Game2CircuitKeys> {
-    nextId: number;
-    requests: Map<number, WebWorkerPromiseCallbacks>;
-    worker: Worker | undefined;
+const LOCAL_ZSWAP_SEED_STORAGE_KEY = 'game2-batcher-zswap-seed';
 
-    constructor() {
-        this.nextId = 0;
-        this.requests = new Map();
-
-        if (window.Worker) {
-            console.log(`creating web worker now`);
-            this.worker = new Worker(
-                new URL("./prover-worker.ts", import.meta.url),
-                { type: "module" }
-            );
-        }
+const getOrCreateLocalZswapKeys = (): ZswapSecretKeys => {
+    const existingSeed = window.localStorage.getItem(LOCAL_ZSWAP_SEED_STORAGE_KEY);
+    if (existingSeed) {
+        return ZswapSecretKeys.fromSeed(fromHex(existingSeed));
     }
+    const seed = window.crypto.getRandomValues(new Uint8Array(32));
+    window.localStorage.setItem(LOCAL_ZSWAP_SEED_STORAGE_KEY, toHex(seed));
+    return ZswapSecretKeys.fromSeed(seed);
+};
 
-    async setupResponseHandler() {
-        this.worker!.onmessage = (event: MessageEvent<ProverResponse>) => {
-            const { type, data, message, requestId } = event.data;
-
-            const callbacks = this.requests.get(requestId!);
-            switch (type) {
-                case "log":
-                    console.log(message);
-                    break;
-                case "success":
-                    if (callbacks) {
-                        const unbalancedTx = Transaction.deserialize(
-                            data!,
-                            getRuntimeNetworkId()
-                        );
-
-                        callbacks.resolve(createUnbalancedTx(unbalancedTx));
-
-                        this.requests.delete(requestId!);
-                    }
-                    break;
-                case "error":
-                    callbacks?.reject(new Error(message));
-                    break;
-            }
-        };
-
-        this.worker!.onerror = (error) => {
-            logger.network.error(
-                `general web worker error: ${error.message} | ${safeJSONString(error)}`
-            );
-        };
-    }
-
-    async initializeWorker<K extends string>() {
-        const baseUrl = new URL(window.location.href).toString();
-        console.log(`baseUrl: ${baseUrl}`);
-
-        let readyResolve: (value: void) => void;
-        let paramsResolve: (value: void) => void;
-
-        const wasmReady = new Promise<void>((resolve, _reject) => {
-            readyResolve = resolve;
-        });
-        const paramsReady = new Promise<void>((resolve, _reject) => {
-            paramsResolve = resolve;
-        });
-
-        this.worker!.onmessage = (event: MessageEvent<ProverResponse>) => {
-            const { type, message } = event.data;
-
-            switch (type) {
-                case "wasm-ready":
-                    readyResolve();
-                    break;
-                case "params-ready":
-                    paramsResolve();
-                    break;
-                case "log":
-                    console.log(message);
-                    break;
-            }
-        };
-
-        await wasmReady;
-
-        this.worker!.postMessage({
-            type: "params",
-            baseUrl,
-        } as ProverMessage<K>);
-
-        await paramsReady;
-
-        logger.network.info("Worker initialized and ready for proving");
-    }
-
-    async proveTx<K extends string>(
-        tx: UnprovenTransaction,
-        proveTxConfig?: ProveTxConfig<K>
-    ): Promise<UnbalancedTransaction> {
-        if (this.worker != undefined) {
-            return new Promise((resolve, reject) => {
-                this.requests.set(this.nextId, { resolve, reject });
-
-                const serializedTx = tx.serialize(getRuntimeNetworkId());
-
-                this.worker!.postMessage({
-                    type: "prove",
-                    serializedTx,
-                    proveTxConfig,
-                    requestId: this.nextId,
-                } as ProverMessage<K>);
-
-                ++this.nextId;
-            });
-        } else {
-            return new Promise((_resolve, reject) => {
-                reject("worker not initialized");
-            });
-        }
-    }
-}
+const DELEGATED_TX_SENTINEL = 'delegated-to-batcher';
 
 /** @internal */
-export const initializeProviders = async (
-    logger: Logger
-): Promise<Game2Providers> => {
-    const batcherAddress = await getBatcherAddress();
+export const initializeProviders = async (): Promise<Game2Providers> => {
+    const localKeys = getOrCreateLocalZswapKeys();
 
-    const batcherAddressParts = batcherAddress.split("|");
+    const zkConfigProvider: ZKConfigProvider<Game2CircuitKeys> = new FetchZkConfigProvider(
+        window.location.origin,
+        fetch.bind(window)
+    );
 
-    const webWorkerProofProvider = new WebWorkerLocalProofServer();
-
-    await webWorkerProofProvider.initializeWorker();
-    await webWorkerProofProvider.setupResponseHandler();
+    let pendingTxHash: string | null = null;
 
     return {
-        privateStateProvider: levelPrivateStateProvider({
-            privateStateStoreName: "pvp-private-state",
+        privateStateProvider: (await getLevelPrivateStateProvider())<string>({
+            privateStateStoreName: "game2-private-state",
+            privateStoragePasswordProvider: async () => "YourPasswordMy1!",
+            accountId: '0',
         }),
-        zkConfigProvider: new FetchZkConfigProvider(
-            window.location.origin,
-            fetch.bind(window)
-        ),
-        proofProvider: webWorkerProofProvider,
+        zkConfigProvider,
+        proofProvider: wasmProofProvider(zkConfigProvider),
         publicDataProvider: indexerPublicDataProvider(
             import.meta.env.VITE_BATCHER_MODE_INDEXER_HTTP_URL!,
             import.meta.env.VITE_BATCHER_MODE_INDEXER_WS_URL!
         ),
         walletProvider: {
-            // not entirely sure what's this used for, but since we don't have a
-            // wallet we can only use the batcher's address
-            coinPublicKey: batcherAddressParts[0],
-            encryptionPublicKey: batcherAddressParts[1],
-            balanceTx(
-                tx: UnbalancedTransaction,
-                newCoins: CoinInfo[]
-            ): Promise<BalancedTransaction> {
-                // @ts-expect-error
-                return tx;
+            getCoinPublicKey(): CoinPublicKey {
+                return localKeys.coinPublicKey;
+            },
+            getEncryptionPublicKey(): EncPublicKey {
+                return localKeys.encryptionPublicKey;
+            },
+            async balanceTx(
+                tx: UnboundTransaction,
+            ): Promise<FinalizedTransaction> {
+                const txHash = await BatcherClient.delegatedBalanceHook(tx);
+                pendingTxHash = txHash;
+                console.log(`[batcher:balanceTx] batcher confirmed txHash=${txHash}`);
+                return tx as unknown as FinalizedTransaction;
             },
         },
         midnightProvider: {
-            submitTx(tx: BalancedTransaction): Promise<TransactionId> {
-                const raw = tx.serialize(getRuntimeNetworkId());
-
-                return postTxToBatcher(raw);
+            async submitTx(_tx: FinalizedTransaction): Promise<TransactionId> {
+                return DELEGATED_TX_SENTINEL as unknown as TransactionId;
             },
         },
     };
 };
-
-function uint8ArrayToHex(uint8Array: Uint8Array) {
-    return Array.from(uint8Array, function (byte) {
-        return ("0" + (byte & 0xff).toString(16)).slice(-2);
-    }).join("");
-}
-
-function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function postTxToBatcher(
-    deploy_tx: Uint8Array<ArrayBufferLike>
-): Promise<string> {
-    const batcherUrl = `${import.meta.env.VITE_BATCHER_MODE_BATCHER_URL}/submitTx`;
-
-    const retries = 10;
-
-    const query = () =>
-        fetch(batcherUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ tx: uint8ArrayToHex(deploy_tx) }),
-        });
-
-    const batcherResponse = await withRetries(retries, query);
-
-    if (batcherResponse.status >= 300) {
-        throw new Error("Failed to post transaction");
-    }
-
-    const json = await batcherResponse.json();
-
-    return json.identifiers[0] as string;
-}
-
-async function getBatcherAddress(): Promise<string> {
-    const batcherUrl = `${import.meta.env.VITE_BATCHER_MODE_BATCHER_URL}/address`;
-    const query = () =>
-        fetch(batcherUrl, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/text",
-            },
-        });
-
-    const batcherResponse = await withRetries(10, query);
-
-    if (batcherResponse.status >= 300) {
-        throw new Error("Failed to get batcher's address");
-    }
-
-    return await batcherResponse.text();
-}
-
-async function withRetries(retries: number, query: () => Promise<Response>) {
-    for (let i = 0; i < retries; i++) {
-        const response = await query();
-
-        // 503 -> service not available
-        if (response.status != 503) {
-            return response;
-        }
-
-        // the batcher returns 503 in case of:
-        //
-        // 1. still syncing
-        // 2. no utxos available
-        //
-        // in both cases a big sleep like this makes sense.
-        await sleep(10000);
-    }
-
-    throw new Error("Batcher not available");
-}

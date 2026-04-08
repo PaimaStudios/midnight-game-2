@@ -3,7 +3,7 @@
  * as well as the single witness function that accesses it.
  */
 
-import { Ledger } from './managed/game2/contract/index.cjs';
+import { Ledger } from './managed/game2/contract/index.js';
 import { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 

@@ -12,6 +12,9 @@
     "build": "tsc && vite build --mode testnet && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
     "build-undeployed": "tsc && vite build --mode undeployed && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
     "build-batcher": "tsc && vite build --mode batcher-undeployed && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
+    "build-mainnet": "tsc && vite build --mode mainnet && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
+    "build-preprod": "tsc && vite build --mode preprod && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
+    "build-preview": "tsc && vite build --mode preview && cp -r ../contract/src/managed/game2/keys ./dist/keys && cp -r ../contract/src/managed/game2/zkir ./dist/zkir",
     "build-mock": "tsc && vite build --mode mock",
     "preview": "vite build --mode mock --watch & vite preview --mode mock",
     "workaround": "vite preview",
@@ -19,9 +22,9 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@paima/midnight-vm-bindings": "^0.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@paima/midnight-wasm-prover": "^0.1.0-alpha7",
     "buffer": "^6.0.3",
+    "crypto-browserify": "3.12.1",
     "game-content": "workspace:*",
     "game2-api": "workspace:*",
     "game2-contract": "workspace:*",

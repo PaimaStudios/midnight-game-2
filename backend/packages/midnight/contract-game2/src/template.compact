@@ -22,8 +22,8 @@ export struct Ability {
     // effects triggered by energy generation. one energy triggers all corresponding effects of all abilities
     on_energy: Vector<3, Maybe<Effect>>,
     // which type of energy to generate
-    generate_color: Maybe<Uint<0..2>>,
-    upgrade_level: Uint<0..3>,
+    generate_color: Maybe<Uint<0..5>>,
+    upgrade_level: Uint<0..5>,
 }
 
 export enum BOSS_TYPE {
@@ -39,9 +39,9 @@ export struct EnemyStats {
     hp: Uint<32>,
     moves: Vector<3, EnemyMove>,
     move_count: Uint<32>,
-    physical_def: Uint<0..4>,
-    fire_def: Uint<0..4>,
-    ice_def: Uint<0..4>,
+    physical_def: Uint<0..5>,
+    fire_def: Uint<0..5>,
+    ice_def: Uint<0..5>,
 }
 
 export struct EnemyMove {
@@ -98,7 +98,7 @@ export pure circuit ability_base_phys(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>(),
+        none<Uint<0..5>>(),
         0
     };
 }
@@ -111,7 +111,7 @@ export pure circuit ability_base_block(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>(),
+        none<Uint<0..5>>(),
         0
     };
 }
@@ -124,7 +124,7 @@ export pure circuit ability_base_fire_aoe(): Ability {
             true
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>(),
+        none<Uint<0..5>>(),
         0
     };
 }
@@ -137,7 +137,7 @@ export pure circuit ability_base_ice(): Ability {
             false
         }),
         [none<Effect>(), none<Effect>(), none<Effect>()],
-        none<Uint<0..2>>(),
+        none<Uint<0..5>>(),
         0
     };
 }
@@ -154,7 +154,7 @@ export pure circuit ability_demo_starting_1(): Ability {
             35,
             false
         }), none<Effect>()],
-        some<Uint<0..2>>(0 as Uint<0..2>),
+        some<Uint<0..5>>(0 as Uint<0..5>),
         0
     };
 }
@@ -175,7 +175,7 @@ export pure circuit ability_demo_starting_2(): Ability {
             20,
             false
         })],
-        some<Uint<0..2>>(1 as Uint<0..2>),
+        some<Uint<0..5>>(1 as Uint<0..5>),
         0
     };
 }
@@ -192,7 +192,7 @@ export pure circuit ability_demo_starting_3(): Ability {
             35,
             false
         }), none<Effect>()],
-        some<Uint<0..2>>(2 as Uint<0..2>),
+        some<Uint<0..5>>(2 as Uint<0..5>),
         0
     };
 }
@@ -213,7 +213,7 @@ export pure circuit ability_reward(): Ability {
             7,
             true
         })],
-        none<Uint<0..2>>(),
+        none<Uint<0..5>>(),
         0
     };
 }
@@ -289,6 +289,7 @@ export struct QuestConfig {
     level: Level,
     player_pub_key: Field,
     loadout: PlayerLoadout,
+    start_time: Uint<64>,
 }
 
 export struct BattleRewards {
@@ -301,7 +302,7 @@ export struct BattleRewards {
 
 export struct EnemiesConfig {
     stats: Vector<3, EnemyStats>,
-    count: Uint<0..3>,
+    count: Uint<0..5>,
 }
 
 export struct BattleConfig {
@@ -435,7 +436,7 @@ circuit compute_upgraded_ability(ability: Ability): Ability {
         effect: compute_upgraded_effect(ability.effect),
         on_energy: [compute_upgraded_effect(ability.on_energy[0]), compute_upgraded_effect(ability.on_energy[1]), compute_upgraded_effect(ability.on_energy[2])],
         generate_color: ability.generate_color,
-        upgrade_level: (ability.upgrade_level + 1) as Uint<0..3>,
+        upgrade_level: (ability.upgrade_level + 1) as Uint<0..5>,
     };
 }
 
@@ -464,8 +465,12 @@ export pure circuit filler_enemy_stats(): EnemyStats {
     return EnemyStats { BOSS_TYPE.normal, 0, 0, [filler_move(), filler_move(), filler_move()], 0, 0, 0, 0 };
 }
 
-export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
+export circuit start_new_quest(loadout: PlayerLoadout, level: Level, start_time: Uint<64>): Field {
     verify_loadout(disclose(loadout));
+
+    // Validate start_time is within acceptable window: [now - 120s, now]
+    assert(blockTimeGte(disclose(start_time)), "start_time is in the future");
+    assert(blockTimeLte((disclose(start_time) + 120) as Uint<64>), "start_time is too far in the past");
 
     // Validate difficulty access - level 1 is always allowed, higher levels require previous boss completion
     if (disclose(level.difficulty) > 1) {
@@ -481,7 +486,8 @@ export circuit start_new_quest(loadout: PlayerLoadout, level: Level): Field {
     const quest = QuestConfig {
         level,
         player_pub_key,
-        loadout
+        loadout,
+        disclose(start_time)
     };
     const quest_id = derive_quest_id(quest);
     quests.insert(disclose(quest_id), disclose(quest));
@@ -505,13 +511,13 @@ circuit random_ability(rng: Vector<32, Uint<8>>, factor: Uint<32>): Ability {
             trigger3 ? some<Effect>(random_effect(rng[7], trigger_factor)) : none<Effect>()
         ],
         // this color > 2 check is also to prevent the bounds check triggering in non-executed branches
-        color <= 2 ? some<Uint<0..2>>((color > 2 ? 0 : color) as Uint<0..2>) : none<Uint<0..2>>(),
+        color <= 2 ? some<Uint<0..5>>((color > 2 ? 0 : color) as Uint<0..5>) : none<Uint<0..5>>(),
         0
     };
 }
 
 circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
-    const effect_type = cast_to_effect_type(mod(rng, 4) as Uint<0..4>);
+    const effect_type = cast_to_effect_type(mod(rng, 4) as Uint<0..5>);
     const aoe = effect_type != EFFECT_TYPE.block ? rng > 180 : false;
     // damage needs to be half that of block due to resistance calculations. see Effect comment
     const block_factor = effect_type != EFFECT_TYPE.block ? 1 : 2;
@@ -525,7 +531,7 @@ circuit random_effect(rng: Uint<8>, factor: Uint<32>): Effect {
 }
 
 // a workaround here would be nice...
-pure circuit cast_to_effect_type(x: Uint<0..4>): EFFECT_TYPE {
+pure circuit cast_to_effect_type(x: Uint<0..5>): EFFECT_TYPE {
     if (x == 0) {
         return EFFECT_TYPE.attack_phys;
     } else if (x == 1) {
@@ -546,10 +552,7 @@ export circuit is_quest_ready(quest_id: Field): Boolean {
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    // TODO: check block height here - for now always return true
-    // In the future, this would check if enough time has passed based on block height
-    
-    return true;
+    return blockTimeGte((quest.start_time + get_quest_duration()) as Uint<64>);
 }
 
 /**
@@ -563,8 +566,9 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
+    assert(blockTimeGte((quest.start_time + get_quest_duration()) as Uint<64>), "Quest not ready yet");
+
     const rng = (get_player_rng() as Vector<32, Uint<8>>);
-    // TODO: check block height here
     const battle_config = BattleConfig {
         quest.level,
         bosses.lookup(quest.level),
@@ -694,7 +698,7 @@ export pure circuit battle_gold_reward(reward_factor: Uint<32>, difficulty: Uint
     return ((10 + reward_factor * 5) * difficulty * difficulty) as Uint<32>;
 }
 
-export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..2>>): Maybe<BattleRewards> {
+export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0..5>>): Maybe<BattleRewards> {
     const player_pub_key = derive_player_pub_key(disclose(player_secret_key()));
     assert(player_pub_key == active_battle_configs.lookup(disclose(battle_id)).player_pub_key, "Player auth failed");
     const rng = get_player_rng() as Vector<32, Uint<8>>;
@@ -803,7 +807,7 @@ pure circuit select_move(moves: Vector<3, EnemyMove>, move_index: Uint<32>): Ene
     return moves[2];
 }
 
-circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..2>>): BattleState {
+circuit combat_round_impl(battle_id: Field, abilities: Vector<3, Ability>, ability_targets: Vector<3, Uint<0..5>>): BattleState {
     const battle = active_battle_configs.lookup(battle_id);
     const old_state = active_battle_states.lookup(battle_id);
     const enemy_moves = [
@@ -900,6 +904,14 @@ export ledger levels: Map<Level, Map<Uint<64>, EnemiesConfig>>;
 
 export ledger bosses: Map<Level, EnemiesConfig>;
 
+// quest duration in seconds. 0 means unset (defaults to 1200 = 20 minutes)
+export ledger quest_duration: Uint<64>;
+
+circuit get_quest_duration(): Uint<64> {
+    // default quest duration: 20 minutes (1200 seconds)
+    return quest_duration > 0 ? quest_duration : 1200;
+}
+
 export circuit admin_level_new(level: Level, boss: EnemiesConfig): [] {
     admin_verify();
     levels.insertDefault(disclose(level));
@@ -909,6 +921,11 @@ export circuit admin_level_new(level: Level, boss: EnemiesConfig): [] {
 export circuit admin_level_add_config(level: Level, enemies: EnemiesConfig): [] {
     admin_verify();
     levels.lookup(level).insert(levels.lookup(level).size(), disclose(enemies));
+}
+
+export circuit admin_set_quest_duration(duration: Uint<64>): [] {
+    admin_verify();
+    quest_duration = disclose(duration);
 }
 
 circuit admin_verify(): [] {

@@ -1,47 +1,43 @@
 import {
     ProveTxConfig,
-    type UnbalancedTransaction,
-    createUnbalancedTx,
+    type UnboundTransaction,
 } from "@midnight-ntwrk/midnight-js-types";
 import {
     Transaction,
     UnprovenTransaction,
-    NetworkId as LedgerNetworkId,
-} from "@midnight-ntwrk/ledger";
-import { getRuntimeNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
+} from "@midnight-ntwrk/ledger-v8";
 import {
     WasmProver,
     MidnightWasmParamsProvider,
     Rng,
-    NetworkId,
-    ZkConfig,
-} from "@paima/midnight-vm-bindings";
+    CostModel,
+    WasmResolver,
+} from "@paima/midnight-wasm-prover";
 import { logger } from "../logger";
 
-export async function proveTxLocally<K extends string>(
+export async function proveTxLocally(
     baseUrl: string,
     tx: Uint8Array,
-    proveTxConfig?: ProveTxConfig<K>
+    proveTxConfig?: ProveTxConfig
 ): Promise<Uint8Array> {
-    const pp = MidnightWasmParamsProvider.new(baseUrl);
+    const fetchBinary = async (url: string): Promise<ArrayBuffer> => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+        return await response.arrayBuffer();
+    };
 
-    const prover = WasmProver.new();
+    const resolver = WasmResolver.newWithFetchers(
+        async (keyPath: string) => await fetchBinary(`${baseUrl}/keys/${keyPath}.prover`),
+        async (keyPath: string) => await fetchBinary(`${baseUrl}/keys/${keyPath}.verifier`),
+        async (keyPath: string) => await fetchBinary(`${baseUrl}/zkir/${keyPath}.bzkir`),
+    );
+
+    const paramsProvider = MidnightWasmParamsProvider.newWithFetcher(
+        async (k: number) => await fetchBinary(`${baseUrl}/bls_midnight_2p${k}`),
+    );
+
+    const prover = WasmProver.new(resolver, paramsProvider);
     const rng = Rng.new();
-
-    const networkId = getRuntimeNetworkId();
-
-    const zkConfig = (() => {
-        if (proveTxConfig) {
-            return ZkConfig.new(
-                proveTxConfig.zkConfig?.circuitId!,
-                proveTxConfig.zkConfig?.proverKey!,
-                proveTxConfig.zkConfig?.verifierKey!,
-                proveTxConfig.zkConfig?.zkir!
-            );
-        } else {
-            return ZkConfig.empty();
-        }
-    })();
 
     logger.network.info(
         `Starting ZK proof [${navigator.hardwareConcurrency} threads]`
@@ -49,20 +45,16 @@ export async function proveTxLocally<K extends string>(
 
     const startTime = performance.now();
 
-    let unbalancedTxRaw = await prover.prove_tx(
+    let provenTxRaw = await prover.prove(
         rng,
         tx,
-        networkId === LedgerNetworkId.Undeployed
-            ? NetworkId.undeployed()
-            : NetworkId.testnet(),
-        zkConfig,
-        pp
+        CostModel.initialCostModel(),
     );
 
     const endTime = performance.now();
     logger.network.info(
-        `Proved unbalanced tx in: ${Math.floor(endTime - startTime)} ms`
+        `Proved tx in: ${Math.floor(endTime - startTime)} ms`
     );
 
-    return unbalancedTxRaw;
+    return provenTxRaw;
 }

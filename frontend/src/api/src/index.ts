@@ -5,6 +5,7 @@
  */
 
 import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { type Logger } from 'pino';
 import type { Game2DerivedState, Game2Contract, Game2Providers, DeployedGame2Contract, PrivateStates } from './common-types.js';
 import {
@@ -25,12 +26,18 @@ import {
   // Command,
 } from 'game2-contract';
 import * as utils from './utils/index.js';
-import { deployContract, findDeployedContract, FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { combineLatest, map, tap, from, type Observable, shareReplay } from 'rxjs';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */
-const game2ContractInstance: Game2Contract = new Contract(witnesses);
+const compiledGame2Contract = CompiledContract.make<Game2Contract>(
+    'Game2',
+    Contract,
+).pipe(
+    CompiledContract.withWitnesses(witnesses),
+    CompiledContract.withCompiledFileAssets('./managed/game2'),
+);
 
 // only converts bigint, but this is the only problem we have with printing ledger types
 export function safeJSONString(obj: object): string {
@@ -153,6 +160,8 @@ export interface DeployedGame2API {
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
 
     admin_level_add_config: (level: Level, enemies: EnemiesConfig) => Promise<void>;
+
+    admin_set_quest_duration: (duration: bigint) => Promise<void>;
 }
 
 /**
@@ -345,7 +354,8 @@ export class Game2API implements DeployedGame2API {
     }
 
     async start_new_quest(loadout: PlayerLoadout, level: Level): Promise<bigint> {
-        const txData = await this.deployedContract.callTx.start_new_quest(loadout, level);
+        const startTime = BigInt(Math.floor(Date.now() / 1000));
+        const txData = await this.deployedContract.callTx.start_new_quest(loadout, level, startTime);
 
         this.logger?.trace({
             transactionAdded: {
@@ -436,6 +446,18 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
+    async admin_set_quest_duration(duration: bigint): Promise<void> {
+        const txData = await this.deployedContract.callTx.admin_set_quest_duration(duration);
+
+        this.logger?.trace({
+            transactionAdded: {
+                circuit: 'admin_set_quest_duration',
+                txHash: txData.public.txHash,
+                blockHeight: txData.public.blockHeight,
+            },
+        });
+    }
+
     /**
      * Deploys a new Game2 contract to the network.
      *
@@ -447,11 +469,10 @@ export class Game2API implements DeployedGame2API {
     static async deploy(providers: Game2Providers, logger?: Logger): Promise<Game2API> {
         logger?.info('deployContract');
 
-        const deployedGame2Contract: FoundContract<Game2Contract> = await deployContract(providers, {
+        const deployedGame2Contract = await deployContract(providers, {
+            compiledContract: compiledGame2Contract,
             privateStateId: 'game2PrivateState',
-            contract: game2ContractInstance,
             initialPrivateState: await Game2API.getPrivateState(providers.privateStateProvider),
-            //args: [],
         });
         logger?.trace({
             contractDeployed: {
@@ -479,8 +500,8 @@ export class Game2API implements DeployedGame2API {
         });
 
         const deployedGame2Contract = await findDeployedContract(providers, {
+            compiledContract: compiledGame2Contract,
             contractAddress,
-            contract: game2ContractInstance,
             privateStateId: 'game2PrivateState',
             initialPrivateState: await Game2API.getPrivateState(providers.privateStateProvider),
         });

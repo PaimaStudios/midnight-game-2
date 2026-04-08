@@ -9,21 +9,15 @@ import { logger } from './logger';
 // Export the logger for use throughout the application
 export { logger };
 
-// TODO: get this properly? it's undefined if i uncomment this
-//const networkId = import.meta.env.VITE_NETWORK_ID as NetworkId;
-//const networkId = NetworkId.TestNet;
 export const networkId = getNetworkId();
 
 function getNetworkId(): NetworkId {
-    switch (import.meta.env.MODE) {
-        case 'undeployed':
-            return NetworkId.Undeployed;
-        case 'testnet':
-            return NetworkId.TestNet;
-        default:
-            logger.debugging.error(`Unknown Vite MODE ${import.meta.env.MODE}, defaulting to undeployed`);
-            return NetworkId.Undeployed;
+    const networkId = import.meta.env.VITE_NETWORK_ID as NetworkId;
+    if (!networkId) {
+        logger.debugging.error(`VITE_NETWORK_ID is not set, defaulting to "undeployed"`);
+        return 'undeployed' as NetworkId;
     }
+    return networkId;
 }
 // Ensure that the network IDs are set within the Midnight libraries.
 setNetworkId(networkId);

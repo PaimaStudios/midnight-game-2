@@ -5,7 +5,13 @@
 
 import { type DeployedGame2API } from 'game2-api';
 import { BOSS_TYPE, type EnemiesConfig, type EnemyStats, type Level, pureCircuits } from 'game2-contract';
-import { type Logger } from 'pino';
+// import { type Logger } from 'pino';
+type Logger = { 
+  info: (...args: any[]) => void;
+  warn: (...args: any[]) => void;
+  error: (...args: any[]) => void;
+  log: (...args: any[]) => void;
+}
 
 // Biome IDs
 export const BIOME_ID = {
@@ -42,7 +48,7 @@ export type EnemyStatsConfig = {
   ice_def: bigint;
 };
 
-function configToEnemyStats(config: EnemyStatsConfig): EnemyStats {
+export function configToEnemyStats(config: EnemyStatsConfig): EnemyStats {
   return {
     boss_type: config.boss_type ?? BOSS_TYPE.normal,
     enemy_type: BigInt(config.enemy_type),
@@ -65,7 +71,7 @@ function configToEnemyStats(config: EnemyStatsConfig): EnemyStats {
   };
 }
 
-function makeEnemiesConfig(stats: EnemyStats[]): EnemiesConfig {
+export function makeEnemiesConfig(stats: EnemyStats[]): EnemiesConfig {
   const padding = new Array(3 - stats.length).fill(pureCircuits.filler_enemy_stats());
   return {
     stats: [...stats, ...padding],
@@ -74,25 +80,10 @@ function makeEnemiesConfig(stats: EnemyStats[]): EnemiesConfig {
 }
 
 /**
- * Register all game content - bosses, levels, and enemy configurations
- * @param api - The deployed Game API
- * @param minimalOnly - If true, only register minimal content (Grasslands Frontiers)
- * @param logger - Logger for progress messages
+ * Returns all content definitions: bosses, normal enemies, levels, and enemy configs.
+ * Used by both registerStartingContent() and the JSON generator.
  */
-export async function registerStartingContent(
-  api: DeployedGame2API,
-  minimalOnly: boolean,
-  logger: Logger | Pick<Console, 'log'> | { info: (msg: string) => void }
-): Promise<void> {
-  // Helper to log at info level for progress visibility
-  const log = (msg: string) => {
-    if ('info' in logger && typeof logger.info === 'function') {
-      logger.info(msg);
-    } else if ('log' in logger && typeof logger.log === 'function') {
-      logger.log(msg);
-    }
-  };
-
+export function getContentDefinitions(minimalOnly: boolean) {
   // BOSSES
   const dragon: EnemyStatsConfig = {
     boss_type: BOSS_TYPE.boss,
@@ -590,7 +581,30 @@ export async function registerStartingContent(
     );
   }
 
-  // Register all levels and enemy configs
+  return { levels, enemyConfigs };
+}
+
+/**
+ * Register all game content - bosses, levels, and enemy configurations
+ * @param api - The deployed Game API
+ * @param minimalOnly - If true, only register minimal content (Grasslands Frontiers)
+ * @param logger - Logger for progress messages
+ */
+export async function registerStartingContent(
+  api: DeployedGame2API,
+  minimalOnly: boolean,
+  logger: Logger | Pick<Console, 'log'> | { info: (msg: string) => void }
+): Promise<void> {
+  const log = (msg: string) => {
+    if ('info' in logger && typeof logger.info === 'function') {
+      logger.info(msg);
+    } else if ('log' in logger && typeof logger.log === 'function') {
+      logger.log(msg);
+    }
+  };
+
+  const { levels, enemyConfigs } = getContentDefinitions(minimalOnly);
+
   log(`Starting content registration (${minimalOnly ? 'minimal' : 'full'} mode)`);
   log(`Registering ${levels.length} levels...`);
 

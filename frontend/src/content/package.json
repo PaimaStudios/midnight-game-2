@@ -14,7 +14,9 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsc --project tsconfig.build.json"
+    "build": "rm -rf dist && tsc --project tsconfig.build.json",
+    "generate-json": "npx tsx src/generate-json.ts",
+    "generate-json:minimal": "npx tsx src/generate-json.ts --minimal"
   },
   "dependencies": {
     "game2-api": "workspace:*",

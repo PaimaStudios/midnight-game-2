@@ -22,7 +22,7 @@ export class BootScene extends Phaser.Scene {
 
     constructor() {
         super('BootScene');
-        this.deployProvider = new BrowserDeploymentManager(logger.pino);
+        this.deployProvider = new BrowserDeploymentManager();
     }
 
     preload() {

@@ -40,7 +40,7 @@ export type Game2Contract = Contract<Game2PrivateState, Witnesses<Game2PrivateSt
  *
  * @public
  */
-export type Game2CircuitKeys = Exclude<keyof Game2Contract['impureCircuits'], number | symbol>;
+export type Game2CircuitKeys = Exclude<keyof Game2Contract['provableCircuits'], number | symbol>;
 
 /**
  * The providers required by {@link Game2Contract}.
