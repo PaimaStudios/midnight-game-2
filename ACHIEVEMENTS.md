@@ -211,7 +211,7 @@ Achievements are detected through three methods:
 - [x] **Spirit Hoarder** — Own 50 spirits
   - *Requires:* Sum of `player_abilities` counts >= 50
   - *Detection:* **Snapshot** `map[5]` — same, threshold 50.
-- [ ] **Full Arsenal** — Own at least one Fire, Ice, Physical, and Block spirit
+- [x] **Full Arsenal** — Own at least one Fire, Ice, Physical, and Block spirit
   - *Requires:* At least one ability of each base effect type in `player_abilities`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up each owned ability's `effect.value.effect_type`. Check coverage of `attack_phys` (0), `attack_fire` (1), `attack_ice` (2), `block` (3).
 
@@ -259,16 +259,16 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — same pattern, check `effect_type == block` (3). Increment `block_upgraded`.
 
 ### Upgrade Quality
-- [ ] **Rising Star** — Own a spirit at 2 stars
+- [x] **Rising Star** — Own a spirit at 2 stars
   - *Requires:* Any ability in `player_abilities` with `upgrade_level >= 2`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up `upgrade_level` for each owned ability. Check any >= 2.
-- [ ] **Perfection** — Own a spirit at 3 stars (max)
+- [x] **Perfection** — Own a spirit at 3 stars (max)
   - *Requires:* Any ability in `player_abilities` with `upgrade_level == 3`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — check any `upgrade_level == 3`.
-- [ ] **Master Forger** — Own 3 fully upgraded (3-star) spirits simultaneously
+- [x] **Master Forger** — Own 3 fully upgraded (3-star) spirits simultaneously
   - *Requires:* 3+ abilities with `upgrade_level == 3`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — count owned abilities where `upgrade_level == 3` >= 3.
-- [ ] **Max Power** — Own a 3-star spirit of every element (Fire, Ice, Physical)
+- [x] **Max Power** — Own a 3-star spirit of every element (Fire, Ice, Physical)
   - *Requires:* 3-star ability for each attack element type
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — among abilities with `upgrade_level == 3`, check coverage of `attack_phys` (0), `attack_fire` (1), `attack_ice` (2).
 
@@ -328,15 +328,15 @@ Achievements are detected through three methods:
 - [ ] **Elemental Focus** — Win a battle where every attack ability in your loadout shares the same element
   - *Requires:* All attack abilities in loadout have the same `effect_type`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, look up effect types. Filter to attack types only (0, 1, 2). Check all are the same value.
-- [ ] **Full Spectrum** — Own an upgraded (1+ star) ability of every effect type
+- [x] **Full Spectrum** — Own an upgraded (1+ star) ability of every effect type
   - *Requires:* At least one ability with `upgrade_level >= 1` for each of attack_phys, attack_fire, attack_ice, block
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — among owned abilities with `upgrade_level >= 1`, check coverage of all 4 effect types.
 
 ### Energy Synergy
-- [ ] **Energy Collector** — Own abilities generating all 3 energy colors
+- [x] **Energy Collector** — Own abilities generating all 3 energy colors
   - *Requires:* Owned abilities cover `generate_color` values 0, 1, and 2
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up `generate_color` for each owned ability (skip `none`). Check distinct values include 0, 1, 2.
-- [ ] **Energy Specialist** — Own 3+ abilities that generate the same energy color
+- [x] **Energy Specialist** — Own 3+ abilities that generate the same energy color
   - *Requires:* Any single `generate_color` value appears on 3+ owned abilities
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — group owned abilities by `generate_color`, check any group has size >= 3.
 - [ ] **Overcharged** — Win a battle with 3+ loadout abilities sharing the same energy color
@@ -344,13 +344,13 @@ Achievements are detected through three methods:
   - *Detection:* **Diff** + `map[0]` — extract loadout, group by `generate_color`. Check any group has size >= 3.
 
 ### Damage Output
-- [ ] **Damage Dealer** — Deal 300+ total damage to enemies in a single battle
+- [x] **Damage Dealer** — Deal 300+ total damage to enemies in a single battle
   - *Requires:* `damage_to_enemy_0 + damage_to_enemy_1 + damage_to_enemy_2 >= 300` at battle win
   - *Detection:* **Diff** — when a won battle disappears, sum `BattleState` fields `[5] + [6] + [7]` >= 300.
-- [ ] **Overwhelming Force** — Deal 600+ total damage to enemies in a single battle
+- [x] **Overwhelming Force** — Deal 600+ total damage to enemies in a single battle
   - *Requires:* Same sum >= 600
   - *Detection:* **Diff** — same check, threshold 600.
-- [ ] **Devastator** — Deal 10000 total damage across all battles
+- [x] **Devastator** — Deal 10000 total damage across all battles
   - *Requires:* `total_damage_dealt >= 10000`
   - *Detection:* **DB Counter** — add `damage_to_enemy_0 + damage_to_enemy_1 + damage_to_enemy_2` to `total_damage_dealt` when each battle resolves.
 
@@ -358,7 +358,7 @@ Achievements are detected through three methods:
 - [ ] **Fortified** — Win a battle with 3+ block abilities in your loadout
   - *Requires:* 3+ loadout abilities have `effect_type == block`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, count abilities with `effect_type == block` (3). Check count >= 3.
-- [ ] **AOE Arsenal** — Own 3+ abilities with AOE effects
+- [x] **AOE Arsenal** — Own 3+ abilities with AOE effects
   - *Requires:* 3+ owned abilities have `effect.is_aoe == true`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up each owned ability, check `effect.is_aoe`. Count >= 3.
 - [ ] **Power Surge** — Win a battle with a fully upgraded (3-star) ability in your loadout

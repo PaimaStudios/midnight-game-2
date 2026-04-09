@@ -45,6 +45,80 @@ function extractU32(packed: bigint, fieldIndex: number): number {
   return Number((packed >> BigInt(fieldIndex * 32)) & 0xFFFFFFFFn);
 }
 
+/** Extract a single byte from a packed LE bigint at a given byte offset. */
+function extractByte(packed: bigint, byteOffset: number): number {
+  return Number((packed >> BigInt(byteOffset * 8)) & 0xFFn);
+}
+
+/** Extract a 32-bit LE value from a packed bigint at a given byte offset. */
+function extractU32AtByte(packed: bigint, byteOffset: number): number {
+  return Number((packed >> BigInt(byteOffset * 8)) & 0xFFFFFFFFn);
+}
+
+// ---------------------------------------------------------------------------
+// Ability struct extraction (31 bytes, LE packed)
+// ---------------------------------------------------------------------------
+// Byte layout (from Compact compiled alignment):
+//   [0]     effect.is_some     (1 byte, Boolean)
+//   [1]     effect.effect_type (1 byte, EFFECT_TYPE enum: 0=phys, 1=fire, 2=ice, 3=block)
+//   [2-5]   effect.amount      (4 bytes, Uint<32> LE)
+//   [6]     effect.is_aoe      (1 byte, Boolean)
+//   [7-13]  on_energy[0]       (Maybe<Effect>, 7 bytes)
+//   [14-20] on_energy[1]       (Maybe<Effect>, 7 bytes)
+//   [21-27] on_energy[2]       (Maybe<Effect>, 7 bytes)
+//   [28]    generate_color.is_some (1 byte)
+//   [29]    generate_color.value   (1 byte, Uint<0..5>)
+//   [30]    upgrade_level          (1 byte, Uint<0..5>)
+
+interface ParsedAbility {
+  hasEffect: boolean;
+  effectType: number;  // 0=phys, 1=fire, 2=ice, 3=block
+  effectAmount: number;
+  isAoe: boolean;
+  onEnergy: Array<{ hasEffect: boolean; effectType: number; effectAmount: number; isAoe: boolean }>;
+  hasGenerateColor: boolean;
+  generateColor: number;
+  upgradeLevel: number;
+}
+
+function parseAbility(packed: bigint): ParsedAbility {
+  const hasEffect = extractByte(packed, 0) !== 0;
+  const effectType = extractByte(packed, 1);
+  const effectAmount = extractU32AtByte(packed, 2);
+  const isAoe = extractByte(packed, 6) !== 0;
+
+  const onEnergy: ParsedAbility["onEnergy"] = [];
+  for (let i = 0; i < 3; i++) {
+    const base = 7 + i * 7;
+    onEnergy.push({
+      hasEffect: extractByte(packed, base) !== 0,
+      effectType: extractByte(packed, base + 1),
+      effectAmount: extractU32AtByte(packed, base + 2),
+      isAoe: extractByte(packed, base + 6) !== 0,
+    });
+  }
+
+  return {
+    hasEffect,
+    effectType,
+    effectAmount,
+    isAoe,
+    onEnergy,
+    hasGenerateColor: extractByte(packed, 28) !== 0,
+    generateColor: extractByte(packed, 29),
+    upgradeLevel: extractByte(packed, 30),
+  };
+}
+
+/** Parse all abilities from the raw all_abilities map. */
+function parseAllAbilities(allAbilities: Record<string, any>): Map<string, ParsedAbility> {
+  const result = new Map<string, ParsedAbility>();
+  for (const [abilityId, value] of Object.entries(allAbilities)) {
+    result.set(abilityId, parseAbility(toBigInt(value)));
+  }
+  return result;
+}
+
 /** Safely convert a value (number, bigint, or string) to BigInt. */
 function toBigInt(value: any): bigint {
   if (typeof value === "bigint") return value;
@@ -156,6 +230,7 @@ export async function ensureTables(db: any): Promise<void> {
       abilities_upgraded  INTEGER NOT NULL DEFAULT 0,
       abilities_sold      INTEGER NOT NULL DEFAULT 0,
       boss_win_streak     INTEGER NOT NULL DEFAULT 0,
+      total_damage_dealt  BIGINT NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -322,10 +397,12 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   if (snapshotKey === lastSnapshotKey) return;
   lastSnapshotKey = snapshotKey;
 
+  const parsedAbilities = parseAllAbilities(allAbilities);
+
   await syncPlayers(db, players);
-  await syncPlayerAbilities(db, playerAbilities, allAbilities);
+  await syncPlayerAbilities(db, playerAbilities, parsedAbilities);
   const newBossCompletions = await syncBossProgress(db, playerBossProgress);
-  await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions, allAbilities);
+  await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions, parsedAbilities);
   await syncQuests(db, quests);
   await syncDelegations(db, delegations);
   await trackAbilityUpgrades(db, allAbilities, players);
@@ -452,7 +529,7 @@ async function syncPlayers(
 async function syncPlayerAbilities(
   db: any,
   abilitiesMap: Record<string, any>,
-  allAbilities: Record<string, any>,
+  parsedAbilities: Map<string, ParsedAbility>,
 ): Promise<void> {
   // abilitiesMap: playerId -> { abilityId -> quantity }
   const entries: Array<{ playerId: string; abilityId: string; quantity: number }> = [];
@@ -548,7 +625,7 @@ async function syncPlayerAbilities(
   // Check spirit collection achievements per player
   for (const playerId of playerIds) {
     const playerEntries = entries.filter((e) => e.playerId === playerId);
-    await checkSpiritCollectionAchievements(db, playerId, playerEntries, allAbilities);
+    await checkSpiritCollectionAchievements(db, playerId, playerEntries, parsedAbilities);
   }
 }
 
@@ -657,7 +734,7 @@ async function syncBattles(
   battleStates: Record<string, any>,
   battleConfigs: Record<string, any>,
   newBossCompletions: BossCompletion[],
-  allAbilities: Record<string, any>,
+  parsedAbilities: Map<string, ParsedAbility>,
 ): Promise<void> {
   const battleIds = new Set([
     ...Object.keys(battleStates),
@@ -1401,6 +1478,22 @@ async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer
     await grantAchievement(db, playerId, "untouchable");
   }
   if (dmgToPlayer >= 95) await grantAchievement(db, playerId, "survivor");
+
+  // Damage output achievements
+  if (totalDmg >= 300) await grantAchievement(db, playerId, "damage_dealer");
+  if (totalDmg >= 600) await grantAchievement(db, playerId, "overwhelming_force");
+
+  // Devastator: cumulative damage across all battles
+  const { rows: dmgRows } = await db.query(
+    `INSERT INTO d2d_player_stats (player_id, total_damage_dealt)
+     VALUES ($1, $2)
+     ON CONFLICT (player_id) DO UPDATE
+       SET total_damage_dealt = d2d_player_stats.total_damage_dealt + $2,
+           updated_at = now()
+     RETURNING total_damage_dealt`,
+    [playerId, totalDmg],
+  ) as { rows: Array<{ total_damage_dealt: number }> };
+  if (dmgRows[0].total_damage_dealt >= 10000) await grantAchievement(db, playerId, "devastator");
 }
 
 const GOLD_EARNED_THRESHOLDS: Array<[number, string]> = [
@@ -1441,7 +1534,7 @@ async function checkSpiritCollectionAchievements(
   db: any,
   playerId: string,
   playerEntries: Array<{ abilityId: string; quantity: number }>,
-  _allAbilities: Record<string, any>,
+  parsedAbilities: Map<string, ParsedAbility>,
 ): Promise<void> {
   const totalSpirits = playerEntries.reduce((sum, e) => sum + e.quantity, 0);
 
@@ -1450,9 +1543,72 @@ async function checkSpiritCollectionAchievements(
   if (totalSpirits >= 25) await grantAchievement(db, playerId, "spirit_collector");
   if (totalSpirits >= 50) await grantAchievement(db, playerId, "spirit_hoarder");
 
-  // Full Arsenal: own at least one of each effect type (phys, fire, ice, block)
-  // Requires extracting effect_type from packed Ability struct in allAbilities
-  // TODO: implement once Ability struct bit layout is mapped
+  // Full Arsenal: own at least one of each effect type (phys=0, fire=1, ice=2, block=3)
+  const ownedTypes = new Set<number>();
+  for (const entry of playerEntries) {
+    if (entry.quantity <= 0) continue;
+    const ability = parsedAbilities.get(entry.abilityId);
+    if (ability?.hasEffect) ownedTypes.add(ability.effectType);
+  }
+  if (ownedTypes.has(0) && ownedTypes.has(1) && ownedTypes.has(2) && ownedTypes.has(3)) {
+    await grantAchievement(db, playerId, "full_arsenal");
+  }
+
+  // Upgrade Quality achievements (snapshot-based)
+  let countUpgrade2 = 0;
+  let countUpgrade3 = 0;
+  const maxUpgradeByType = new Map<number, number>(); // effectType -> max upgrade_level
+  let hasAoe3 = 0;
+  const colorCounts = new Map<number, number>(); // generate_color -> count
+
+  for (const entry of playerEntries) {
+    if (entry.quantity <= 0) continue;
+    const ability = parsedAbilities.get(entry.abilityId);
+    if (!ability) continue;
+
+    if (ability.upgradeLevel >= 2) countUpgrade2++;
+    if (ability.upgradeLevel === 3) countUpgrade3++;
+
+    if (ability.hasEffect && ability.upgradeLevel >= 1) {
+      const prev = maxUpgradeByType.get(ability.effectType) ?? 0;
+      if (ability.upgradeLevel > prev) maxUpgradeByType.set(ability.effectType, ability.upgradeLevel);
+    }
+
+    if (ability.isAoe && entry.quantity > 0) hasAoe3++;
+    if (ability.hasGenerateColor) {
+      colorCounts.set(ability.generateColor, (colorCounts.get(ability.generateColor) ?? 0) + entry.quantity);
+    }
+  }
+
+  // Rising Star: own a spirit at 2+ stars
+  if (countUpgrade2 > 0) await grantAchievement(db, playerId, "rising_star");
+  // Perfection: own a spirit at 3 stars
+  if (countUpgrade3 > 0) await grantAchievement(db, playerId, "perfection");
+  // Master Forger: own 3+ at 3 stars
+  if (countUpgrade3 >= 3) await grantAchievement(db, playerId, "master_forger");
+  // Max Power: 3-star spirit of every attack element
+  const has3StarPhys = [...parsedAbilities.entries()].some(([id, a]) => a.upgradeLevel === 3 && a.hasEffect && a.effectType === 0 && playerEntries.some(e => e.abilityId === id && e.quantity > 0));
+  const has3StarFire = [...parsedAbilities.entries()].some(([id, a]) => a.upgradeLevel === 3 && a.hasEffect && a.effectType === 1 && playerEntries.some(e => e.abilityId === id && e.quantity > 0));
+  const has3StarIce = [...parsedAbilities.entries()].some(([id, a]) => a.upgradeLevel === 3 && a.hasEffect && a.effectType === 2 && playerEntries.some(e => e.abilityId === id && e.quantity > 0));
+  if (has3StarPhys && has3StarFire && has3StarIce) await grantAchievement(db, playerId, "max_power");
+
+  // Full Spectrum: upgraded (1+ star) ability of every effect type
+  if (maxUpgradeByType.has(0) && maxUpgradeByType.has(1) && maxUpgradeByType.has(2) && maxUpgradeByType.has(3)) {
+    await grantAchievement(db, playerId, "full_spectrum");
+  }
+
+  // Energy Collector: own abilities generating all 3 energy colors
+  if (colorCounts.has(0) && colorCounts.has(1) && colorCounts.has(2)) {
+    await grantAchievement(db, playerId, "energy_collector");
+  }
+
+  // Energy Specialist: 3+ abilities generating the same energy color
+  for (const count of colorCounts.values()) {
+    if (count >= 3) { await grantAchievement(db, playerId, "energy_specialist"); break; }
+  }
+
+  // AOE Arsenal: own 3+ AOE abilities
+  if (hasAoe3 >= 3) await grantAchievement(db, playerId, "aoe_arsenal");
 }
 
 async function checkBossLossAchievements(db: any, playerId: string, biome: number, difficulty: number): Promise<void> {
