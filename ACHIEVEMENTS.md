@@ -134,9 +134,9 @@ Achievements are detected through three methods:
 - [x] **Close Call** — Defeat a boss with 90+ damage taken
   - *Requires:* `BattleState.damage_to_player >= 90` at battle end (boss fight, won)
   - *Detection:* **Diff** — same as Flawless Victory, but check `BattleState` field `[4] damage_to_player >= 90`.
-- [x] **No Retreat** — Defeat 10 bosses without ever retreating
-  - *Requires:* `bosses_defeated >= 10` AND `battles_retreated == 0`
-  - *Detection:* **DB Counter** — track `bosses_defeated` (boss battle wins) and `battles_retreated` (battle disappears with 0 enemy damage). Check both thresholds.
+- [x] **No Retreat** — Defeat 10 bosses in a row without retreating
+  - *Requires:* `boss_win_streak >= 10`
+  - *Detection:* **DB Counter** — increment `boss_win_streak` on each boss win, reset to 0 on retreat. Check streak >= 10.
 
 ### Multi-Quest Management
 - [x] **Multitasker** — Have 3 quests active simultaneously (max capacity)

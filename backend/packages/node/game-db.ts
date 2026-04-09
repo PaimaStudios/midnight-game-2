@@ -155,6 +155,7 @@ export async function ensureTables(db: any): Promise<void> {
       total_gold_spent    INTEGER NOT NULL DEFAULT 0,
       abilities_upgraded  INTEGER NOT NULL DEFAULT 0,
       abilities_sold      INTEGER NOT NULL DEFAULT 0,
+      boss_win_streak     INTEGER NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -1483,15 +1484,16 @@ async function checkBossLossAchievements(db: any, playerId: string, biome: numbe
 async function checkBossRetreatAchievements(db: any, playerId: string): Promise<void> {
   // Tactical Retreat: retreat from a boss fight
   await db.query(
-    `INSERT INTO d2d_player_stats (player_id, battles_retreated)
-     VALUES ($1, 1)
+    `INSERT INTO d2d_player_stats (player_id, battles_retreated, boss_win_streak)
+     VALUES ($1, 1, 0)
      ON CONFLICT (player_id) DO UPDATE
        SET battles_retreated = d2d_player_stats.battles_retreated + 1,
+           boss_win_streak = 0,
            updated_at = now()`,
     [playerId],
   );
   await grantAchievement(db, playerId, "tactical_retreat");
-  console.log(`[game-db] Boss retreat for ${playerId.slice(0, 10)}...`);
+  console.log(`[game-db] Boss retreat for ${playerId.slice(0, 10)}... (streak reset)`);
 }
 
 async function checkBossCombatAchievements(db: any, playerId: string, damageToPlayer: number, _round: number, biome: number, difficulty: number): Promise<void> {
@@ -1503,12 +1505,18 @@ async function checkBossCombatAchievements(db: any, playerId: string, damageToPl
   if (damageToPlayer >= 90) {
     await grantAchievement(db, playerId, "close_call");
   }
-  // No Retreat: 10 bosses defeated with 0 retreats
+  // No Retreat: 10 boss wins in a row without retreating (streak-based)
+  // Increment streak on boss win
   const { rows } = await db.query(
-    `SELECT bosses_defeated, battles_retreated FROM d2d_player_stats WHERE player_id = $1`,
+    `INSERT INTO d2d_player_stats (player_id, boss_win_streak)
+     VALUES ($1, 1)
+     ON CONFLICT (player_id) DO UPDATE
+       SET boss_win_streak = d2d_player_stats.boss_win_streak + 1,
+           updated_at = now()
+     RETURNING boss_win_streak`,
     [playerId],
-  ) as { rows: Array<{ bosses_defeated: number; battles_retreated: number }> };
-  if (rows.length > 0 && rows[0].bosses_defeated >= 10 && rows[0].battles_retreated === 0) {
+  ) as { rows: Array<{ boss_win_streak: number }> };
+  if (rows[0].boss_win_streak >= 10) {
     await grantAchievement(db, playerId, "no_retreat");
   }
   // Persistence: previously failed this boss, now beat it

@@ -35,7 +35,7 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   // Boss Combat
   { name: "flawless_victory", displayName: "Flawless Victory", description: "Defeat a boss without taking any damage", category: "quest", isActive: true },
   { name: "close_call", displayName: "Close Call", description: "Defeat a boss with 90+ damage taken", category: "quest", isActive: true },
-  { name: "no_retreat", displayName: "No Retreat", description: "Defeat 10 bosses without ever retreating", category: "quest", isActive: true },
+  { name: "no_retreat", displayName: "No Retreat", description: "Defeat 10 bosses in a row without retreating", category: "quest", isActive: true },
   // Multi-Quest Management
   { name: "multitasker", displayName: "Multitasker", description: "Have 3 quests active simultaneously (max capacity)", category: "quest", isActive: true },
   // Losses and Resilience
