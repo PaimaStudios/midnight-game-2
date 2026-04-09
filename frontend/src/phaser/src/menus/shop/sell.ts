@@ -5,8 +5,8 @@ import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
 import { createSpiritAnimations } from "../../animations/spirit";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
 import { Button } from "../../widgets/button";
-import { Loader } from "../loader";
 import { NetworkError } from "../network-error";
+import { txSpinner } from "../../tx-spinner";
 import { Color } from "../../constants/colors";
 import { isStartingAbility, sortedAbilities } from "../pre-battle";
 import { addScaledImage } from "../../utils/scaleImage";
@@ -44,7 +44,6 @@ export class SellSpiritsMenu extends Phaser.Scene {
     subscription: Subscription;
     state: Game2DerivedState;
     ui: Phaser.GameObjects.GameObject[];
-    loader: Loader | undefined;
     topBar: TopBar | undefined;
     waitingForSell: boolean = false;
 
@@ -93,10 +92,8 @@ export class SellSpiritsMenu extends Phaser.Scene {
         this.state = structuredClone(state);
         if (this.waitingForSell) {
             this.waitingForSell = false;
-            if (this.loader != undefined) {
-                this.scene.resume().stop('Loader');
-                this.loader = undefined;
-            }
+            txSpinner.hide();
+            this.input.enabled = true;
         }
 
         this.ui.forEach((o) => o.destroy());
@@ -156,16 +153,16 @@ export class SellSpiritsMenu extends Phaser.Scene {
     }
 
     private handleSellAbility(ability: any) {
-        this.scene.pause().launch('Loader');
-        this.loader = this.scene.get('Loader') as Loader;
-        this.loader.setText("Submitting Proof");
+        txSpinner.show("Generating Proof");
+        this.input.enabled = false;
         this.waitingForSell = true;
         this.api.sell_ability(ability).then(() => {
-            this.loader?.setText("Waiting on chain update");
+            txSpinner.show("Waiting Transaction");
         }).catch((e) => {
             this.waitingForSell = false;
             logger.network.error(`Error selling ability: ${e}`);
-            this.scene.resume().stop('Loader');
+            txSpinner.hide();
+            this.input.enabled = true;
 
             // Show network error overlay
             if (!this.scene.get('NetworkError')) {

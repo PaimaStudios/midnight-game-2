@@ -1,11 +1,13 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Button } from "../widgets/button";
-import { AbilityWidget } from "../widgets/ability";
+import { AbilityWidget, describeAbility } from "../widgets/ability";
 import { BattleConfig, BattleRewards, pureCircuits } from "game2-contract";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { MainMenu } from "../menus/main";
 import { RetreatButton } from "../widgets/retreat-button";
 import { RetreatOverlay } from "../widgets/retreat-overlay";
+import { addTooltip } from "../widgets/tooltip";
+import { txSpinner } from "../tx-spinner";
 
 // Legacy layout functions - TODO: replace this with layout manager usage
 const abilityIdleY = () => GAME_HEIGHT * 0.75;
@@ -35,7 +37,8 @@ export class UIStateManager {
             48,
             'Fight',
             12,
-            onFightCallback
+            onFightCallback,
+            'Execute this round of combat'
         );
     }
 
@@ -59,31 +62,35 @@ export class UIStateManager {
         // Create ability cards
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => state.allAbilities.get(id)!);
-        this.abilityIcons = abilities.map((ability, i) => 
-            new AbilityWidget(this.scene, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability)
-        );
-        
+        this.abilityIcons = abilities.map((ability, i) => {
+            const widget = new AbilityWidget(this.scene, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability);
+            addTooltip(this.scene, widget, describeAbility(ability), 400, 600);
+            return widget;
+        });
+
         return this.abilityIcons;
     }
 
     public refreshAbilityIconsForNextRound(state: Game2DerivedState, battle: BattleConfig): AbilityWidget[] {
         const battleConfig = state.activeBattleConfigs.get(pureCircuits.derive_battle_id(battle));
         const battleState = state.activeBattleStates.get(pureCircuits.derive_battle_id(battle));
-        
+
         if (!battleConfig || !battleState) return [];
-        
+
         // Clean up existing ability cards
         this.abilityIcons.forEach((a) => a.destroy());
         this.abilityIcons = [];
-        
+
         const abilityIds = battleState.deck_indices.map((i) => battleConfig.loadout.abilities[Number(i)]);
         const abilities = abilityIds.map((id) => state.allAbilities.get(id)!);
-        
+
         // Create new ability cards for the next round
-        this.abilityIcons = abilities.map((ability, i) => 
-            new AbilityWidget(this.scene, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability)
-        );
-        
+        this.abilityIcons = abilities.map((ability, i) => {
+            const widget = new AbilityWidget(this.scene, GAME_WIDTH * (i + 0.5) / abilities.length, abilityIdleY(), ability);
+            addTooltip(this.scene, widget, describeAbility(ability), 400, 600);
+            return widget;
+        });
+
         return this.abilityIcons;
     }
 
@@ -119,7 +126,9 @@ export class UIStateManager {
         });
         
         if (circuit.alive && circuit.ability.is_some) {
-            new AbilityWidget(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, state?.allAbilities.get(circuit.ability.value)!);
+            const rewardAbility = state?.allAbilities.get(circuit.ability.value)!;
+            const rewardWidget = new AbilityWidget(this.scene, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, rewardAbility);
+            addTooltip(this.scene, rewardWidget, describeAbility(rewardAbility), 400, 600);
             this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.1, 'New ability available', fontStyle(12)).setOrigin(0.5, 0.5);
         }
     }
@@ -134,6 +143,7 @@ export class UIStateManager {
             () => this.showRetreatConfirmation(battle, state, onRetreatStart)
         );
         this.retreatButton.setDepth(100);
+        addTooltip(this.scene, this.retreatButton, 'Flee the battle (no rewards)', 400, 800);
     }
 
     public removeRetreatButton() {
@@ -173,6 +183,7 @@ export class UIStateManager {
         // Close the overlay and show loader
         this.retreatOverlay = null;
         this.scene.scene.pause().launch('Loader');
+        txSpinner.show("Generating Proof");
 
         try {
             const battleId = pureCircuits.derive_battle_id(battle);
@@ -211,6 +222,7 @@ export class UIStateManager {
 
             // Stop loader
             this.scene.scene.stop('Loader');
+            txSpinner.hide();
 
             // Stop battle music
             const battleMusic = this.scene.sound.get('boss-battle-music');
@@ -241,6 +253,7 @@ export class UIStateManager {
             logger.network.error(`Error retreating from battle: ${err}`);
             // Stop loader on error
             this.scene.scene.resume().stop('Loader');
+            txSpinner.hide();
             // Re-enable interactions on error
             this.retreatButton?.setEnabled(true);
             this.retreatOverlay = null;

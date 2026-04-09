@@ -5,15 +5,207 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Button } from "../widgets/button";
-import { Loader } from "./loader";
 import { Subscription } from "rxjs";
-import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
+import { txSpinner } from "../tx-spinner";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, networkId } from "../main";
+import { bech32m } from '@scure/base';
 import { ShopMenu } from "./shop/shop";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
 import { DungeonScene } from "./dungeon-scene";
-import { TopBar } from "../widgets/top-bar";
+import { TopBar, TOP_BAR_OFFSET } from "../widgets/top-bar";
 import { NetworkError } from "./network-error";
+
+// ---------------------------------------------------------------------------
+// Delegation overlay helpers
+// ---------------------------------------------------------------------------
+
+function showDelegationOverlay(content: HTMLElement): void {
+    let overlay = document.getElementById('d2d-delegation-overlay');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'd2d-delegation-overlay';
+    overlay.className = 'd2d-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'd2d-overlay-box';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.className = 'd2d-overlay-close';
+    closeBtn.onclick = () => overlay!.remove();
+
+    box.appendChild(closeBtn);
+    box.appendChild(content);
+    overlay.appendChild(box);
+    // Consume all pointer events so clicks don't pass through to the Phaser canvas
+    for (const evt of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend'] as const) {
+        overlay.addEventListener(evt, (e) => e.stopPropagation());
+    }
+    overlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (e.target === overlay) overlay!.remove();
+    });
+    document.body.appendChild(overlay);
+}
+
+function scaleCompactEncode(value: bigint): Uint8Array {
+    if (value < 64n) {
+        return new Uint8Array([Number(value << 2n)]);
+    } else if (value < 16384n) {
+        const v = Number(value << 2n | 1n);
+        return new Uint8Array([v & 0xff, (v >> 8) & 0xff]);
+    } else if (value < (1n << 30n)) {
+        const v = Number(value << 2n | 2n);
+        return new Uint8Array([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff]);
+    } else {
+        let v = value;
+        const leBytes: number[] = [];
+        while (v > 0n) {
+            leBytes.push(Number(v & 0xffn));
+            v >>= 8n;
+        }
+        const prefix = ((leBytes.length - 4) << 2) | 0b11;
+        const result = new Uint8Array(1 + leBytes.length);
+        result[0] = prefix;
+        result.set(leBytes, 1);
+        return result;
+    }
+}
+
+function toBech32mDust(value: bigint): string {
+    const data = scaleCompactEncode(value);
+    const networkSuffix = networkId === 'mainnet' ? '' : `_${networkId}`;
+    return bech32m.encode(`mn_dust${networkSuffix}`, bech32m.toWords(data), false);
+}
+
+function toBech32mShieldCpk(keyBytes: Uint8Array): string {
+    const networkSuffix = networkId === 'mainnet' ? '' : `_${networkId}`;
+    return bech32m.encode(`mn_shield-cpk${networkSuffix}`, bech32m.toWords(keyBytes), false);
+}
+
+function shortBech32(addr: string): string {
+    if (addr.length <= 30) return addr;
+    return addr.slice(0, 18) + '...' + addr.slice(-8);
+}
+
+function makeWalletDelegationButton(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    api: DeployedGame2API,
+    hasDelegation: boolean,
+    localPublicKey?: bigint | null,
+): Button {
+    const label = hasDelegation ? 'Linked' : 'Link Wallet';
+    const button = new Button(scene, x, y, 120, 40, label, 7, async () => {
+        const midnight = (window as any).midnight;
+
+        // No wallet installed at all — prompt to download
+        if (!midnight) {
+            const content = document.createElement('div');
+            content.innerHTML = `
+                <p class="d2d-popup-title">Download Wallet</p>
+                <p class="d2d-popup-body">Download your Midnight Wallet</p>
+                <a href="https://lace.io" target="_blank" rel="noopener noreferrer"
+                   class="d2d-btn-primary" style="display:inline-block; text-align:center; font-size:18px;">
+                    https://lace.io
+                </a>
+            `;
+            showDelegationOverlay(content);
+            return;
+        }
+
+        const wallets = Object.entries(midnight).filter(([_, w]: [string, any]) =>
+            w.apiVersion && w.apiVersion >= '1.0.0'
+        ) as [string, any][];
+
+        if (wallets.length === 0) {
+            const content = document.createElement('div');
+            content.innerHTML = `
+                <p class="d2d-popup-title">No Compatible Wallet</p>
+                <p class="d2d-popup-body">A Midnight wallet was detected but no compatible version found.</p>
+            `;
+            showDelegationOverlay(content);
+            return;
+        }
+
+        const [, walletApi] = wallets[0];
+        // Sanitize wallet name for safe display
+        const walletDisplayName = typeof walletApi.name === 'string'
+            ? walletApi.name.replace(/[<>&"']/g, '')
+            : 'Wallet';
+
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p class="d2d-popup-title">Link ${walletDisplayName}</p>
+            <p class="d2d-popup-body">Save and link your progress to your ${walletDisplayName} wallet for the leaderboard.</p>
+            <div style="text-align:center;">
+                <button class="d2d-btn-primary" id="d2d-confirm-link" style="display:inline-block; font-size:18px;">Confirm</button>
+            </div>
+        `;
+        showDelegationOverlay(content);
+
+        document.getElementById('d2d-confirm-link')!.onclick = async () => {
+            const overlay = document.getElementById('d2d-delegation-overlay');
+
+            try {
+                logger.network.info(`[wallet-delegation] Connecting to wallet: ${walletDisplayName}`);
+                const connected = await walletApi.connect(networkId);
+
+                const addresses = await connected.getShieldedAddresses();
+                const coinPubKey = addresses.shieldedCoinPublicKey;
+                if (!coinPubKey) {
+                    logger.network.warn('[wallet-delegation] Could not get coin public key from wallet');
+                    return;
+                }
+
+                // CoinPublicKey may be larger than a Compact Field (~255 bits).
+                // Use only the first 31 bytes (248 bits) which fits in a Field.
+                const keyBytes = coinPubKey instanceof Uint8Array
+                    ? coinPubKey
+                    : new Uint8Array(Object.values(coinPubKey as Record<string, number>));
+                const truncated = keyBytes.slice(0, 31);
+                const addressBigint = BigInt('0x' + Array.from(truncated).map((b: number) => b.toString(16).padStart(2, '0')).join(''));
+
+                const fromLabel = localPublicKey != null ? shortBech32(toBech32mDust(localPublicKey)) : 'your game account';
+                const walletLabel = shortBech32(toBech32mShieldCpk(keyBytes));
+
+                // Dismiss the overlay and show the tx spinner like other sections
+                if (overlay) overlay.remove();
+                txSpinner.show("Generating Proof");
+
+                await api.registerDelegation(addressBigint);
+
+                txSpinner.hide();
+                const successContent = document.createElement('div');
+                successContent.innerHTML = `
+                    <p class="d2d-popup-title">Wallet Linked!</p>
+                    <p class="d2d-popup-body">Successfully linked</p>
+                    <p class="d2d-popup-accent">Game Account ${fromLabel}</p>
+                    <p class="d2d-popup-body">to</p>
+                    <p class="d2d-popup-accent" style="margin-bottom:20px">Wallet ${walletLabel}</p>
+                `;
+                showDelegationOverlay(successContent);
+            } catch (err) {
+                txSpinner.hide();
+                logger.network.error(`[wallet-delegation] Failed: ${err}`);
+                const errContent = document.createElement('div');
+                errContent.innerHTML = `
+                    <p class="d2d-popup-title">Linking Failed</p>
+                    <p class="d2d-popup-error">${err instanceof Error ? err.message : 'Unknown error'}</p>
+                `;
+                showDelegationOverlay(errContent);
+            }
+        };
+    }, 'Link your Midnight wallet for the leaderboard');
+    return button;
+}
+
+// ---------------------------------------------------------------------------
+// MainMenu scene
+// ---------------------------------------------------------------------------
 
 export class MainMenu extends Phaser.Scene {
     api: DeployedGame2API;
@@ -21,6 +213,7 @@ export class MainMenu extends Phaser.Scene {
     state: Game2DerivedState | undefined;
     topBar: TopBar | undefined;
     buttons: Button[];
+    delegationButton: Button | undefined;
     menuMusic: Phaser.Sound.BaseSound | undefined;
     private isDestroyed: boolean = false;
 
@@ -70,10 +263,28 @@ export class MainMenu extends Phaser.Scene {
      * Initialize UI without scene status checks
      * Used by create() when scene status is CREATING
      */
+    private updateDelegationButton(state: Game2DerivedState) {
+        if (this.delegationButton) {
+            this.delegationButton.destroy();
+            this.delegationButton = undefined;
+        }
+        if (state.player !== undefined) {
+            this.delegationButton = makeWalletDelegationButton(
+                this,
+                GAME_WIDTH - 60,
+                TOP_BAR_OFFSET,
+                this.api,
+                state.myDelegatedAddress != null,
+                state.playerId,
+            );
+        }
+    }
+
     private initializeUI(state: Game2DerivedState) {
         // Destroy existing buttons and create new ones
         this.buttons.forEach((b) => b.destroy());
         this.buttons = [];
+        this.updateDelegationButton(state);
 
         if (state.player !== undefined) {
             // Main menu buttons
@@ -81,37 +292,38 @@ export class MainMenu extends Phaser.Scene {
                 this.scene.remove('BiomeSelectMenu');
                 this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
                 this.scene.start('BiomeSelectMenu');
-            }));
+            }, 'Fight random enemies to earn gold and new spirits'));
 
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
                 this.scene.remove('QuestsMenu');
                 this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
                 this.scene.start('QuestsMenu');
-            }));
+            }, 'Send spirits on timed missions, then fight a boss for big rewards'));
 
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
-            }));
+            }, 'Sell unwanted spirits or upgrade your favorites'));
         } else {
             // Register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
                 logger.gameState.info('Registering new player...');
-                this.scene.pause().launch('Loader');
-                const loader = this.scene.get('Loader') as Loader;
-                loader.setText("Submitting Proof");
+                txSpinner.show("Generating Proof");
+                this.input.enabled = false;
 
                 this.events.once('stateChange', () => {
                     logger.gameState.info('Registered new player');
-                    this.scene.resume().stop('Loader');
+                    txSpinner.hide();
+                    this.input.enabled = true;
                 });
 
                 this.api!.register_new_player().then(() => {
-                    loader.setText("Waiting on chain update");
+                    txSpinner.show("Waiting Transaction");
                 }).catch((e) => {
                     logger.network.error(`Error registering new player: ${e}`);
-                    this.scene.resume().stop('Loader');
+                    txSpinner.hide();
+                    this.input.enabled = true;
 
                     if (!this.scene.get('NetworkError')) {
                         this.scene.add('NetworkError', new NetworkError());
@@ -150,6 +362,7 @@ export class MainMenu extends Phaser.Scene {
 
         // Destroy and recreate buttons with updated state
         this.buttons.forEach((b) => b.destroy());
+        this.updateDelegationButton(state);
 
         if (state.player !== undefined) {
             // Main menu buttons in vertical column with proper spacing
@@ -157,40 +370,38 @@ export class MainMenu extends Phaser.Scene {
                 this.scene.remove('BiomeSelectMenu');
                 this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api!, false, state));
                 this.scene.start('BiomeSelectMenu');
-            }));
+            }, 'Fight random enemies to earn gold and new spirits'));
 
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.45, 280, 80, `Quests (${state.quests.size})`, 14, () => {
                 this.scene.remove('QuestsMenu');
                 this.scene.add('QuestsMenu', new QuestsMenu(this.api!, state));
                 this.scene.start('QuestsMenu');
-            }));
+            }, 'Send spirits on timed missions, then fight a boss for big rewards'));
 
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.65, 280, 80, 'Shop', 14, () => {
                 this.scene.remove('ShopMenu');
                 this.scene.add('ShopMenu', new ShopMenu(this.api!, state));
                 this.scene.start('ShopMenu');
-            }));
+            }, 'Sell unwanted spirits or upgrade your favorites'));
         } else {
             // We haven't registered a player yet, so show the register button
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 400, 100, 'Register New Player', 14, () => {
                 logger.gameState.info('Registering new player...');
-
-                // Launch the loader scene to display during the API call
-
-                this.scene.pause().launch('Loader');
-                const loader = this.scene.get('Loader') as Loader;
-                loader.setText("Submitting Proof");
+                txSpinner.show("Generating Proof");
+                this.input.enabled = false;
 
                 this.events.once('stateChange', () => {
                     logger.gameState.info('Registered new player');
-                    this.scene.resume().stop('Loader');
+                    txSpinner.hide();
+                    this.input.enabled = true;
                 });
 
                 this.api!.register_new_player().then(() => {
-                    loader.setText("Waiting on chain update");
+                    txSpinner.show("Waiting Transaction");
                 }).catch((e) => {
                     logger.network.error(`Error registering new player: ${e}`);
-                    this.scene.resume().stop('Loader');
+                    txSpinner.hide();
+                    this.input.enabled = true;
 
                     // Show network error overlay
                     if (!this.scene.get('NetworkError')) {
@@ -216,6 +427,12 @@ export class MainMenu extends Phaser.Scene {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = undefined;
+        }
+
+        // Clean up delegation button
+        if (this.delegationButton) {
+            this.delegationButton.destroy();
+            this.delegationButton = undefined;
         }
     }
 

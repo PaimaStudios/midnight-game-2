@@ -55,6 +55,8 @@ export function safeJSONString(obj: object): string {
         }
         str += ']';
         return str;
+    } else if (obj == null) {
+        return 'null';
     } else if (typeof obj == 'object') {
         let entries = Object.entries(obj);
         // this allows us to print Map properly
@@ -161,7 +163,13 @@ export interface DeployedGame2API {
 
     admin_level_add_config: (level: Level, enemies: EnemiesConfig) => Promise<void>;
 
-    admin_set_quest_duration: (duration: bigint) => Promise<void>;
+    admin_set_quest_duration: (level: Level, duration: bigint) => Promise<void>;
+
+    /**
+     * Register a delegation from the caller's game public key to their real wallet address.
+     * @param walletAddress The wallet address (Field) to delegate to
+     */
+    registerDelegation: (walletAddress: bigint) => Promise<void>;
 }
 
 /**
@@ -270,10 +278,42 @@ export class Game2API implements DeployedGame2API {
                     }
                     return progressByBiomes;
                 };
-                const newState = {
-                    activeBattleConfigs: new Map(ledgerState.active_battle_configs),
-                    activeBattleStates: new Map(ledgerState.active_battle_states),
-                    quests: new Map(ledgerState.quests),
+                // quest durations (biome -> difficulty -> seconds)
+                const extractQuestDurationsFromLedgerState = () => {
+                    const durationsByBiomes = new Map<bigint, Map<bigint, bigint>>();
+                    for (let [level, duration] of ledgerState.quest_durations) {
+                        let byBiome = durationsByBiomes.get(level.biome);
+                        if (byBiome == undefined) {
+                            byBiome = new Map();
+                            durationsByBiomes.set(level.biome, byBiome);
+                        }
+                        byBiome.set(level.difficulty, duration);
+                    }
+                    return durationsByBiomes;
+                };
+                // Resolve delegation for this player
+                const ledgerAny = ledgerState as any;
+                const myDelegatedAddress: bigint | null =
+                    playerId !== null && ledgerAny.delegations?.member(playerId)
+                        ? ledgerAny.delegations.lookup(playerId)
+                        : null;
+
+                // Filter battles and quests to only include those belonging to the current player
+                const myBattleConfigs = new Map(
+                    [...ledgerState.active_battle_configs].filter(([, config]) => config.player_pub_key === playerId)
+                );
+                const myBattleIds = new Set(myBattleConfigs.keys());
+                const myBattleStates = new Map(
+                    [...ledgerState.active_battle_states].filter(([id]) => myBattleIds.has(id))
+                );
+                const myQuests = new Map(
+                    [...ledgerState.quests].filter(([, quest]) => quest.player_pub_key === playerId)
+                );
+
+                const newState: Game2DerivedState = {
+                    activeBattleConfigs: myBattleConfigs,
+                    activeBattleStates: myBattleStates,
+                    quests: myQuests,
                     player: ledgerState.players.member(playerId) ? ledgerState.players.lookup(playerId) : undefined,
                     playerId: playerId,
                     playerAbilities: new Map(ledgerState.player_abilities.member(playerId) ? ledgerState.player_abilities.lookup(playerId) : []),
@@ -281,7 +321,8 @@ export class Game2API implements DeployedGame2API {
                     levels: extractLevelsFromLedgerState(),
                     bosses: extractBossesFromLedgerState(),
                     playerBossProgress: extractPlayerBossProgressFromLedgerState(),
-                    questDuration: ledgerState.quest_duration,
+                    questDurations: extractQuestDurationsFromLedgerState(),
+                    myDelegatedAddress,
                 };
                 return newState;
             },
@@ -373,9 +414,9 @@ export class Game2API implements DeployedGame2API {
         const state = await firstValueFrom(this.state$);
         const quest = state.quests.get(quest_id);
         if (!quest) return false;
-        const duration = state.questDuration > 0n ? state.questDuration : 1200n;
+        const duration = state.questDurations.get(quest.level.biome)?.get(quest.level.difficulty) ?? 1200n;
         const nowSec = BigInt(Math.floor(Date.now() / 1000));
-        return nowSec >= quest.start_time + duration;
+        return nowSec >= quest.start_time + (duration > 0n ? duration : 1200n);
     }
 
     async finalize_quest(quest_id: bigint): Promise<bigint | undefined> {
@@ -442,8 +483,8 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async admin_set_quest_duration(duration: bigint): Promise<void> {
-        const txData = await this.deployedContract.callTx.admin_set_quest_duration(duration);
+    async admin_set_quest_duration(level: Level, duration: bigint): Promise<void> {
+        const txData = await this.deployedContract.callTx.admin_set_quest_duration(level, duration);
 
         this.logger?.trace({
             transactionAdded: {
@@ -452,6 +493,12 @@ export class Game2API implements DeployedGame2API {
                 blockHeight: txData.public.blockHeight,
             },
         });
+    }
+
+    async registerDelegation(walletAddress: bigint): Promise<void> {
+        this.logger?.info(`registerDelegation(walletAddress=${walletAddress})`);
+        await (this.deployedContract.callTx as any).register_delegation(walletAddress);
+        this.logger?.info('registerDelegation done');
     }
 
     /**

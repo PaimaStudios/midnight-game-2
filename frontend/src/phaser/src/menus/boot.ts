@@ -97,26 +97,26 @@ export class BootScene extends Phaser.Scene {
         this.load.image('bg-cave', 'bg-cave.png');
 
         // Sound Effects
-        this.load.audio('attack-immune', 'sfx/attack-immune.wav');
-        this.load.audio('attack-weak', 'sfx/attack-weak.wav');
-        this.load.audio('attack-neutral', 'sfx/attack-neutral.wav');
-        this.load.audio('attack-effective', 'sfx/attack-effective.wav');
-        this.load.audio('attack-supereffective', 'sfx/attack-supereffective.wav');
-        this.load.audio('battle-select-enemy', 'sfx/battle-select-enemy.wav');
-        this.load.audio('battle-select-enemy-attack', 'sfx/battle-select-enemy-attack.wav');
-        this.load.audio('battle-win', 'sfx/battle-win.wav');
-        this.load.audio('battle-lose', 'sfx/battle-lose.wav');
-        this.load.audio('battle-ice-attack', 'sfx/battle-ice-attack.wav');
-        this.load.audio('battle-phys-attack', 'sfx/battle-phys-attack.wav');
-        this.load.audio('battle-fire-attack', 'sfx/battle-fire-attack.wav');
-        this.load.audio('battle-def', 'sfx/battle-def.wav');
-        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.wav');
-        this.load.audio('button-press-1', 'sfx/button-press-1.wav');
-        this.load.audio('upgrade-success', 'sfx/upgrade-success.wav');
+        this.load.audio('attack-immune', 'sfx/attack-immune.ogg');
+        this.load.audio('attack-weak', 'sfx/attack-weak.ogg');
+        this.load.audio('attack-neutral', 'sfx/attack-neutral.ogg');
+        this.load.audio('attack-effective', 'sfx/attack-effective.ogg');
+        this.load.audio('attack-supereffective', 'sfx/attack-supereffective.ogg');
+        this.load.audio('battle-select-enemy', 'sfx/battle-select-enemy.ogg');
+        this.load.audio('battle-select-enemy-attack', 'sfx/battle-select-enemy-attack.ogg');
+        this.load.audio('battle-win', 'sfx/battle-win.ogg');
+        this.load.audio('battle-lose', 'sfx/battle-lose.ogg');
+        this.load.audio('battle-ice-attack', 'sfx/battle-ice-attack.ogg');
+        this.load.audio('battle-phys-attack', 'sfx/battle-phys-attack.ogg');
+        this.load.audio('battle-fire-attack', 'sfx/battle-fire-attack.ogg');
+        this.load.audio('battle-def', 'sfx/battle-def.ogg');
+        this.load.audio('prebattle-move-spirit', 'sfx/prebattle-move-spirit.ogg');
+        this.load.audio('button-press-1', 'sfx/button-press-1.ogg');
+        this.load.audio('upgrade-success', 'sfx/upgrade-success.ogg');
 
         // Music
-        this.load.audio('menu-music', 'music/menu.wav');
-        this.load.audio('boss-battle-music', 'music/boss-battle-music.wav');
+        this.load.audio('menu-music', 'music/menu.ogg');
+        this.load.audio('boss-battle-music', 'music/boss-battle-music.ogg');
 
         this.load.plugin('rexdragplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexdragplugin.min.js', true);
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexroundrectangleplugin.min.js', true);
@@ -196,6 +196,11 @@ export class BootScene extends Phaser.Scene {
 
             // Debug logging
             logger.gameState.info(`Boot state check: player=${state.player !== undefined}, playerId=${state.playerId}, activeBattles=${state.activeBattleConfigs.size}`);
+
+            // Expose player address for the achievements overlay (runs in index.html)
+            if (state.playerId) {
+                (window as any).__d2dPlayerAddress = state.playerId.toString(16).padStart(64, '0');
+            }
 
             // Check if player has an active battle
             if (state.player !== undefined) {

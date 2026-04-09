@@ -34,7 +34,9 @@ export class Tooltip {
         this.helpTween = null;
 
         // Create the tooltip text object
-        this.helpText = scene.add.text(0, 0, tooltipText, fontStyle(10))
+        this.helpText = scene.add.text(0, 0, tooltipText, fontStyle(10, {
+                wordWrap: { width: GAME_WIDTH * 0.6 },
+            }))
             .setAlpha(0)
             .setVisible(false)
             .setOrigin(0.5, 0.5)
@@ -48,6 +50,11 @@ export class Tooltip {
         // Add event listeners
         target.on('pointerover', this.onPointerOver, this);
         target.on('pointerout', this.onPointerOut, this);
+
+        // Hide tooltip when scene pauses, sleeps, or shuts down
+        scene.events.on('pause', this.onPointerOut, this);
+        scene.events.on('sleep', this.onPointerOut, this);
+        scene.events.on('shutdown', this.onPointerOut, this);
 
         // Add to scene's update loop for cursor tracking
         scene.events.on('preupdate', this.preUpdate, this);
@@ -74,12 +81,18 @@ export class Tooltip {
 
     private preUpdate = () => {
         if (this.helpText.visible) {
+            // Hide tooltip if scene input was disabled (e.g. spinner overlay)
+            if (!this.scene.input.enabled) {
+                this.onPointerOut();
+                return;
+            }
+
             const mx = this.scene.input.activePointer.worldX;
             const my = this.scene.input.activePointer.worldY;
 
             // Simple positioning: place tooltip near mouse cursor with screen bounds checking
             let finalX = mx + 16; // Offset to the right of cursor
-            let finalY = my - 32; // Offset above cursor
+            let finalY = my - this.helpText.height / 2 - 16; // Offset above cursor, accounting for text height
 
             // Keep tooltip within screen bounds
             if (finalX + this.helpText.width / 2 > GAME_WIDTH) {
@@ -144,6 +157,9 @@ export class Tooltip {
         this.target.off('pointerover', this.onPointerOver, this);
         this.target.off('pointerout', this.onPointerOut, this);
         this.scene.events.off('preupdate', this.preUpdate, this);
+        this.scene.events.off('pause', this.onPointerOut, this);
+        this.scene.events.off('sleep', this.onPointerOut, this);
+        this.scene.events.off('shutdown', this.onPointerOut, this);
         this.helpTween?.destroy();
         this.helpText.destroy();
     }

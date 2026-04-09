@@ -122,6 +122,8 @@ export const wasmProofProvider = <K extends string>(
           `[wasm-prover] proveTx finished duration=${Math.round(performance.now() - startedAt)}ms outputBytes=${provenSerializedTx.byteLength}`,
         );
 
+        window.dispatchEvent(new CustomEvent('d2d-proof-complete', { detail: { circuitName } }));
+
         return Transaction.deserialize(
           'signature',
           'proof',

@@ -203,6 +203,8 @@ export class ScrollablePanel {
         onDragEnd?: (child: Phaser.GameObjects.GameObject) => void,
         onDrag?: (child: Phaser.GameObjects.GameObject, dragX: number, dragY: number) => void,
         onDoubleClick?: (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => void,
+        onHover?: (child: Phaser.GameObjects.GameObject) => void,
+        onHoverOut?: (child: Phaser.GameObjects.GameObject) => void,
         maxElements?: number
     }): void {
         const maxElements = options?.maxElements;
@@ -211,6 +213,8 @@ export class ScrollablePanel {
         const onDragEnd = options?.onDragEnd;
         const onDrag = options?.onDrag;
         const onDoubleClick = options?.onDoubleClick;
+        const onHover = options?.onHover;
+        const onHoverOut = options?.onHoverOut;
         
         this.maxElements = maxElements;
         this.onDragEndCallback = onDragEnd;
@@ -230,9 +234,11 @@ export class ScrollablePanel {
             })
             .on('child.over', (child: any) => {
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'grab';
+                if (onHover) onHover(this.unwrapElement(child));
             })
             .on('child.out', (child: any) => {
                 (this.scene.game.canvas as HTMLCanvasElement).style.cursor = 'default';
+                if (onHoverOut) onHoverOut(this.unwrapElement(child));
             })
             .on('child.down', (child: any) => {
                 // Double-click detection

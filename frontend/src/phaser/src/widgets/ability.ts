@@ -179,6 +179,65 @@ export function effectTypeFileAffix(effectType: EFFECT_TYPE): string {
     }
 }
 
+function effectTypeName(effectType: EFFECT_TYPE): string {
+    switch (effectType) {
+        case EFFECT_TYPE.attack_fire: return 'Fire Dmg';
+        case EFFECT_TYPE.attack_ice: return 'Ice Dmg';
+        case EFFECT_TYPE.attack_phys: return 'Physical Dmg';
+        case EFFECT_TYPE.block: return 'Block';
+    }
+}
+
+function energyTypeName(energyType: number): string {
+    switch (energyType) {
+        case ENERGY_TYPE.cyan: return 'Cyan';
+        case ENERGY_TYPE.yellow: return 'Yellow';
+        case ENERGY_TYPE.magenta: return 'Magenta';
+        default: return 'Unknown';
+    }
+}
+
+function describeEffect(effect: Effect): string {
+    const amount = effect.effect_type === EFFECT_TYPE.block
+        ? Number(effect.amount)
+        : contractDamageToBaseUI(effect.amount);
+    const aoe = effect.is_aoe ? ' (All Enemies)' : '';
+    return `${amount} ${effectTypeName(effect.effect_type)}${aoe}`;
+}
+
+export function describeAbility(ability: Ability): string {
+    const lines: string[] = [];
+
+    // Line 1: Spirit type + energy color
+    const typeName = ability.effect.is_some
+        ? effectTypeName(ability.effect.value.effect_type).replace(' Dmg', '')
+        : 'Neutral';
+    const colorName = ability.generate_color.is_some
+        ? `Generates ${energyTypeName(Number(ability.generate_color.value))}`
+        : 'No Energy';
+    lines.push(`${typeName} Spirit (${colorName})`);
+
+    // Line 2: Base effect
+    if (ability.effect.is_some) {
+        lines.push(`Base: ${describeEffect(ability.effect.value)}`);
+    }
+
+    // Lines 3-5: Energy triggers
+    for (let i = 0; i < ability.on_energy.length; ++i) {
+        if (ability.on_energy[i].is_some) {
+            lines.push(`On ${energyTypeName(i)}: ${describeEffect(ability.on_energy[i].value)}`);
+        }
+    }
+
+    // Upgrade level
+    const level = Number(ability.upgrade_level);
+    if (level > 0) {
+        lines.push(`Upgrade: +${level}`);
+    }
+
+    return lines.join('\n');
+}
+
 class OrbWidget extends Phaser.GameObjects.Container {
     aura: Phaser.GameObjects.Sprite;
     orb: Phaser.GameObjects.Image;

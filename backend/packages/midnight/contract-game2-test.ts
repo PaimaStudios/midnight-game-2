@@ -330,7 +330,7 @@ program
     // Set quest duration to 1 second for fast testing (admin function)
     log.info('Setting quest duration to 1 second for testing...');
     try {
-      await (api as any).admin_set_quest_duration(1n);
+      await (api as any).admin_set_quest_duration({ biome: 0n, difficulty: 1n }, 1n);
       log.info('Quest duration set to 1 second');
     } catch (e: any) {
       log.warn(`Could not set quest duration (may not be admin): ${e.message}`);

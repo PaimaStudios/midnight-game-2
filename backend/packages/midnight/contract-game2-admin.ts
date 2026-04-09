@@ -188,6 +188,7 @@ async function initializeBatcherProviders(batcherUrl: string) {
 type ContentJSON = {
   levels: { level: { biome: number; difficulty: number }; enemies: SerializedEnemiesConfig }[];
   enemyConfigs: { level: { biome: number; difficulty: number }; enemies: SerializedEnemiesConfig }[];
+  questDurations?: { level: { biome: number; difficulty: number }; durationSec: number }[];
 };
 
 type SerializedEnemiesConfig = {
@@ -288,6 +289,18 @@ program
         await api.admin_level_add_config(toLevel(entry.level), toBigIntContent(entry.enemies));
       }
 
+      // Register quest durations
+      if (content.questDurations && content.questDurations.length > 0) {
+        logger.info(`Registering ${content.questDurations.length} quest durations...`);
+        for (let i = 0; i < content.questDurations.length; ++i) {
+          const entry = content.questDurations[i];
+          const level = toLevel(entry.level);
+          const duration = BigInt(entry.durationSec);
+          logger.info(`  Quest duration ${i + 1} / ${content.questDurations.length}: biome ${entry.level.biome} diff ${entry.level.difficulty} = ${duration}s`);
+          await api.admin_set_quest_duration(level, duration);
+        }
+      }
+
       logger.info('All content registered successfully!');
     } catch (error) {
       logger.error(`Content registration failed: ${error}`);
@@ -321,23 +334,26 @@ program
 
 program
   .command('set-quest-duration')
-  .description('Set the quest duration in seconds (admin only)')
+  .description('Set the quest duration in seconds for a specific level (admin only)')
+  .argument('<biome>', 'Biome ID (0=grasslands, 1=desert, 2=tundra, 3=cave)')
+  .argument('<difficulty>', 'Difficulty level (1, 2, or 3)')
   .argument('<seconds>', 'Quest duration in seconds')
   .option('--contract <address>', 'Contract address')
-  .action(async (seconds: string, options: any) => {
+  .action(async (biome: string, difficulty: string, seconds: string, options: any) => {
     try {
       const contractAddress = resolveContractAddress(options.contract);
+      const level = { biome: BigInt(biome), difficulty: BigInt(difficulty) };
       const duration = BigInt(seconds);
 
       logger.info(`Network: ${midnightNetworkConfig.id}`);
-      logger.info(`Setting quest duration to ${duration}s on contract: ${contractAddress}`);
+      logger.info(`Setting quest duration for biome ${biome} difficulty ${difficulty} to ${duration}s on contract: ${contractAddress}`);
 
       const providers = await initializeBatcherProviders(DEFAULT_BATCHER_URL);
       providers.privateStateProvider.setContractAddress(contractAddress);
       const api = await Game2API.join(providers, contractAddress, logger);
 
-      await api.admin_set_quest_duration(duration);
-      logger.info(`Quest duration set to ${duration} seconds`);
+      await api.admin_set_quest_duration(level, duration);
+      logger.info(`Quest duration set to ${duration} seconds for biome ${biome} difficulty ${difficulty}`);
     } catch (error) {
       logger.error(`Failed to set quest duration: ${error}`);
       process.exit(1);

@@ -555,7 +555,7 @@ export circuit is_quest_ready(quest_id: Field): Boolean {
     const player_pub_key = disclose(derive_player_pub_key(player_secret_key()));
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    return blockTimeGte((quest.start_time + get_quest_duration()) as Uint<64>);
+    return blockTimeGte((quest.start_time + get_quest_duration(quest.level)) as Uint<64>);
 }
 
 /**
@@ -569,7 +569,7 @@ export circuit finalize_quest(quest_id: Field): Maybe<Field> {
     
     assert(quest.player_pub_key == player_pub_key, "Player auth failed");
 
-    assert(blockTimeGte((quest.start_time + get_quest_duration()) as Uint<64>), "Quest not ready yet");
+    assert(blockTimeGte((quest.start_time + get_quest_duration(quest.level)) as Uint<64>), "Quest not ready yet");
 
     const rng = (get_player_rng() as Vector<32, Uint<8>>);
     const battle_config = BattleConfig {
@@ -922,12 +922,19 @@ export ledger levels: Map<Level, Map<Uint<64>, EnemiesConfig>>;
 
 export ledger bosses: Map<Level, EnemiesConfig>;
 
-// quest duration in seconds. 0 means unset (defaults to 1200 = 20 minutes)
-export ledger quest_duration: Uint<64>;
+// quest durations in seconds, per level. 0 or missing means default (1200 = 20 minutes)
+export ledger quest_durations: Map<Level, Uint<64>>;
 
-circuit get_quest_duration(): Uint<64> {
+// Maps game public key (Field) to real wallet address (Field) for leaderboard delegation
+export ledger delegations: Map<Field, Field>;
+
+circuit get_quest_duration(level: Level): Uint<64> {
     // default quest duration: 20 minutes (1200 seconds)
-    return quest_duration > 0 ? quest_duration : 1200;
+    if (quest_durations.member(level)) {
+        const d = quest_durations.lookup(level);
+        return d > 0 ? d : 1200;
+    }
+    return 1200;
 }
 
 export circuit admin_level_new(level: Level, boss: EnemiesConfig): [] {
@@ -941,11 +948,18 @@ export circuit admin_level_add_config(level: Level, enemies: EnemiesConfig): [] 
     levels.lookup(level).insert(levels.lookup(level).size(), disclose(enemies));
 }
 
-export circuit admin_set_quest_duration(duration: Uint<64>): [] {
+export circuit admin_set_quest_duration(level: Level, duration: Uint<64>): [] {
     admin_verify();
-    quest_duration = disclose(duration);
+    quest_durations.insert(disclose(level), disclose(duration));
 }
 
 circuit admin_verify(): [] {
     assert(derive_player_pub_key(disclose(player_secret_key())) == deployer, "Admin auth failed");
+}
+
+// Register a delegation from the caller's game public key to their real wallet address.
+// This is a global per-player operation (not per-battle).
+export circuit register_delegation(wallet_address: Field): [] {
+    const my_key = derive_player_pub_key(disclose(player_secret_key()));
+    delegations.insert(my_key, disclose(wallet_address));
 }

@@ -5,8 +5,8 @@ import { AbilityWidget, SpiritWidget } from "../../widgets/ability";
 import { createSpiritAnimations } from "../../animations/spirit";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../../main";
 import { Button } from "../../widgets/button";
-import { Loader } from "../loader";
 import { NetworkError } from "../network-error";
+import { txSpinner } from "../../tx-spinner";
 import { Color, colorToNumber } from "../../constants/colors";
 import { isStartingAbility, sortedAbilities } from "../pre-battle";
 import { addScaledImage } from "../../utils/scaleImage";
@@ -65,7 +65,6 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
     subscription: Subscription;
     state: Game2DerivedState;
     ui: Phaser.GameObjects.GameObject[];
-    loader: Loader | undefined;
     topBar: TopBar | undefined;
     errorText: Phaser.GameObjects.Text | undefined;
 
@@ -381,11 +380,9 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                 logger.ui.info('Upgrade complete - upgraded ability found in state');
                 this.pendingUpgradedAbilityId = undefined;
 
-                // Hide loader if it's showing
-                if (this.loader !== undefined) {
-                    this.scene.resume().stop('Loader');
-                    this.loader = undefined;
-                }
+                // Hide spinner
+                txSpinner.hide();
+                this.input.enabled = true;
 
                 // Show upgrade success screen first
                 this.showingSuccessScreen = true;
@@ -884,18 +881,17 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             return;
         }
 
-        // Disable button and show loader during upgrade
+        // Disable button and show spinner during upgrade
         this.upgradeButton?.setEnabled(false);
-        this.scene.pause().launch('Loader');
-        this.loader = this.scene.get('Loader') as Loader;
-        this.loader.setText("Submitting Proof");
+        txSpinner.show("Generating Proof");
+        this.input.enabled = false;
 
         try {
             logger.ui.info('Calling upgrade_ability contract method');
             const upgradedAbilityId = await this.api.upgrade_ability(this.upgradingSpirit, this.sacrificingSpirit);
             logger.ui.info('Upgrade circuit complete, waiting for state update');
 
-            this.loader?.setText("Waiting on chain update");
+            txSpinner.show("Waiting Transaction");
 
             // Store the upgraded ability ID to wait for it in onStateChange
             this.pendingUpgradedAbilityId = upgradedAbilityId;
@@ -907,8 +903,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
                 logger.ui.info('Upgrade complete - upgraded ability already in state');
                 this.pendingUpgradedAbilityId = undefined;
 
-                this.scene.resume().stop('Loader');
-                this.loader = undefined;
+                txSpinner.hide();
+                this.input.enabled = true;
 
                 // Show upgrade success screen first
                 this.showingSuccessScreen = true;
@@ -959,8 +955,8 @@ export class UpgradeSpiritsMenu extends Phaser.Scene {
             logger.ui.error('Upgrade failed:', error);
             this.upgradeButton?.setEnabled(true);
             this.pendingUpgradedAbilityId = undefined;
-            this.scene.resume().stop('Loader');
-            this.loader = undefined;
+            txSpinner.hide();
+            this.input.enabled = true;
 
             // Show network error overlay for network-related errors
             if (!this.scene.get('NetworkError')) {

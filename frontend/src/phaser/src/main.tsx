@@ -25,6 +25,9 @@ setNetworkId(networkId);
 logger.network.info(`networkId = ${networkId}`);
 logger.debugging.info(`VITE: [\n${JSON.stringify(import.meta.env)}\n]`);
 
+// Expose node API URL for the achievements overlay (runs in index.html)
+(window as any).__d2dNodeApiUrl = import.meta.env.VITE_NODE_API_URL || '';
+
 // Phaser code begins
 
 import 'phaser';
@@ -69,6 +72,7 @@ const config = {
     ],
     render: {
         pixelArt: true,
+        preserveDrawingBuffer: true,
     },
     zoom: scaleToWindow(),
     dom: {

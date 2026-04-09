@@ -9,8 +9,8 @@ import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Subscription } from "rxjs";
 import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { Button } from "../widgets/button";
-import { Loader } from "./loader";
 import { NetworkError } from "./network-error";
+import { txSpinner } from "../tx-spinner";
 import { ActiveBattle } from "./battle";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { addScaledImage } from "../utils/scaleImage";
@@ -56,10 +56,8 @@ export class QuestMenu extends Phaser.Scene {
         logger.gameState.info(`Viewing quest ${this.questId}`);
         logger.gameState.info(`QuestMenu.create() called, initializing with existing state...`);
         
-        // Show loader while checking quest status
-        this.scene.pause().launch('Loader');
-        const loader = this.scene.get('Loader') as Loader;
-        loader.setText("Checking quest status...");
+        // Show spinner while checking quest status
+        txSpinner.show("Checking quest status...");
         
         // Mark scene as created so onStateChange can safely manipulate game objects
         this.sceneCreated = true;
@@ -171,7 +169,8 @@ export class QuestMenu extends Phaser.Scene {
             14,
             () => {
                 this.initiateQuest();
-            }
+            },
+            'Challenge the quest boss with your selected spirits'
         );
 
         this.updateQuestStatus(state);
@@ -188,8 +187,8 @@ export class QuestMenu extends Phaser.Scene {
 
         const quest = state.quests.get(this.questId);
         if (!quest) {
-            // Quest was finalized or doesn't exist, stop loader
-            this.scene.resume().stop('Loader');
+            // Quest was finalized or doesn't exist
+            txSpinner.hide();
             if (this.statusText) {
                 this.statusText.setText('Quest not found or already completed.');
             }
@@ -201,13 +200,14 @@ export class QuestMenu extends Phaser.Scene {
         }
 
         // Check if quest timer has elapsed
-        // Check quest readiness client-side using state data
-        const questDurationSec = Number(state.questDuration > 0n ? state.questDuration : 1200n);
+        // Check quest readiness client-side using state data (per-level duration)
+        const levelDuration = state.questDurations.get(quest.level.biome)?.get(quest.level.difficulty) ?? 1200n;
+        const questDurationSec = Number(levelDuration > 0n ? levelDuration : 1200n);
         const elapsedSec = Math.floor(Date.now() / 1000) - Number(quest.start_time);
         const ready = elapsedSec >= questDurationSec;
 
-        // Hide loader once we have the result
-        this.scene.resume().stop('Loader');
+        // Hide spinner once we have the result
+        txSpinner.hide();
 
         if (ready) {
             this.statusText!.setText('Quest completed! Ready to fight the boss.');
@@ -240,7 +240,7 @@ export class QuestMenu extends Phaser.Scene {
             this.battleStarted = true;
             // Clean up subscription before starting battle
             this.subscription?.unsubscribe();
-            this.scene.stop('Loader');
+            txSpinner.hide();
             this.scene.remove('ActiveBattle');
             this.scene.add('ActiveBattle', new ActiveBattle(this.api, battleConfig, this.state));
             this.scene.start('ActiveBattle');
@@ -248,8 +248,7 @@ export class QuestMenu extends Phaser.Scene {
             this.scene.stop('QuestMenu');
         } else {
             logger.gameState.error(`Battle config not found for battle ID: ${this.bossBattleId}`);
-            this.scene.stop('Loader');
-            this.scene.resume();
+            txSpinner.hide();
             this.statusText!.setText('Error: Battle configuration not found.');
         }
     }
@@ -257,10 +256,9 @@ export class QuestMenu extends Phaser.Scene {
     private initiateQuest() {
         logger.gameState.info(`initiateQuest() called for quest ${this.questId}`);
 
-        // Show loader while finalizing quest
-        this.scene.pause().launch('Loader');
-        const loader = this.scene.get('Loader') as Loader;
-        loader.setText("Finalizing Quest");
+        // Show spinner while finalizing quest
+        txSpinner.show("Finalizing Quest");
+        this.input.enabled = false;
 
         const attemptFinalizeQuest = () => {
             logger.gameState.info(`Calling finalize_quest API for quest ${this.questId}`);
@@ -270,13 +268,13 @@ export class QuestMenu extends Phaser.Scene {
 
                 if (this.bossBattleId === null) {
                     logger.gameState.error('Quest finalization returned null battle ID');
-                    this.scene.stop('Loader');
-                    this.scene.resume();
+                    txSpinner.hide();
+                    this.input.enabled = true;
                     this.statusText!.setText('Quest was not ready to be finalized.');
                     return;
                 }
 
-                loader.setText("Waiting for battle config...");
+                txSpinner.show("Waiting for battle config...");
 
                 // Check if battle config is already available
                 if (this.state.activeBattleConfigs.has(this.bossBattleId)) {
@@ -287,7 +285,7 @@ export class QuestMenu extends Phaser.Scene {
                 // (onStateChange will detect bossBattleId is set and battle config exists)
             }).catch((err) => {
                 this.events.off('questFinalized'); // Remove the event listener
-                this.scene.stop('Loader');
+                txSpinner.hide();
 
                 logger.network.error(`Error Finalizing Quest: ${err}`);
 
@@ -301,7 +299,7 @@ export class QuestMenu extends Phaser.Scene {
 
                 setTimeout(() => {
                     this.scene.stop('NetworkError');
-                    this.scene.pause().launch('Loader');
+                    txSpinner.show("Retrying...");
                     attemptFinalizeQuest();
                 }, 2000);
             });

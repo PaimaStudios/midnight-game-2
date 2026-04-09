@@ -44,8 +44,18 @@ export class MockGame2API implements DeployedGame2API {
             levels: new Map(),
             bosses: new Map(),
             playerBossProgress: new Map(),
-            questDuration: 5n, // 5 seconds for fast dev iteration
+            questDurations: new Map(), // populated below with 5s for fast dev iteration
+            myDelegatedAddress: null,
         };
+
+        // Initialize mock quest durations: 5s for all levels (fast dev iteration)
+        for (let biome = 0n; biome < 4n; biome++) {
+            const byDifficulty = new Map<bigint, bigint>();
+            for (let diff = 1n; diff <= 3n; diff++) {
+                byDifficulty.set(diff, 5n);
+            }
+            this.mockState.questDurations.set(biome, byDifficulty);
+        }
 
         // Use BehaviorSubject to ensure new subscribers immediately get current state
         this.stateSubject = new BehaviorSubject<Game2DerivedState>(this.mockState);
@@ -181,9 +191,9 @@ export class MockGame2API implements DeployedGame2API {
     private isQuestReady(quest_id: bigint): boolean {
         const quest = this.mockState.quests.get(quest_id);
         if (!quest) return false;
-        const duration = this.mockState.questDuration > 0n ? this.mockState.questDuration : 1200n;
+        const duration = this.mockState.questDurations.get(quest.level.biome)?.get(quest.level.difficulty) ?? 1200n;
         const nowSec = BigInt(Math.floor(Date.now() / 1000));
-        return nowSec >= quest.start_time + duration;
+        return nowSec >= quest.start_time + (duration > 0n ? duration : 1200n);
     }
 
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
@@ -276,8 +286,19 @@ export class MockGame2API implements DeployedGame2API {
         }, 5);
     }
 
-    public async admin_set_quest_duration(duration: bigint): Promise<void> {
-        this.mockState.questDuration = duration;
+    public async admin_set_quest_duration(level: Level, duration: bigint): Promise<void> {
+        let byBiome = this.mockState.questDurations.get(level.biome);
+        if (byBiome == undefined) {
+            byBiome = new Map();
+            this.mockState.questDurations.set(level.biome, byBiome);
+        }
+        byBiome.set(level.difficulty, duration);
+        this.stateSubject.next(this.mockState);
+    }
+
+    public async registerDelegation(walletAddress: bigint): Promise<void> {
+        logger.network.info(`[mock] registerDelegation(${walletAddress})`);
+        this.mockState.myDelegatedAddress = walletAddress;
         this.stateSubject.next(this.mockState);
     }
 

@@ -61,6 +61,13 @@ export class BiomeSelectMenu extends Phaser.Scene {
             }
         ).setOrigin(0.5).setStroke(Color.Licorice, 8);
 
+        const biomeTooltips: Record<number, string> = {
+            [BIOME_ID.grasslands]: 'Enemies here are weak to Fire',
+            [BIOME_ID.desert]: 'Enemies here are weak to Ice',
+            [BIOME_ID.tundra]: 'Enemies here are weak to Physical',
+            [BIOME_ID.cave]: 'Mixed enemies with varied weaknesses',
+        };
+
         biomes.forEach((biome, i) => new Button(
             this,
             GAME_WIDTH / 2,
@@ -73,7 +80,8 @@ export class BiomeSelectMenu extends Phaser.Scene {
                 this.scene.remove('LevelSelectMenu');
                 this.scene.add('LevelSelectMenu', new LevelSelectMenu(this.api!, biome, this.isQuest, this.state));
                 this.scene.start('LevelSelectMenu');
-            }
+            },
+            biomeTooltips[biome]
         ));
         new TopBar(this, true, this.api, this.state)
             .back(() => {

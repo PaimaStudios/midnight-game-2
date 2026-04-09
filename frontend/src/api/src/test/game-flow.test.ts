@@ -307,7 +307,7 @@ class TestGame2API implements DeployedGame2API {
     this.emit();
   }
 
-  async admin_set_quest_duration(_duration: bigint): Promise<void> {
+  async admin_set_quest_duration(_level: any, _duration: bigint): Promise<void> {
     // No-op in test mock — quest timing is not enforced
   }
 

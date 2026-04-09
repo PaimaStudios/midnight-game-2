@@ -6244,6 +6244,7 @@ __metadata:
   dependencies:
     "@originjs/vite-plugin-commonjs": "npm:^1.0.3"
     "@paima/midnight-wasm-prover": "npm:^0.1.0-alpha7"
+    "@scure/base": "npm:^2.0.0"
     "@types/react": "npm:^18.2.0"
     "@types/react-dom": "npm:^18.2.0"
     buffer: "npm:^6.0.3"

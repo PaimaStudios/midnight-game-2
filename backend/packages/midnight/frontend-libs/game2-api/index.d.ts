@@ -80,7 +80,7 @@ export interface DeployedGame2API {
     upgrade_ability: (ability: Ability, sacrifice: Ability) => Promise<bigint>;
     admin_level_new: (level: Level, boss: EnemiesConfig) => Promise<void>;
     admin_level_add_config: (level: Level, enemies: EnemiesConfig) => Promise<void>;
-    admin_set_quest_duration: (duration: bigint) => Promise<void>;
+    admin_set_quest_duration: (level: Level, duration: bigint) => Promise<void>;
 }
 /**
  * Provides an implementation of {@link DeployedGame2API} that interacts with the provided prover and submits transactions on-chain
@@ -111,7 +111,7 @@ export declare class Game2API implements DeployedGame2API {
     upgrade_ability(ability: Ability, sacrifice: Ability): Promise<bigint>;
     admin_level_new(level: Level, boss: EnemiesConfig): Promise<void>;
     admin_level_add_config(level: Level, enemies: EnemiesConfig): Promise<void>;
-    admin_set_quest_duration(duration: bigint): Promise<void>;
+    admin_set_quest_duration(level: Level, duration: bigint): Promise<void>;
     /**
      * Deploys a new Game2 contract to the network.
      *

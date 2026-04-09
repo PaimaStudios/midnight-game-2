@@ -35,7 +35,13 @@ import {
   getActiveBattles,
   getActiveQuests,
   getGameStats,
+  getLeaderboard,
+  getUserLeaderboardStats,
+  resolveUserIdentity,
+  getAllAchievements,
+  getUserAchievements,
 } from "./game-db.ts";
+import { seedAchievements } from "./achievements.ts";
 import type { AlignedValue, StateValue } from "@midnight-ntwrk/ledger-v8";
 
 // ---------------------------------------------------------------------------
@@ -312,6 +318,7 @@ export const apiRouter: StartConfigApiRouter = async function (
 ): Promise<void> {
   dbConn = db;
   await ensureTables(db);
+  await seedAchievements(db);
 
   // --- existing primitive accounting endpoint ---
   server.get("/fetch-primitive-accounting", async () => {
@@ -347,6 +354,76 @@ export const apiRouter: StartConfigApiRouter = async function (
   // --- GET /game/stats ---
   server.get("/game/stats", async () => {
     return getGameStats(db);
+  });
+
+  // -----------------------------------------------------------------------
+  // PRC-6 Metrics endpoints
+  // -----------------------------------------------------------------------
+
+  // --- GET /metrics ---
+  server.get("/metrics", async () => {
+    const achievements = await getAllAchievements(db);
+    return {
+      name: "Dust 2 Dust",
+      description: "A singleplayer fully on-chain deck-building dungeon-crawler game built on the Midnight Network.",
+      achievements: achievements.map((a: any) => ({
+        name: a.name,
+        displayName: a.display_name,
+        description: a.description,
+        category: a.category,
+        isActive: a.is_active,
+        percentCompleted: 0,
+      })),
+      channels: [
+        {
+          id: "leaderboard",
+          name: "Wins",
+          description: "Total battles won per player.",
+          scoreUnit: "Wins",
+          sortOrder: "DESC",
+        },
+      ],
+    };
+  });
+
+  // --- GET /metrics/leaderboard ---
+  server.get("/metrics/leaderboard", async (request: any) => {
+    const { startDate, endDate, limit, offset } = request.query ?? {};
+    return getLeaderboard(db, {
+      startDate,
+      endDate,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
+  });
+
+  // --- GET /metrics/users/:address ---
+  server.get("/metrics/users/:address", async (request: any) => {
+    const { address } = request.params;
+    const { channel, startDate, endDate } = request.query ?? {};
+
+    const identity = await resolveUserIdentity(db, address);
+    const achievements = await getUserAchievements(db, identity.address);
+
+    const response: Record<string, any> = { identity, achievements };
+
+    // If channel param is provided, include channel stats
+    if (channel === "leaderboard" || (Array.isArray(channel) && channel.includes("leaderboard"))) {
+      const now = new Date();
+      const end = endDate ?? now.toISOString();
+      const start = startDate ?? new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString();
+      const stats = await getUserLeaderboardStats(db, identity.address, start, end);
+
+      response.channels = {
+        leaderboard: {
+          startDate: start,
+          endDate: end,
+          stats: stats ?? { score: 0, rank: 0, matchesPlayed: 0 },
+        },
+      };
+    }
+
+    return response;
   });
 };
 

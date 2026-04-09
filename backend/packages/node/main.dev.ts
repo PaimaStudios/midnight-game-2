@@ -48,7 +48,7 @@ export const devConfig = new ConfigBuilder()
         (_network, _deployments) => ({
           name: "parallelMidnight",
           type: ConfigSyncProtocolType.MIDNIGHT_PARALLEL,
-          startBlockHeight: 2494,
+          startBlockHeight: 13038,
           pollingInterval: 6000,
           delayMs: 0,
           stepSize: 2,

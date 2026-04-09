@@ -65,7 +65,8 @@ export class ShopMenu extends Phaser.Scene {
                 this.scene.remove('UpgradeSpiritsMenu');
                 this.scene.add('UpgradeSpiritsMenu', new UpgradeSpiritsMenu(this.api, this.state));
                 this.scene.start('UpgradeSpiritsMenu');
-            }
+            },
+            'Combine spirits to create stronger versions'
         );
 
         new Button(
@@ -81,7 +82,8 @@ export class ShopMenu extends Phaser.Scene {
                 this.scene.remove('SellSpiritsMenu');
                 this.scene.add('SellSpiritsMenu', new SellSpiritsMenu(this.api, this.state));
                 this.scene.start('SellSpiritsMenu');
-            }
+            },
+            'Trade spirits for gold'
         );
 
         this.onStateChange(this.state);

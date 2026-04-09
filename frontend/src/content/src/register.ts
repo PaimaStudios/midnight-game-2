@@ -21,6 +21,32 @@ export const BIOME_ID = {
   cave: 3,
 } as const;
 
+// Quest duration config (in minutes)
+// Base time per biome, plus offset per difficulty
+const QUEST_BASE_MINUTES: Record<number, number> = {
+  [BIOME_ID.grasslands]: 10,
+  [BIOME_ID.desert]: 15,
+  [BIOME_ID.tundra]: 20,
+  [BIOME_ID.cave]: 30,
+};
+
+const QUEST_DIFFICULTY_OFFSET_MINUTES: Record<number, number> = {
+  1: 0,
+  2: 10,
+  3: 20,
+};
+
+/**
+ * Get quest duration in seconds for a given biome and difficulty.
+ * Falls back to 1200s (20 min) if biome/difficulty not found.
+ */
+export function getQuestDurationSec(biome: number, difficulty: number): number {
+  const base = QUEST_BASE_MINUTES[biome];
+  const offset = QUEST_DIFFICULTY_OFFSET_MINUTES[difficulty];
+  if (base === undefined || offset === undefined) return 1200;
+  return (base + offset) * 60;
+}
+
 // Defense values
 export const Def = {
   SUPEREFFECTIVE: 0n,
@@ -620,6 +646,19 @@ export async function registerStartingContent(
       enemyConfigs[i][0],
       makeEnemiesConfig(enemyConfigs[i][1].map(configToEnemyStats))
     );
+  }
+
+  // Register quest durations for all level combinations
+  const biomes = minimalOnly ? [BIOME_ID.grasslands] : Object.values(BIOME_ID);
+  const difficulties = minimalOnly ? [1] : [1, 2, 3];
+  log(`Registering quest durations for ${biomes.length} biomes x ${difficulties.length} difficulties...`);
+  for (const biome of biomes) {
+    for (const diff of difficulties) {
+      const level = { biome: BigInt(biome), difficulty: BigInt(diff) };
+      const durationSec = getQuestDurationSec(biome, diff);
+      log(`  Quest duration for biome ${biome} difficulty ${diff}: ${durationSec}s (${durationSec / 60}m)`);
+      await api.admin_set_quest_duration(level, BigInt(durationSec));
+    }
   }
 
   log(`Content registration complete! Registered ${levels.length} levels and ${enemyConfigs.length} enemy configs.`);

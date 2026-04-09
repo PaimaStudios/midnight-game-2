@@ -5,27 +5,28 @@
 // Verified payload layout (from GAME_DB_DEBUG=1 output):
 //
 // payload["0"]:
-//   [0] all_abilities        (Map<Field, Ability>)           — map[0], 8 keys
+//   [0] all_abilities        (Map<Field, Ability>)           — map[0], 9 keys
 //   [1] ability_base_phys_id (scalar)
 //   [2] ability_base_block_id (scalar)
 //   [3] ability_base_fire_aoe_id (scalar)
+//   [4] ability_base_ice_id (scalar)
 //
 // payload["1"]:
-//   [0] ability_base_ice_id (scalar)
-//   [1] ability_reward_id (scalar)
-//   [2] ability_demo_starting_1_id (scalar)
-//   [3] ability_demo_starting_2_id (scalar)
-//   [4] ability_demo_starting_3_id (scalar)
-//   [5] active_battle_states (Map<Field, BattleState>)       — map[1]
-//   [6] active_battle_configs(Map<Field, BattleConfig>)      — map[2]
-//   [7] quests               (Map<Field, QuestConfig>)       — map[3]
-//   [8] players              (Map<Field, Player>)            — map[4]
-//   [9] player_abilities     (Map<Field, Map<Field, Uint32>>)— map[5]
-//  [10] player_boss_progress (Map<Field, Map<...>>)          — map[6]
-//  [11] deployer (scalar)
-//  [12] levels               (Map<Level, Map<...>>)          — map[7]
-//  [13] bosses               (Map<Level, EnemiesConfig>)     — map[8]
-//  [14] quest_duration (scalar, 0)
+//   [0] ability_reward_id (scalar)
+//   [1] ability_demo_starting_1_id (scalar)
+//   [2] ability_demo_starting_2_id (scalar)
+//   [3] ability_demo_starting_3_id (scalar)
+//   [4] active_battle_states (Map<Field, BattleState>)       — map[1]
+//   [5] active_battle_configs(Map<Field, BattleConfig>)      — map[2]
+//   [6] quests               (Map<Field, QuestConfig>)       — map[3]
+//   [7] players              (Map<Field, Player>)            — map[4]
+//   [8] player_abilities     (Map<Field, Map<Field, Uint32>>)— map[5]
+//   [9] player_boss_progress (Map<Field, Map<...>>)          — map[6]
+//  [10] deployer (scalar)
+//  [11] levels               (Map<Level, Map<...>>)          — map[7]
+//  [12] bosses               (Map<Level, EnemiesConfig>)     — map[8]
+//  [13] quest_durations      (Map<Level, Uint64>)            — map[9]
+//  [14] delegations          (Map<Field, Field>)             — map[10]
 //
 // Struct values are packed as single LE-byte scalars by the Compact compiler.
 // Player{gold: Uint<32>, rng: Bytes<32>} → gold is bits 0-31
@@ -116,6 +117,49 @@ export async function ensureTables(db: any): Promise<void> {
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+
+  // Track completed battles (wins/losses) for leaderboard scoring
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_battle_results (
+      battle_id       TEXT PRIMARY KEY,
+      player_id       TEXT NOT NULL,
+      biome           INTEGER NOT NULL,
+      difficulty      INTEGER NOT NULL,
+      won             BOOLEAN NOT NULL,
+      ended_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Delegation mapping: game address -> wallet address
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_delegations (
+      from_address    TEXT PRIMARY KEY,
+      to_address      TEXT NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Achievement definitions (populated by migration)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_achievements (
+      name            TEXT PRIMARY KEY,
+      display_name    TEXT NOT NULL,
+      description     TEXT NOT NULL,
+      category        TEXT NOT NULL,
+      is_active       BOOLEAN NOT NULL DEFAULT TRUE
+    )
+  `);
+
+  // Player achievements (unlocked)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_player_achievements (
+      player_id       TEXT NOT NULL,
+      achievement     TEXT NOT NULL REFERENCES d2d_achievements(name),
+      unlocked_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (player_id, achievement)
+    )
+  `);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +173,7 @@ interface PayloadIndices {
   activeBattleStates: Record<string, any>;
   activeBattleConfigs: Record<string, any>;
   quests: Record<string, any>;
+  delegations: Record<string, any>;
 }
 
 let indicesLogged = false;
@@ -136,15 +181,15 @@ let debugDumped = false;
 
 function extractMaps(payload: any): PayloadIndices | null {
   // Debug dump on first call
-  if (!debugDumped) {
-    debugDumped = true;
-    if (Deno.env.get("GAME_DB_DEBUG") === "1") {
+  //if (!debugDumped) {
+  //  debugDumped = true;
+  //  if (Deno.env.get("GAME_DB_DEBUG") === "1") {
       console.log("[game-db] DEBUG — raw payload structure:");
       const replacer = (_key: string, value: unknown) =>
         typeof value === "bigint" ? value.toString() : value;
       console.log(JSON.stringify(payload, replacer, 2));
-    }
-  }
+  //  }
+  //}
 
   // Flatten payload entries (payload is { "0": [...], "1": [...] })
   const allEntries: any[] = [];
@@ -196,6 +241,8 @@ function extractMaps(payload: any): PayloadIndices | null {
   //   map[6] = player_boss_progress (1 key, nested maps)
   //   map[7] = levels               (12 keys)
   //   map[8] = bosses               (12 keys)
+  //   map[9] = quest_durations
+  //   map[10] = delegations
   return {
     activeBattleStates: maps[1] ?? {},
     activeBattleConfigs: maps[2] ?? {},
@@ -203,6 +250,7 @@ function extractMaps(payload: any): PayloadIndices | null {
     players: maps[4] ?? {},
     playerAbilities: maps[5] ?? {},
     playerBossProgress: maps[6] ?? {},
+    delegations: maps[10] ?? {},
   };
 }
 
@@ -220,12 +268,12 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   const extracted = extractMaps(payload);
   if (!extracted) return;
 
-  const { players, playerAbilities, playerBossProgress, activeBattleStates, activeBattleConfigs, quests } = extracted;
+  const { players, playerAbilities, playerBossProgress, activeBattleStates, activeBattleConfigs, quests, delegations } = extracted;
 
   // Dedup: skip if nothing changed
   const replacer = (_key: string, value: unknown) =>
     typeof value === "bigint" ? value.toString() : value;
-  const snapshotKey = JSON.stringify({ players, activeBattleStates, quests }, replacer);
+  const snapshotKey = JSON.stringify({ players, activeBattleStates, quests, delegations }, replacer);
   if (snapshotKey === lastSnapshotKey) return;
   lastSnapshotKey = snapshotKey;
 
@@ -234,6 +282,7 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   await syncBossProgress(db, playerBossProgress);
   await syncBattles(db, activeBattleStates, activeBattleConfigs);
   await syncQuests(db, quests);
+  await syncDelegations(db, delegations);
 }
 
 // ---------------------------------------------------------------------------
@@ -523,8 +572,40 @@ async function syncBattles(
       values,
     );
 
-    // Remove battles no longer on-chain
+    // Detect battles that have left the chain (completed or retreated)
+    // Before deleting, record results for leaderboard
     const activeBattleIds = toUpsert.map((b) => b.battleId);
+    const { rows: staleBattles } = await db.query(
+      `SELECT battle_id, player_id, biome, difficulty, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2
+       FROM d2d_battles WHERE NOT (battle_id = ANY($1))`,
+      [activeBattleIds],
+    ) as { rows: Array<{
+      battle_id: string; player_id: string; biome: number; difficulty: number;
+      damage_to_enemy_0: number; damage_to_enemy_1: number; damage_to_enemy_2: number;
+    }> };
+
+    if (staleBattles.length > 0) {
+      // A battle is considered "won" if enemies took significant damage
+      // (the battle disappeared because it resolved, not because it was retreated from with 0 damage dealt)
+      // This is a heuristic — retreat also removes the battle, but typically has lower damage totals
+      for (const stale of staleBattles) {
+        const totalDmg = stale.damage_to_enemy_0 + stale.damage_to_enemy_1 + stale.damage_to_enemy_2;
+        // If any damage was dealt, consider it a completed battle (win or loss)
+        // We record it as a win since the battle left the chain with damage dealt
+        // Retreats typically preserve the battle until the chain processes the retreat
+        if (totalDmg > 0) {
+          await db.query(
+            `INSERT INTO d2d_battle_results (battle_id, player_id, biome, difficulty, won)
+             VALUES ($1, $2, $3, $4, TRUE)
+             ON CONFLICT (battle_id) DO NOTHING`,
+            [stale.battle_id, stale.player_id, stale.biome, stale.difficulty],
+          );
+        }
+      }
+      console.log(`[game-db] Recorded ${staleBattles.length} battle result(s)`);
+    }
+
+    // Remove battles no longer on-chain
     await db.query(
       `DELETE FROM d2d_battles WHERE NOT (battle_id = ANY($1))`,
       [activeBattleIds],
@@ -692,4 +773,223 @@ export async function getGameStats(db: any): Promise<any> {
     activeBattles: battleCount?.count ?? 0,
     activeQuests: questCount?.count ?? 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Sync: Delegations
+// ---------------------------------------------------------------------------
+
+async function syncDelegations(
+  db: any,
+  delegationsMap: Record<string, any>,
+): Promise<void> {
+  const entries = Object.entries(delegationsMap);
+  if (entries.length === 0) return;
+
+  const parsed = entries.map(([fromAddr, toAddr]) => ({
+    fromAddr,
+    toAddr: String(toAddr),
+  }));
+
+  // Check existing
+  const fromKeys = parsed.map((e) => e.fromAddr);
+  const { rows: existing } = await db.query(
+    `SELECT from_address, to_address FROM d2d_delegations WHERE from_address = ANY($1)`,
+    [fromKeys],
+  ) as { rows: Array<{ from_address: string; to_address: string }> };
+  const existingMap = new Map(existing.map((r: any) => [r.from_address, r.to_address]));
+
+  // Find new or changed delegations
+  const toUpsert = parsed.filter((e) => existingMap.get(e.fromAddr) !== e.toAddr);
+
+  if (toUpsert.length === 0) return;
+
+  const placeholders = toUpsert
+    .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`)
+    .join(", ");
+  const values = toUpsert.flatMap((u) => [u.fromAddr, u.toAddr]);
+
+  await db.query(
+    `INSERT INTO d2d_delegations (from_address, to_address)
+     VALUES ${placeholders}
+     ON CONFLICT (from_address) DO UPDATE
+       SET to_address = EXCLUDED.to_address,
+           updated_at = now()`,
+    values,
+  );
+
+  console.log(`[game-db] Upserted ${toUpsert.length} delegation(s)`);
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard queries (PRC-6)
+// ---------------------------------------------------------------------------
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+export interface LeaderboardParams {
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  address: string;
+  score: number;
+}
+
+export interface LeaderboardResult {
+  channel: string;
+  startDate: string;
+  endDate: string;
+  totalPlayers: number;
+  totalScore: number;
+  entries: LeaderboardEntry[];
+}
+
+export async function getLeaderboard(
+  db: any,
+  params: LeaderboardParams,
+): Promise<LeaderboardResult> {
+  const now = new Date();
+  const endDate = params.endDate ?? now.toISOString();
+  const startDate = params.startDate ?? new Date(now.getTime() - ONE_YEAR_MS).toISOString();
+  const limit = Math.min(params.limit ?? 50, 1000);
+  const offset = params.offset ?? 0;
+
+  const { rows } = await db.query(
+    `SELECT
+       COALESCE(d.to_address, r.player_id)              AS address,
+       COUNT(*)::int                                    AS score,
+       RANK() OVER (ORDER BY COUNT(*) DESC)::int        AS rank
+     FROM d2d_battle_results r
+     LEFT JOIN d2d_delegations d ON r.player_id = d.from_address
+     WHERE r.won = TRUE
+       AND r.ended_at >= $1
+       AND r.ended_at <= $2
+     GROUP BY COALESCE(d.to_address, r.player_id)
+     ORDER BY score DESC
+     LIMIT $3 OFFSET $4`,
+    [startDate, endDate, limit, offset],
+  ) as { rows: Array<{ address: string; score: number; rank: number }> };
+
+  const entries: LeaderboardEntry[] = rows.map((r: any) => ({
+    rank: Number(r.rank),
+    address: r.address,
+    score: Number(r.score),
+  }));
+
+  const totalScore = entries.reduce((sum, e) => sum + e.score, 0);
+
+  return {
+    channel: "leaderboard",
+    startDate,
+    endDate,
+    totalPlayers: entries.length,
+    totalScore,
+    entries,
+  };
+}
+
+export interface UserChannelStats {
+  score: number;
+  rank: number;
+  matchesPlayed: number;
+}
+
+export async function getUserLeaderboardStats(
+  db: any,
+  address: string,
+  startDate: string,
+  endDate: string,
+): Promise<UserChannelStats | null> {
+  const { rows } = await db.query(
+    `WITH delegated_keys AS (
+       SELECT from_address FROM d2d_delegations WHERE to_address = $3
+       UNION ALL
+       SELECT $3
+     ),
+     ranked AS (
+       SELECT
+         COALESCE(d.to_address, r.player_id)              AS address,
+         COUNT(*)::int                                    AS score,
+         RANK() OVER (ORDER BY COUNT(*) DESC)::int        AS rank
+       FROM d2d_battle_results r
+       LEFT JOIN d2d_delegations d ON r.player_id = d.from_address
+       WHERE r.won = TRUE
+         AND r.ended_at >= $1
+         AND r.ended_at <= $2
+       GROUP BY COALESCE(d.to_address, r.player_id)
+     )
+     SELECT
+       r.score,
+       r.rank,
+       (SELECT COUNT(*)::int FROM d2d_battle_results br
+        WHERE br.player_id IN (SELECT from_address FROM delegated_keys)
+          AND br.ended_at >= $1 AND br.ended_at <= $2) AS matches_played
+     FROM ranked r
+     WHERE r.address = $3`,
+    [startDate, endDate, address],
+  ) as { rows: Array<{ score: number; rank: number; matches_played: number }> };
+
+  if (rows.length === 0) return null;
+
+  return {
+    score: Number(rows[0].score),
+    rank: Number(rows[0].rank),
+    matchesPlayed: Number(rows[0].matches_played),
+  };
+}
+
+export interface UserIdentity {
+  address: string;
+  delegatedFrom: string[];
+}
+
+export async function resolveUserIdentity(
+  db: any,
+  address: string,
+): Promise<UserIdentity> {
+  // Check if this address has delegated to another
+  const { rows: asDelegator } = await db.query(
+    `SELECT to_address FROM d2d_delegations WHERE from_address = $1`,
+    [address],
+  ) as { rows: Array<{ to_address: string }> };
+
+  // Check if this address is one that others delegate to
+  const { rows: asDelegatee } = await db.query(
+    `SELECT from_address FROM d2d_delegations WHERE to_address = $1`,
+    [address],
+  ) as { rows: Array<{ from_address: string }> };
+
+  return {
+    address: asDelegator.length > 0 ? asDelegator[0].to_address : address,
+    delegatedFrom: asDelegatee.map((r: any) => r.from_address),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Achievement queries
+// ---------------------------------------------------------------------------
+
+export async function getAllAchievements(db: any): Promise<any[]> {
+  const { rows } = await db.query(
+    `SELECT name, display_name, description, category, is_active FROM d2d_achievements ORDER BY name`,
+  );
+  return rows;
+}
+
+export async function getUserAchievements(db: any, address: string): Promise<string[]> {
+  // Resolve through delegations: find all game keys that delegate to this address
+  const { rows } = await db.query(
+    `SELECT DISTINCT pa.achievement
+     FROM d2d_player_achievements pa
+     WHERE pa.player_id = $1
+        OR pa.player_id IN (SELECT from_address FROM d2d_delegations WHERE to_address = $1)
+     ORDER BY pa.achievement`,
+    [address],
+  );
+  return rows.map((r: any) => r.achievement);
 }

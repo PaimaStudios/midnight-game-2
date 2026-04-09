@@ -9,7 +9,7 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getContentDefinitions, configToEnemyStats, makeEnemiesConfig } from './register.js';
+import { getContentDefinitions, configToEnemyStats, makeEnemiesConfig, getQuestDurationSec, BIOME_ID } from './register.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,7 +41,17 @@ function toSerializable(obj: unknown): unknown {
   return obj;
 }
 
-const output = { levels: resolvedLevels, enemyConfigs: resolvedEnemyConfigs };
+// Generate quest durations for all biome/difficulty combinations
+const biomes = minimalOnly ? [BIOME_ID.grasslands] : Object.values(BIOME_ID);
+const difficulties = minimalOnly ? [1] : [1, 2, 3];
+const questDurations = biomes.flatMap(biome =>
+  difficulties.map(diff => ({
+    level: { biome, difficulty: diff },
+    durationSec: getQuestDurationSec(biome, diff),
+  }))
+);
+
+const output = { levels: resolvedLevels, enemyConfigs: resolvedEnemyConfigs, questDurations };
 
 const outDir = join(__dirname, '..', 'dist');
 mkdirSync(outDir, { recursive: true });

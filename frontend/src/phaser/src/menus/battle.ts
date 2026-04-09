@@ -6,8 +6,8 @@ import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { BattleConfig, pureCircuits, BOSS_TYPE, BattleRewards } from "game2-contract";
 import { Subscription } from "rxjs";
 import { AbilityWidget, SpiritWidget } from "../widgets/ability";
-import { Loader } from "./loader";
 import { NetworkError } from "./network-error";
+import { txSpinner } from "../tx-spinner";
 import { addScaledImage } from "../utils/scaleImage";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { BattleLayout } from "../battle/BattleLayout";
@@ -69,7 +69,6 @@ export class ActiveBattle extends Phaser.Scene {
     }
 
     create() {
-        const loader = this.scene.get('Loader') as Loader;
         logger.combat.debug('ActiveBattle.create() called');
 
         // Stop menu music when entering battle
@@ -228,21 +227,17 @@ export class ActiveBattle extends Phaser.Scene {
     private async runCombat() {
         const id = pureCircuits.derive_battle_id(this.battle);
         const clonedState = structuredClone(this.state!);
-        let loaderStarted = false;
+        txSpinner.show("Generating Proof");
         
         const retryCombatRound = async (): Promise<BattleRewards | undefined> => {
             try {
                 const targets = this.spiritManager.getTargets().map(t => BigInt(t!)) as [bigint, bigint, bigint];
                 const result = await this.api.combat_round(id, targets);
-                if (loaderStarted) {
-                    this.scene.resume().stop('Loader');
-                }
+                txSpinner.hide();
                 logger.gameState.debug(`combat_round = ${result != undefined ? safeJSONString(result) : 'undefined'}`);
                 return result;
             } catch (err) {
-                if (loaderStarted) {
-                    this.scene.stop('Loader');
-                }
+                txSpinner.hide();
                 logger.network.error(`Network Error during combat_round: ${err}`);
 
                 // Show network error overlay
@@ -256,12 +251,7 @@ export class ActiveBattle extends Phaser.Scene {
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 this.scene.stop('NetworkError');
 
-                if (!loaderStarted) {
-                    this.scene.pause().launch('Loader');
-                    const loader = this.scene.get('Loader') as Loader;
-                    loader.setText("Retrying...");
-                    loaderStarted = true;
-                }
+                txSpinner.show("Retrying...");
 
                 return retryCombatRound();
             }

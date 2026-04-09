@@ -1,5 +1,6 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BIOME_ID, biomeToName, biomeToBackground } from "../battle/biome";
+import { getQuestDurationSec } from "game-content";
 import { Subscription } from "rxjs";
 import { Button } from "../widgets/button";
 import { GAME_HEIGHT, GAME_WIDTH, fontStyle } from "../main";
@@ -105,7 +106,10 @@ export class LevelSelectMenu extends Phaser.Scene {
         // Create buttons with the unlock states
         for (let level = 1; level <= maxLevels; level++) {
             const isUnlocked = unlockedStates[level];
-            const levelName = this.getLevelName(level);
+            const baseLevelName = this.getLevelName(level);
+            const levelName = this.isQuest
+                ? `${baseLevelName} (${getQuestDurationSec(this.biome, level) / 60}m)`
+                : baseLevelName;
 
             const button = new Button(
                 this,

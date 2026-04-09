@@ -73,6 +73,8 @@ export type Game2DerivedState = {
   bosses: Map<bigint, Map<bigint, EnemiesConfig>>;
   // biome -> difficulty -> boolean (true if boss completed)
   playerBossProgress: Map<bigint, Map<bigint, boolean>>;
-  // quest duration in seconds (0 means default 1200)
-  questDuration: bigint;
+  // quest durations in seconds per level: biome -> difficulty -> seconds (missing means default 1200)
+  questDurations: Map<bigint, Map<bigint, bigint>>;
+  /** Current player's delegated wallet address, or null if not delegated. */
+  myDelegatedAddress: bigint | null;
 }

@@ -166,6 +166,7 @@ const initializeProviders = async (): Promise<Game2Providers> => {
       const txHash = await BatcherClient.delegatedBalanceHook(tx);
       pendingTxHash = txHash;
       console.log(`[wallet:balanceTx] batcher confirmed txHash=${txHash}`);
+      window.dispatchEvent(new CustomEvent('d2d-tx-submitted', { detail: { txHash } }));
       return tx as unknown as FinalizedTransaction;
     },
   };

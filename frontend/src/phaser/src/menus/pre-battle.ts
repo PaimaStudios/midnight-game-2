@@ -3,14 +3,14 @@
  */
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { Ability, BattleConfig, PlayerLoadout, pureCircuits } from "game2-contract";
-import { AbilityWidget, SpiritWidget } from "../widgets/ability";
+import { AbilityWidget, describeAbility, SpiritWidget } from "../widgets/ability";
 import { Button } from "../widgets/button";
-import { GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
+import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger } from "../main";
 import { QuestsMenu } from "./quests";
 import { ActiveBattle } from "./battle";
 import { Subscription } from "rxjs";
-import { Loader } from "./loader";
 import { NetworkError } from "./network-error";
+import { txSpinner } from "../tx-spinner";
 import { Color, colorToNumber } from "../constants/colors";
 import { ScrollablePanel } from "../widgets/scrollable";
 import { addScaledImage } from "../utils/scaleImage";
@@ -18,6 +18,7 @@ import { tweenDownAlpha, tweenUpAlpha } from "../utils/tweens";
 import { BIOME_ID, biomeToBackground } from "../battle/biome";
 import { TOP_BAR_OFFSET, TOP_BAR_WIDTH, TopBar } from "../widgets/top-bar";
 import { LevelSelectMenu } from "./level-select";
+import { ConfirmOverlay } from "../widgets/confirm-overlay";
 
 const MAX_ABILITIES = 7; // Maximum number of abilities a player can select for a battle
 
@@ -43,7 +44,6 @@ export class StartBattleMenu extends Phaser.Scene {
     isQuest: boolean;
     biome: BIOME_ID;
     difficulty: number;
-    loader: Loader | undefined;
     spiritPreviews: (SpiritWidget | null)[];
     summoningTablets: Phaser.GameObjects.Image[];
     activeAbilityPanel: ScrollablePanel | undefined;
@@ -80,6 +80,34 @@ export class StartBattleMenu extends Phaser.Scene {
 
         this.activeAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.46, GAME_WIDTH*0.96, 128, false);
         this.inactiveAbilityPanel = new ScrollablePanel(this, GAME_WIDTH/2, GAME_HEIGHT * 0.805, GAME_WIDTH*0.96, 128);
+
+        // Shared tooltip for ability cards
+        const tooltipText = this.add.text(0, 0, '', fontStyle(10, { wordWrap: { width: GAME_WIDTH * 0.6 } }))
+            .setAlpha(0).setVisible(false).setOrigin(0.5, 1).setDepth(1000);
+        let tooltipTween: Phaser.Tweens.Tween | null = null;
+        const showTooltip = (child: Phaser.GameObjects.GameObject) => {
+            const text = child.getData('tooltipText');
+            if (!text) return;
+            tooltipText.setText(text).setVisible(true);
+            tooltipTween?.destroy();
+            tooltipTween = this.tweens.add({ targets: tooltipText, alpha: 1, delay: 400, duration: 600 });
+        };
+        const hideTooltip = () => {
+            tooltipText.setVisible(false).setAlpha(0);
+            tooltipTween?.destroy();
+            tooltipTween = null;
+        };
+        this.events.on('preupdate', () => {
+            if (tooltipText.visible) {
+                const mx = this.input.activePointer.worldX;
+                const my = this.input.activePointer.worldY;
+                tooltipText.setPosition(
+                    Phaser.Math.Clamp(mx, tooltipText.width / 2 + 8, GAME_WIDTH - tooltipText.width / 2 - 8),
+                    Math.max(my - 16, tooltipText.height + 8)
+                );
+            }
+        });
+
         const onMovedChild = (panel: ScrollablePanel, child: Phaser.GameObjects.GameObject) => {
             // Determine which abilities are selected
             const activeAbilities = this.getOrderedActiveAbilities();
@@ -102,6 +130,8 @@ export class StartBattleMenu extends Phaser.Scene {
                 logger.ui.info('Double-click from active panel');
                 this.transferAbilityBetweenPanels(child as Phaser.GameObjects.Container);
             },
+            onHover: showTooltip,
+            onHoverOut: hideTooltip,
             maxElements: MAX_ABILITIES
         });
         this.inactiveAbilityPanel.enableDraggable({
@@ -113,6 +143,8 @@ export class StartBattleMenu extends Phaser.Scene {
                 logger.ui.info('Double-click from inactive panel');
                 this.transferAbilityBetweenPanels(child as Phaser.GameObjects.Container);
             },
+            onHover: showTooltip,
+            onHoverOut: hideTooltip,
         });
 
         const abilities = sortedAbilities(this.state);
@@ -122,6 +154,8 @@ export class StartBattleMenu extends Phaser.Scene {
             const abilityWidget = new AbilityWidget(this, 0, 2, ability);
             const abilityContainer = this.add.container(0, 0).setSize(abilityWidget.width, abilityWidget.height);
             abilityContainer.add(abilityWidget);
+
+            abilityContainer.setData('tooltipText', describeAbility(ability));
 
             // Add new child to scrollable panel
             this.inactiveAbilityPanel.addChild(abilityContainer);
@@ -165,46 +199,52 @@ export class StartBattleMenu extends Phaser.Scene {
             }, 'Back to Level Select');
         this.loadLastButton = new Button(this, topBarOffset + remainingWidth * (2.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Use Last', buttonFontSize, () => {
             this.loadCurrentLoadout(LAST_LOADOUT_KEY);
-        });
+        }, 'Load your most recent spirit loadout');
         new Button(this, topBarOffset + remainingWidth * (7.25 / 24), topButtonY, buttonWidth, buttonHeight, 'Clear', buttonFontSize, () => {
             this.clearSelectedAbilities();
-        });
+        }, 'Remove all spirits from the deck');
 
         this.startButton = new Button(this, topBarOffset + remainingWidth * (12 / 24), topButtonY, buttonWidth, buttonHeight, 'Start', buttonFontSize, () => {
             if (this.loadout.abilities.length == MAX_ABILITIES) {
                 this.saveCurrentLoadout(LAST_LOADOUT_KEY);
                 const level = { biome: BigInt(this.biome), difficulty: BigInt(this.difficulty) };
                 if (this.isQuest) {
-                    this.scene.pause().launch('Loader');
-                    this.loader = this.scene.get('Loader') as Loader;
-                    this.loader.setText("Submitting Proof");
-                    this.api.start_new_quest(this.loadout, level).then((questId) => {
-                        this.scene.resume().stop('Loader');
-                        this.scene.remove('QuestsMenu');
-                        this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
-                        this.scene.start('QuestsMenu');
-                    });
+                    const levelDuration = this.state.questDurations.get(BigInt(this.biome))?.get(BigInt(this.difficulty)) ?? 1200n;
+                    const durationMin = Math.ceil(Number(levelDuration > 0n ? levelDuration : 1200n) / 60);
+                    new ConfirmOverlay(
+                        this,
+                        `These spirits will be locked for ${durationMin} minutes.\nYou can continue playing - but these spirits\nwill not be usable until the time passes\nand you face the boss.`,
+                        () => {
+                            txSpinner.show("Generating Proof");
+                            this.input.enabled = false;
+                            this.api.start_new_quest(this.loadout, level).then((questId) => {
+                                txSpinner.hide();
+                                this.input.enabled = true;
+                                this.scene.remove('QuestsMenu');
+                                this.scene.add('QuestsMenu', new QuestsMenu(this.api!, this.state));
+                                this.scene.start('QuestsMenu');
+                            });
+                        },
+                        () => {} // cancel - do nothing
+                    );
                 } else {
                     // Start a new battle
                     logger.gameState.info(`starting new battle...`);
-                    // Launch the loader scene to display during the API call
-                    this.scene.pause().launch('Loader');
-                    this.loader = this.scene.get('Loader') as Loader;
-                    this.loader.setText("Submitting Proof");
+                    txSpinner.show("Generating Proof");
+                    this.input.enabled = false;
                     this.stateChangeEvent = this.events.on('stateChange', (state: Game2DerivedState) => {
                         this.state = state;
                         this.waitingOnState = false;
                         this.tryStartBattle();
                     });
                     this.api.start_new_battle(this.loadout, level).then((battle) => {
-                        if (this.loader) {
-                            this.loader.setText("Waiting on chain update");
-                        }
+                        txSpinner.show("Waiting Transaction");
                         this.battleConfig = battle;
                         this.tryStartBattle();
                     }).catch((e) => {
                         logger.network.error(`Error starting battle: ${e}`);
-                        this.scene.resume().stop('Loader');
+                        txSpinner.hide();
+                        this.input.enabled = true;
 
                         // Show network error overlay
                         if (!this.scene.get('NetworkError')) {
@@ -218,21 +258,22 @@ export class StartBattleMenu extends Phaser.Scene {
             } else {
                 logger.ui.warn(`finish selecting abilities (selected ${this.loadout.abilities.length}, need 7)`);
             }
-        }).setEnabled(false);
+        }, 'Begin the battle (requires 7 spirits)').setEnabled(false);
 
         this.loadButton = new Button(this, topBarOffset + remainingWidth * (16.75 / 24), topButtonY, buttonWidth, buttonHeight, 'Load', buttonFontSize, () => {
             this.loadCurrentLoadout(SAVED_CONFIG_KEY);
-        });
+        }, 'Load a saved spirit loadout');
         new Button(this, topBarOffset + remainingWidth * (21.5 / 24), topButtonY, buttonWidth, buttonHeight, 'Save', buttonFontSize, () => {
             this.saveCurrentLoadout(SAVED_CONFIG_KEY);
-        });
+        }, 'Save this loadout for later');
         this.enableLoadButtons();
     }
 
     private tryStartBattle() {
         if (this.battleConfig != undefined && !this.waitingOnState) {
             logger.combat.debug('stateChange event fired, creating ActiveBattle');
-            this.scene.stop('Loader');
+            txSpinner.hide();
+            this.input.enabled = true;
             // Clean up shared dungeon scene when entering battle
             if (this.scene.get('DungeonScene')) {
                 this.scene.stop('DungeonScene');

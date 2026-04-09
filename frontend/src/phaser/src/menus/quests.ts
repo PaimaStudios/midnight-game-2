@@ -33,7 +33,16 @@ export class QuestsMenu extends Phaser.Scene {
     }
 
     private questStr(quest: QuestConfig): string {
-        return `Quest in ${biomeToName(Number(quest.level.biome))} - ${quest.level.difficulty}`;
+        const levelDuration = this.state.questDurations.get(quest.level.biome)?.get(quest.level.difficulty) ?? 1200n;
+        const durationSec = Number(levelDuration > 0n ? levelDuration : 1200n);
+        const elapsedSec = Math.floor(Date.now() / 1000) - Number(quest.start_time);
+        const remainingSec = Math.max(0, durationSec - elapsedSec);
+        if (remainingSec <= 0) {
+            return `${biomeToName(Number(quest.level.biome))} ${quest.level.difficulty} - Ready!`;
+        }
+        const minutes = Math.floor(remainingSec / 60);
+        const seconds = remainingSec % 60;
+        return `${biomeToName(Number(quest.level.biome))} ${quest.level.difficulty} - ${minutes}m ${seconds}s`;
     }
 
     onStateChange(state: Game2DerivedState) {
@@ -80,15 +89,16 @@ export class QuestsMenu extends Phaser.Scene {
             GAME_HEIGHT * 0.15, 
             320, 
             64, 
-            canStartNewQuest ? 'New Quest' : `Quest Limit (${activeQuestCount}/${this.MAX_ACTIVE_QUESTS})`, 
-            14, 
+            canStartNewQuest ? 'New Quest' : `Quest Limit (${activeQuestCount}/${this.MAX_ACTIVE_QUESTS})`,
+            14,
             () => {
                 if (canStartNewQuest) {
                     this.scene.remove('BiomeSelectMenu');
                     this.scene.add('BiomeSelectMenu', new BiomeSelectMenu(this.api, true, this.state));
                     this.scene.start('BiomeSelectMenu');
                 }
-            }
+            },
+            'Choose a biome and spirits, then wait for the boss to appear'
         );
         
         if (!canStartNewQuest) {
@@ -102,18 +112,19 @@ export class QuestsMenu extends Phaser.Scene {
         for (const [id, quest] of this.state.quests) {
             logger.gameState.debug(`displaying quest: ${id}`);
             const questButton = new Button(
-                this, 
-                GAME_WIDTH / 2, 
-                GAME_HEIGHT * 0.333 + 80 * offset, 
-                480, 
-                72, 
-                this.questStr(quest), 
-                10, 
+                this,
+                GAME_WIDTH / 2,
+                GAME_HEIGHT * 0.333 + 80 * offset,
+                480,
+                72,
+                this.questStr(quest),
+                10,
                 () => {
                     this.scene.remove('QuestMenu');
                     this.scene.add('QuestMenu', new QuestMenu(this.api, id, this.state));
                     this.scene.start('QuestMenu');
-                }
+                },
+                'View quest status and fight boss when ready'
             );
             this.buttons.push(questButton);
             offset += 1;

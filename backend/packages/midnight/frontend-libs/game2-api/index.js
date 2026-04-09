@@ -298,8 +298,8 @@ export class Game2API {
             },
         });
     }
-    async admin_set_quest_duration(duration) {
-        const txData = await this.deployedContract.callTx.admin_set_quest_duration(duration);
+    async admin_set_quest_duration(level, duration) {
+        const txData = await this.deployedContract.callTx.admin_set_quest_duration(level, duration);
         this.logger?.trace({
             transactionAdded: {
                 circuit: 'admin_set_quest_duration',
