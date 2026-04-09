@@ -27,7 +27,7 @@ import {
 } from 'game2-contract';
 import * as utils from './utils/index.js';
 import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { combineLatest, map, tap, from, type Observable, shareReplay } from 'rxjs';
+import { combineLatest, map, tap, from, firstValueFrom, type Observable, shareReplay } from 'rxjs';
 import { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 
 /** @internal */
@@ -281,6 +281,7 @@ export class Game2API implements DeployedGame2API {
                     levels: extractLevelsFromLedgerState(),
                     bosses: extractBossesFromLedgerState(),
                     playerBossProgress: extractPlayerBossProgressFromLedgerState(),
+                    questDuration: ledgerState.quest_duration,
                 };
                 return newState;
             },
@@ -369,17 +370,12 @@ export class Game2API implements DeployedGame2API {
     }
 
     async is_quest_ready(quest_id: bigint): Promise<boolean> {
-        const txData = await this.deployedContract.callTx.is_quest_ready(quest_id);
-
-        this.logger?.trace({
-            transactionAdded: {
-                circuit: 'is_quest_ready',
-                txHash: txData.public.txHash,
-                blockHeight: txData.public.blockHeight,
-            },
-        });
-
-        return txData.private.result;
+        const state = await firstValueFrom(this.state$);
+        const quest = state.quests.get(quest_id);
+        if (!quest) return false;
+        const duration = state.questDuration > 0n ? state.questDuration : 1200n;
+        const nowSec = BigInt(Math.floor(Date.now() / 1000));
+        return nowSec >= quest.start_time + duration;
     }
 
     async finalize_quest(quest_id: bigint): Promise<bigint | undefined> {

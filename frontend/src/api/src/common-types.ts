@@ -73,4 +73,6 @@ export type Game2DerivedState = {
   bosses: Map<bigint, Map<bigint, EnemiesConfig>>;
   // biome -> difficulty -> boolean (true if boss completed)
   playerBossProgress: Map<bigint, Map<bigint, boolean>>;
+  // quest duration in seconds (0 means default 1200)
+  questDuration: bigint;
 }

@@ -23,8 +23,6 @@ export class MockGame2API implements DeployedGame2API {
     readonly state$: Observable<Game2DerivedState>;
     private stateSubject: BehaviorSubject<Game2DerivedState>;
     mockState: Game2DerivedState;
-    // Mock quest duration in milliseconds (5 seconds for fast dev iteration)
-    static readonly MOCK_QUEST_DURATION_MS = 5000;
 
     constructor() {
         this.deployedContractAddress = OFFLINE_PRACTICE_CONTRACT_ADDR;
@@ -46,6 +44,7 @@ export class MockGame2API implements DeployedGame2API {
             levels: new Map(),
             bosses: new Map(),
             playerBossProgress: new Map(),
+            questDuration: 5n, // 5 seconds for fast dev iteration
         };
 
         // Use BehaviorSubject to ensure new subscribers immediately get current state
@@ -182,8 +181,9 @@ export class MockGame2API implements DeployedGame2API {
     private isQuestReady(quest_id: bigint): boolean {
         const quest = this.mockState.quests.get(quest_id);
         if (!quest) return false;
-        const elapsedMs = Date.now() - Number(quest.start_time) * 1000;
-        return elapsedMs >= MockGame2API.MOCK_QUEST_DURATION_MS;
+        const duration = this.mockState.questDuration > 0n ? this.mockState.questDuration : 1200n;
+        const nowSec = BigInt(Math.floor(Date.now() / 1000));
+        return nowSec >= quest.start_time + duration;
     }
 
     public is_quest_ready(quest_id: bigint): Promise<boolean> {
@@ -276,8 +276,9 @@ export class MockGame2API implements DeployedGame2API {
         }, 5);
     }
 
-    public async admin_set_quest_duration(_duration: bigint): Promise<void> {
-        // No-op in mock — quest timing uses MOCK_QUEST_DURATION_MS
+    public async admin_set_quest_duration(duration: bigint): Promise<void> {
+        this.mockState.questDuration = duration;
+        this.stateSubject.next(this.mockState);
     }
 
     // not a part of the regular api - just here for testing

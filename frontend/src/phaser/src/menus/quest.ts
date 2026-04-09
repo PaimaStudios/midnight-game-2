@@ -201,35 +201,26 @@ export class QuestMenu extends Phaser.Scene {
         }
 
         // Check if quest timer has elapsed
-        this.api.is_quest_ready(this.questId).then((ready) => {
-            // Check again before updating UI in case scene was stopped
-            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
+        // Check quest readiness client-side using state data
+        const questDurationSec = Number(state.questDuration > 0n ? state.questDuration : 1200n);
+        const elapsedSec = Math.floor(Date.now() / 1000) - Number(quest.start_time);
+        const ready = elapsedSec >= questDurationSec;
 
-            // Hide loader once we have the result
-            this.scene.resume().stop('Loader');
+        // Hide loader once we have the result
+        this.scene.resume().stop('Loader');
 
-            if (ready) {
-                this.statusText!.setText('Quest completed! Ready to fight the boss.');
-                this.initiateButton!.setEnabled(true);
-                this.initiateButton!.setAlpha(1.0);
-            } else {
-                const elapsedSec = Math.floor(Date.now() / 1000) - Number(quest.start_time);
-                const questDurationSec = 1200; // 20 minutes default
-                const remainingSec = Math.max(0, questDurationSec - elapsedSec);
-                const minutes = Math.floor(remainingSec / 60);
-                const seconds = remainingSec % 60;
-                this.statusText!.setText(`Quest in progress... ${minutes}m ${seconds}s remaining`);
-                this.initiateButton!.setEnabled(false);
-                this.initiateButton!.setAlpha(0.5);
-            }
-        }).catch((err) => {
-            logger.network.error(`Error checking quest readiness: ${err}`);
-            if (!this.statusText || !this.initiateButton || !this.scene.isVisible('QuestMenu')) return;
-            this.scene.resume().stop('Loader');
-            this.statusText!.setText('Checking quest status...');
+        if (ready) {
+            this.statusText!.setText('Quest completed! Ready to fight the boss.');
+            this.initiateButton!.setEnabled(true);
+            this.initiateButton!.setAlpha(1.0);
+        } else {
+            const remainingSec = Math.max(0, questDurationSec - elapsedSec);
+            const minutes = Math.floor(remainingSec / 60);
+            const seconds = remainingSec % 60;
+            this.statusText!.setText(`Quest in progress... ${minutes}m ${seconds}s remaining`);
             this.initiateButton!.setEnabled(false);
             this.initiateButton!.setAlpha(0.5);
-        });
+        }
     }
 
     private startBossBattle() {
