@@ -231,6 +231,14 @@ export async function ensureTables(db: any): Promise<void> {
       abilities_sold      INTEGER NOT NULL DEFAULT 0,
       boss_win_streak     INTEGER NOT NULL DEFAULT 0,
       total_damage_dealt  BIGINT NOT NULL DEFAULT 0,
+      phys_sold           INTEGER NOT NULL DEFAULT 0,
+      fire_sold           INTEGER NOT NULL DEFAULT 0,
+      ice_sold            INTEGER NOT NULL DEFAULT 0,
+      block_sold          INTEGER NOT NULL DEFAULT 0,
+      phys_upgraded       INTEGER NOT NULL DEFAULT 0,
+      fire_upgraded       INTEGER NOT NULL DEFAULT 0,
+      ice_upgraded        INTEGER NOT NULL DEFAULT 0,
+      block_upgraded      INTEGER NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -416,21 +424,29 @@ async function trackAbilityUpgrades(db: any, allAbilities: Record<string, any>, 
   if (previousAbilityIds !== null) {
     const newIds = [...currentIds].filter((id) => !previousAbilityIds!.has(id));
     if (newIds.length > 0) {
-      // New abilities appeared — likely from upgrades or reward generation
-      // Attribute to the single player if possible
       const playerIds = Object.keys(players);
       if (playerIds.length === 1) {
         const playerId = playerIds[0];
+        // Categorize new abilities by effect type
+        const upgByType = [0, 0, 0, 0]; // phys, fire, ice, block
+        for (const id of newIds) {
+          const ability = parseAbility(toBigInt(allAbilities[id]));
+          if (ability.hasEffect) upgByType[ability.effectType]++;
+        }
         const { rows } = await db.query(
-          `INSERT INTO d2d_player_stats (player_id, abilities_upgraded)
-           VALUES ($1, $2)
+          `INSERT INTO d2d_player_stats (player_id, abilities_upgraded, phys_upgraded, fire_upgraded, ice_upgraded, block_upgraded)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (player_id) DO UPDATE
              SET abilities_upgraded = d2d_player_stats.abilities_upgraded + $2,
+                 phys_upgraded = d2d_player_stats.phys_upgraded + $3,
+                 fire_upgraded = d2d_player_stats.fire_upgraded + $4,
+                 ice_upgraded = d2d_player_stats.ice_upgraded + $5,
+                 block_upgraded = d2d_player_stats.block_upgraded + $6,
                  updated_at = now()
-           RETURNING abilities_upgraded`,
-          [playerId, newIds.length],
-        ) as { rows: Array<{ abilities_upgraded: number }> };
-        await checkUpgradeAchievements(db, playerId, rows[0].abilities_upgraded);
+           RETURNING abilities_upgraded, phys_upgraded, fire_upgraded, ice_upgraded, block_upgraded`,
+          [playerId, newIds.length, upgByType[0], upgByType[1], upgByType[2], upgByType[3]],
+        ) as { rows: Array<{ abilities_upgraded: number; phys_upgraded: number; fire_upgraded: number; ice_upgraded: number; block_upgraded: number }> };
+        await checkUpgradeAchievements(db, playerId, rows[0]);
       }
     }
   }
@@ -589,34 +605,43 @@ async function syncPlayerAbilities(
     }
   }
 
-  // Track ability sells: abilities whose quantity decreased (and weren't bulk-removed by battle start)
-  // Heuristic: individual quantity decreases of 1-2 are sells/upgrades
+  // Track ability sells by type: abilities whose quantity decreased
   for (const playerId of playerIds) {
     let soldCount = 0;
+    const soldByType = [0, 0, 0, 0]; // phys, fire, ice, block
     for (const known of knownRows.filter((r: any) => r.player_id === playerId)) {
       const currentEntry = entries.find((e) => e.playerId === playerId && e.abilityId === known.ability_id);
       const currentQty = currentEntry?.quantity ?? 0;
       const oldQty = Number(known.quantity);
       if (currentQty < oldQty) {
-        soldCount += oldQty - currentQty;
+        const delta = oldQty - currentQty;
+        soldCount += delta;
+        const ability = parsedAbilities.get(known.ability_id);
+        if (ability?.hasEffect) soldByType[ability.effectType] += delta;
       }
     }
-    // Also count fully removed abilities
     const removedForPlayer = toDelete.filter((r: any) => r.player_id === playerId);
     for (const removed of removedForPlayer) {
-      soldCount += Number(removed.quantity);
+      const qty = Number(removed.quantity);
+      soldCount += qty;
+      const ability = parsedAbilities.get(removed.ability_id);
+      if (ability?.hasEffect) soldByType[ability.effectType] += qty;
     }
     if (soldCount > 0) {
       const { rows } = await db.query(
-        `INSERT INTO d2d_player_stats (player_id, abilities_sold)
-         VALUES ($1, $2)
+        `INSERT INTO d2d_player_stats (player_id, abilities_sold, phys_sold, fire_sold, ice_sold, block_sold)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (player_id) DO UPDATE
            SET abilities_sold = d2d_player_stats.abilities_sold + $2,
+               phys_sold = d2d_player_stats.phys_sold + $3,
+               fire_sold = d2d_player_stats.fire_sold + $4,
+               ice_sold = d2d_player_stats.ice_sold + $5,
+               block_sold = d2d_player_stats.block_sold + $6,
                updated_at = now()
-         RETURNING abilities_sold`,
-        [playerId, soldCount],
-      ) as { rows: Array<{ abilities_sold: number }> };
-      await checkSellAchievements(db, playerId, rows[0].abilities_sold);
+         RETURNING abilities_sold, phys_sold, fire_sold, ice_sold, block_sold`,
+        [playerId, soldCount, soldByType[0], soldByType[1], soldByType[2], soldByType[3]],
+      ) as { rows: Array<{ abilities_sold: number; phys_sold: number; fire_sold: number; ice_sold: number; block_sold: number }> };
+      await checkSellAchievements(db, playerId, rows[0]);
     }
   }
 
@@ -1519,15 +1544,23 @@ const UPGRADE_THRESHOLDS: Array<[number, string]> = [
   [25, "master_smith"],
 ];
 
-async function checkUpgradeAchievements(db: any, playerId: string, abilitiesUpgraded: number): Promise<void> {
+async function checkUpgradeAchievements(db: any, playerId: string, stats: { abilities_upgraded: number; phys_upgraded: number; fire_upgraded: number; ice_upgraded: number; block_upgraded: number }): Promise<void> {
   for (const [threshold, name] of UPGRADE_THRESHOLDS) {
-    if (abilitiesUpgraded >= threshold) await grantAchievement(db, playerId, name);
+    if (stats.abilities_upgraded >= threshold) await grantAchievement(db, playerId, name);
   }
+  if (stats.fire_upgraded >= 10) await grantAchievement(db, playerId, "pyro_forger");
+  if (stats.ice_upgraded >= 10) await grantAchievement(db, playerId, "cryo_forger");
+  if (stats.phys_upgraded >= 10) await grantAchievement(db, playerId, "weapons_forger");
+  if (stats.block_upgraded >= 10) await grantAchievement(db, playerId, "shield_forger");
 }
 
-async function checkSellAchievements(db: any, playerId: string, abilitiesSold: number): Promise<void> {
-  if (abilitiesSold >= 10) await grantAchievement(db, playerId, "merchant");
-  if (abilitiesSold >= 50) await grantAchievement(db, playerId, "spirit_trader");
+async function checkSellAchievements(db: any, playerId: string, stats: { abilities_sold: number; phys_sold: number; fire_sold: number; ice_sold: number; block_sold: number }): Promise<void> {
+  if (stats.abilities_sold >= 10) await grantAchievement(db, playerId, "merchant");
+  if (stats.abilities_sold >= 50) await grantAchievement(db, playerId, "spirit_trader");
+  if (stats.fire_sold >= 15) await grantAchievement(db, playerId, "fire_sale");
+  if (stats.ice_sold >= 15) await grantAchievement(db, playerId, "cold_surplus");
+  if (stats.phys_sold >= 15) await grantAchievement(db, playerId, "disarmed");
+  if (stats.block_sold >= 15) await grantAchievement(db, playerId, "shields_down");
 }
 
 async function checkSpiritCollectionAchievements(

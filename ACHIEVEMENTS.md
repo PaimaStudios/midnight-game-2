@@ -245,16 +245,16 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — same counter, threshold 25.
 
 ### Upgrade by Type
-- [ ] **Pyro Forger** — Upgrade 10 fire-attack spirits
+- [x] **Pyro Forger** — Upgrade 10 fire-attack spirits
   - *Requires:* `fire_upgraded >= 10`
   - *Detection:* **DB Counter** — on upgrade event (ability's `upgrade_level` increases in `map[0]` between snapshots), look up the upgraded ability's `effect_type`. If `attack_fire` (1), increment `fire_upgraded`.
-- [ ] **Cryo Forger** — Upgrade 10 ice-attack spirits
+- [x] **Cryo Forger** — Upgrade 10 ice-attack spirits
   - *Requires:* `ice_upgraded >= 10`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == attack_ice` (2). Increment `ice_upgraded`.
-- [ ] **Weapons Forger** — Upgrade 10 physical-attack spirits
+- [x] **Weapons Forger** — Upgrade 10 physical-attack spirits
   - *Requires:* `phys_upgraded >= 10`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == attack_phys` (0). Increment `phys_upgraded`.
-- [ ] **Shield Forger** — Upgrade 10 block spirits
+- [x] **Shield Forger** — Upgrade 10 block spirits
   - *Requires:* `block_upgraded >= 10`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == block` (3). Increment `block_upgraded`.
 
@@ -304,16 +304,16 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — same counter, threshold 50.
 
 ### Selling by Type
-- [ ] **Fire Sale** — Sell 15 fire-attack spirits
+- [x] **Fire Sale** — Sell 15 fire-attack spirits
   - *Requires:* `fire_sold >= 15`
   - *Detection:* **DB Counter** — on sell event (ability quantity decreases in `map[5]` + gold increases in `map[4]`), look up the sold ability in `map[0]`. If `effect_type == attack_fire` (1), increment `fire_sold`.
-- [ ] **Cold Surplus** — Sell 15 ice-attack spirits
+- [x] **Cold Surplus** — Sell 15 ice-attack spirits
   - *Requires:* `ice_sold >= 15`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == attack_ice` (2). Increment `ice_sold`.
-- [ ] **Disarmed** — Sell 15 physical-attack spirits
+- [x] **Disarmed** — Sell 15 physical-attack spirits
   - *Requires:* `phys_sold >= 15`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == attack_phys` (0). Increment `phys_sold`.
-- [ ] **Shields Down** — Sell 15 block spirits
+- [x] **Shields Down** — Sell 15 block spirits
   - *Requires:* `block_sold >= 15`
   - *Detection:* **DB Counter** — same pattern, check `effect_type == block` (3). Increment `block_sold`.
 
