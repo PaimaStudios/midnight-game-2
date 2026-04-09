@@ -991,15 +991,6 @@
 </section>
 
 <!--
-  ============================================================================
-  PLACEHOLDER ACHIEVEMENTS SECTION
-  ============================================================================
-  This is a PLACEHOLDER pulled from ACHIEVEMENTS.md.
-  Replace this entire section with the real achievement list once the
-  achievement system is implemented in the state machine and the final
-  list is confirmed.
-  ============================================================================
--->
 <section id="achievements">
   <h2>Achievements</h2>
 
@@ -1010,15 +1001,21 @@
     </p>
   </div>
 
-  <!-- QUEST ACHIEVEMENTS -->
   <div class="achievement-category">
-    <h3>Quests</h3>
+    <h3>Quest Completion</h3>
     <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/first-quest.png" alt="First Quest"></div>
         <div class="achievement-info">
           <div class="achievement-name">First Quest</div>
           <div class="achievement-desc">Complete your first quest and defeat a boss</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/novice-explorer.png" alt="Novice Explorer"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Novice Explorer</div>
+          <div class="achievement-desc">Complete 5 quests</div>
         </div>
       </div>
       <div class="achievement">
@@ -1029,23 +1026,50 @@
         </div>
       </div>
       <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/experienced-adventurer.png" alt="Experienced Adventurer"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Experienced Adventurer</div>
+          <div class="achievement-desc">Complete 15 quests</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/skilled-explorer.png" alt="Skilled Explorer"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Skilled Explorer</div>
+          <div class="achievement-desc">Complete 20 quests</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/expert-explorer.png" alt="Expert Explorer"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Expert Explorer</div>
+          <div class="achievement-desc">Complete 25 quests</div>
+        </div>
+      </div>
+      <div class="achievement">
         <div class="achievement-icon"><img src="achievements/veteran-explorer.png" alt="Veteran Explorer"></div>
         <div class="achievement-info">
           <div class="achievement-name">Veteran Explorer</div>
+          <div class="achievement-desc">Complete 30 quests</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/quest-master.png" alt="Quest Master"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Quest Master</div>
           <div class="achievement-desc">Complete 50 quests</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/multitasker.png" alt="Multitasker"></div>
+        <div class="achievement-icon"><img src="achievements/legendary-explorer.png" alt="Legendary Explorer"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Multitasker</div>
-          <div class="achievement-desc">Have 3 quests active simultaneously (max capacity)</div>
+          <div class="achievement-name">Legendary Explorer</div>
+          <div class="achievement-desc">Complete 100 quests</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- BIOME MASTERY -->
   <div class="achievement-category">
     <h3>Biome Mastery</h3>
     <div class="achievement-list">
@@ -1087,7 +1111,6 @@
     </div>
   </div>
 
-  <!-- DIFFICULTY PROGRESSION -->
   <div class="achievement-category">
     <h3>Difficulty Progression</h3>
     <div class="achievement-list">
@@ -1115,7 +1138,6 @@
     </div>
   </div>
 
-  <!-- BOSS COMBAT -->
   <div class="achievement-category">
     <h3>Boss Combat</h3>
     <div class="achievement-list">
@@ -1143,7 +1165,19 @@
     </div>
   </div>
 
-  <!-- LOSSES & RESILIENCE -->
+  <div class="achievement-category">
+    <h3>Multi-Quest</h3>
+    <div class="achievement-list">
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/multitasker.png" alt="Multitasker"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Multitasker</div>
+          <div class="achievement-desc">Have 3 quests active simultaneously (max capacity)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="achievement-category">
     <h3>Losses &amp; Resilience</h3>
     <div class="achievement-list">
@@ -1171,7 +1205,6 @@
     </div>
   </div>
 
-  <!-- BATTLE MILESTONES -->
   <div class="achievement-category">
     <h3>Battle Milestones</h3>
     <div class="achievement-list">
@@ -1206,7 +1239,6 @@
     </div>
   </div>
 
-  <!-- BATTLE FEATS -->
   <div class="achievement-category">
     <h3>Battle Feats</h3>
     <div class="achievement-list">
@@ -1241,7 +1273,6 @@
     </div>
   </div>
 
-  <!-- COMBAT TOTALS -->
   <div class="achievement-category">
     <h3>Combat Totals</h3>
     <div class="achievement-list">
@@ -1269,7 +1300,6 @@
     </div>
   </div>
 
-  <!-- SPIRIT COLLECTION -->
   <div class="achievement-category">
     <h3>Spirit Collection</h3>
     <div class="achievement-list">
@@ -1304,7 +1334,6 @@
     </div>
   </div>
 
-  <!-- DECK BUILDING -->
   <div class="achievement-category">
     <h3>Deck Building</h3>
     <div class="achievement-list">
@@ -1330,18 +1359,17 @@
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/iron-wall.png" alt="Iron Wall"></div>
+        <div class="achievement-icon"><img src="achievements/mono-physical.png" alt="Mono Physical"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Iron Wall</div>
-          <div class="achievement-desc">Win a battle with no attack spirits in your loadout (block/heal only)</div>
+          <div class="achievement-name">Mono Physical</div>
+          <div class="achievement-desc">Win a battle with only physical-attack spirits in your loadout</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- UPGRADES -->
   <div class="achievement-category">
-    <h3>Upgrades</h3>
+    <h3>Upgrade Milestones</h3>
     <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/apprentice-smith.png" alt="Apprentice Smith"></div>
@@ -1364,6 +1392,46 @@
           <div class="achievement-desc">Upgrade 25 spirits</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Upgrade by Type</h3>
+    <div class="achievement-list">
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/pyro-forger.png" alt="Pyro Forger"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Pyro Forger</div>
+          <div class="achievement-desc">Upgrade 10 fire-attack spirits</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/cryo-forger.png" alt="Cryo Forger"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Cryo Forger</div>
+          <div class="achievement-desc">Upgrade 10 ice-attack spirits</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/weapons-forger.png" alt="Weapons Forger"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Weapons Forger</div>
+          <div class="achievement-desc">Upgrade 10 physical-attack spirits</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/shield-forger.png" alt="Shield Forger"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Shield Forger</div>
+          <div class="achievement-desc">Upgrade 10 block spirits</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Upgrade Quality</h3>
+    <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/rising-star.png" alt="Rising Star"></div>
         <div class="achievement-info">
@@ -1395,9 +1463,8 @@
     </div>
   </div>
 
-  <!-- ECONOMY -->
   <div class="achievement-category">
-    <h3>Economy</h3>
+    <h3>Gold Milestones</h3>
     <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/first-coin.png" alt="First Coin"></div>
@@ -1427,6 +1494,12 @@
           <div class="achievement-desc">Earn 10000 gold total</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Spending</h3>
+    <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/big-spender.png" alt="Big Spender"></div>
         <div class="achievement-info">
@@ -1434,6 +1507,12 @@
           <div class="achievement-desc">Spend 1000 gold total</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Selling</h3>
+    <div class="achievement-list">
       <div class="achievement">
         <div class="achievement-icon"><img src="achievements/merchant.png" alt="Merchant"></div>
         <div class="achievement-info">
@@ -1451,64 +1530,109 @@
     </div>
   </div>
 
-  <!-- COMBAT MASTERY -->
   <div class="achievement-category">
-    <h3>Combat Mastery</h3>
+    <h3>Selling by Type</h3>
     <div class="achievement-list">
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/elemental-student.png" alt="Elemental Student"></div>
+        <div class="achievement-icon"><img src="achievements/fire-sale.png" alt="Fire Sale"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Elemental Student</div>
-          <div class="achievement-desc">Land 25 super-effective hits</div>
+          <div class="achievement-name">Fire Sale</div>
+          <div class="achievement-desc">Sell 15 fire-attack spirits</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/elemental-master.png" alt="Elemental Master"></div>
+        <div class="achievement-icon"><img src="achievements/cold-surplus.png" alt="Cold Surplus"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Elemental Master</div>
-          <div class="achievement-desc">Land 100 super-effective hits</div>
+          <div class="achievement-name">Cold Surplus</div>
+          <div class="achievement-desc">Sell 15 ice-attack spirits</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/wrong-element.png" alt="Wrong Element"></div>
+        <div class="achievement-icon"><img src="achievements/disarmed.png" alt="Disarmed"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Wrong Element</div>
-          <div class="achievement-desc">Hit an immune enemy (deal 0 damage)</div>
+          <div class="achievement-name">Disarmed</div>
+          <div class="achievement-desc">Sell 15 physical-attack spirits</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/spark.png" alt="Spark"></div>
+        <div class="achievement-icon"><img src="achievements/shields-down.png" alt="Shields Down"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Spark</div>
-          <div class="achievement-desc">Trigger your first energy combo</div>
-        </div>
-      </div>
-      <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/chain-reaction.png" alt="Chain Reaction"></div>
-        <div class="achievement-info">
-          <div class="achievement-name">Chain Reaction</div>
-          <div class="achievement-desc">Trigger 50 energy combos total</div>
-        </div>
-      </div>
-      <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/combo-maestro.png" alt="Combo Maestro"></div>
-        <div class="achievement-info">
-          <div class="achievement-name">Combo Maestro</div>
-          <div class="achievement-desc">Trigger 200 energy combos total</div>
+          <div class="achievement-name">Shields Down</div>
+          <div class="achievement-desc">Sell 15 block spirits</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- DAMAGE & DEFENSE -->
   <div class="achievement-category">
-    <h3>Damage &amp; Defense</h3>
+    <h3>Elemental Mastery</h3>
     <div class="achievement-list">
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/heavy-hitter.png" alt="Heavy Hitter"></div>
+        <div class="achievement-icon"><img src="achievements/balanced-fighter.png" alt="Balanced Fighter"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Heavy Hitter</div>
-          <div class="achievement-desc">Deal 100+ damage in a single hit</div>
+          <div class="achievement-name">Balanced Fighter</div>
+          <div class="achievement-desc">Win a battle with all 3 attack elements in your loadout (Physical, Fire, and Ice)</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/elemental-focus.png" alt="Elemental Focus"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Elemental Focus</div>
+          <div class="achievement-desc">Win a battle where every attack ability in your loadout shares the same element</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/full-spectrum.png" alt="Full Spectrum"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Full Spectrum</div>
+          <div class="achievement-desc">Own an upgraded (1+ star) ability of every effect type</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Energy Synergy</h3>
+    <div class="achievement-list">
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/energy-collector.png" alt="Energy Collector"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Energy Collector</div>
+          <div class="achievement-desc">Own abilities generating all 3 energy colors</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/energy-specialist.png" alt="Energy Specialist"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Energy Specialist</div>
+          <div class="achievement-desc">Own 3+ abilities that generate the same energy color</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/overcharged.png" alt="Overcharged"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Overcharged</div>
+          <div class="achievement-desc">Win a battle with 3+ loadout abilities sharing the same energy color</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Damage Output</h3>
+    <div class="achievement-list">
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/damage-dealer.png" alt="Damage Dealer"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Damage Dealer</div>
+          <div class="achievement-desc">Deal 300+ total damage to enemies in a single battle</div>
+        </div>
+      </div>
+      <div class="achievement">
+        <div class="achievement-icon"><img src="achievements/overwhelming-force.png" alt="Overwhelming Force"></div>
+        <div class="achievement-info">
+          <div class="achievement-name">Overwhelming Force</div>
+          <div class="achievement-desc">Deal 600+ total damage to enemies in a single battle</div>
         </div>
       </div>
       <div class="achievement">
@@ -1518,39 +1642,37 @@
           <div class="achievement-desc">Deal 10000 total damage across all battles</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="achievement-category">
+    <h3>Loadout Mastery</h3>
+    <div class="achievement-list">
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/shieldwall.png" alt="Shieldwall"></div>
+        <div class="achievement-icon"><img src="achievements/fortified.png" alt="Fortified"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Shieldwall</div>
-          <div class="achievement-desc">Block 5000 total damage across all battles</div>
+          <div class="achievement-name">Fortified</div>
+          <div class="achievement-desc">Win a battle with 3+ block abilities in your loadout</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/field-medic.png" alt="Field Medic"></div>
+        <div class="achievement-icon"><img src="achievements/aoe-arsenal.png" alt="AOE Arsenal"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Field Medic</div>
-          <div class="achievement-desc">Heal 2000 total HP across all battles</div>
+          <div class="achievement-name">AOE Arsenal</div>
+          <div class="achievement-desc">Own 3+ abilities with AOE effects</div>
         </div>
       </div>
       <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/area-denial.png" alt="Area Denial"></div>
+        <div class="achievement-icon"><img src="achievements/power-surge.png" alt="Power Surge"></div>
         <div class="achievement-info">
-          <div class="achievement-name">Area Denial</div>
-          <div class="achievement-desc">Use 50 AOE attacks total</div>
-        </div>
-      </div>
-      <div class="achievement">
-        <div class="achievement-icon"><img src="achievements/carpet-bomber.png" alt="Carpet Bomber"></div>
-        <div class="achievement-info">
-          <div class="achievement-name">Carpet Bomber</div>
-          <div class="achievement-desc">Use 200 AOE attacks total</div>
+          <div class="achievement-name">Power Surge</div>
+          <div class="achievement-desc">Win a battle with a fully upgraded (3-star) ability in your loadout</div>
         </div>
       </div>
     </div>
   </div>
 
 </section>
-<!-- END PLACEHOLDER ACHIEVEMENTS SECTION -->
 
 <!-- CTA -->
 <section class="cta">

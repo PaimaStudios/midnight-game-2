@@ -140,6 +140,15 @@ export async function ensureTables(db: any): Promise<void> {
     )
   `);
 
+  // Player stats (DB counters tracked via payload diffs)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_player_stats (
+      player_id           TEXT PRIMARY KEY,
+      quests_completed    INTEGER NOT NULL DEFAULT 0,
+      updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
   // Achievement definitions (populated by migration)
   await db.query(`
     CREATE TABLE IF NOT EXISTS d2d_achievements (
@@ -435,6 +444,45 @@ async function syncBossProgress(
   }
 
   if (entries.length === 0) return;
+
+  // Detect newly completed bosses (was false/missing, now true)
+  const completedEntries = entries.filter((e) => e.completed);
+  if (completedEntries.length > 0) {
+    const playerIds = [...new Set(completedEntries.map((e) => e.playerId))];
+    const { rows: existingRows } = await db.query(
+      `SELECT player_id, biome, difficulty, completed FROM d2d_boss_progress WHERE player_id = ANY($1)`,
+      [playerIds],
+    ) as { rows: Array<{ player_id: string; biome: number; difficulty: number; completed: boolean }> };
+    const existingSet = new Set(
+      existingRows.filter((r: any) => r.completed).map((r: any) => `${r.player_id}:${r.biome}:${r.difficulty}`),
+    );
+
+    // Count new completions per player
+    const newCompletions = new Map<string, number>();
+    for (const entry of completedEntries) {
+      const key = `${entry.playerId}:${entry.biome}:${entry.difficulty}`;
+      if (!existingSet.has(key)) {
+        newCompletions.set(entry.playerId, (newCompletions.get(entry.playerId) ?? 0) + 1);
+      }
+    }
+
+    // Increment quests_completed counters and check achievements
+    for (const [playerId, count] of newCompletions) {
+      const { rows } = await db.query(
+        `INSERT INTO d2d_player_stats (player_id, quests_completed)
+         VALUES ($1, $2)
+         ON CONFLICT (player_id) DO UPDATE
+           SET quests_completed = d2d_player_stats.quests_completed + $2,
+               updated_at = now()
+         RETURNING quests_completed`,
+        [playerId, count],
+      ) as { rows: Array<{ quests_completed: number }> };
+      const total = rows[0].quests_completed;
+      console.log(`[game-db] Player ${playerId.slice(0, 10)}... completed ${count} new quest(s), total: ${total}`);
+
+      await checkQuestCompletionAchievements(db, playerId, total);
+    }
+  }
 
   const placeholders = entries
     .map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`)
@@ -969,6 +1017,48 @@ export async function resolveUserIdentity(
     address: asDelegator.length > 0 ? asDelegator[0].to_address : address,
     delegatedFrom: asDelegatee.map((r: any) => r.from_address),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Achievement granting
+// ---------------------------------------------------------------------------
+
+async function grantAchievement(db: any, playerId: string, achievementName: string): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `INSERT INTO d2d_player_achievements (player_id, achievement)
+     VALUES ($1, $2)
+     ON CONFLICT (player_id, achievement) DO NOTHING`,
+    [playerId, achievementName],
+  );
+  if (rowCount > 0) {
+    console.log(`[achievements] Unlocked "${achievementName}" for ${playerId.slice(0, 10)}...`);
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Achievement checks
+// ---------------------------------------------------------------------------
+
+const QUEST_COMPLETION_THRESHOLDS: Array<[number, string]> = [
+  [1, "first_quest"],
+  [5, "novice_explorer"],
+  [10, "seasoned_adventurer"],
+  [15, "experienced_adventurer"],
+  [20, "skilled_explorer"],
+  [25, "expert_explorer"],
+  [30, "veteran_explorer"],
+  [50, "quest_master"],
+  [100, "legendary_explorer"],
+];
+
+async function checkQuestCompletionAchievements(db: any, playerId: string, questsCompleted: number): Promise<void> {
+  for (const [threshold, name] of QUEST_COMPLETION_THRESHOLDS) {
+    if (questsCompleted >= threshold) {
+      await grantAchievement(db, playerId, name);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
