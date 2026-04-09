@@ -518,9 +518,9 @@ async function syncPlayers(
   if (toUpsert.length === 0) return;
 
   const placeholders = toUpsert
-    .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`)
+    .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2}::bigint)`)
     .join(", ");
-  const values = toUpsert.flatMap((p) => [p.playerId, p.gold]);
+  const values = toUpsert.flatMap((p) => [p.playerId, String(p.gold)]);
 
   await db.query(
     `INSERT INTO d2d_players (player_id, gold)
@@ -760,7 +760,7 @@ async function syncBossProgress(
   const placeholders = entries
     .map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`)
     .join(", ");
-  const values = entries.flatMap((e) => [e.playerId, e.biome, e.difficulty, e.completed]);
+  const values = entries.flatMap((e) => [e.playerId, String(e.biome), String(e.difficulty), e.completed]);
 
   await db.query(
     `INSERT INTO d2d_boss_progress (player_id, biome, difficulty, completed)
@@ -881,8 +881,8 @@ async function syncBattles(
       })
       .join(", ");
     const values = toUpsert.flatMap((b) => [
-      b.battleId, b.playerId, b.biome, b.difficulty,
-      b.round, b.damageToPlayer, b.damageToEnemy0, b.damageToEnemy1, b.damageToEnemy2,
+      b.battleId, b.playerId, String(b.biome), String(b.difficulty),
+      String(b.round), String(b.damageToPlayer), String(b.damageToEnemy0), String(b.damageToEnemy1), String(b.damageToEnemy2),
       b.rawState, b.rawConfig,
     ]);
 
@@ -1078,7 +1078,7 @@ async function syncQuests(
       })
       .join(", ");
     const values = toUpsert.flatMap((q) => [
-      q.questId, q.playerId, q.biome, q.difficulty, q.startTime, q.rawConfig,
+      q.questId, q.playerId, String(q.biome), String(q.difficulty), String(q.startTime), q.rawConfig,
     ]);
 
     await db.query(
