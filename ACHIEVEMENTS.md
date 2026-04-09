@@ -139,18 +139,18 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — track `bosses_defeated` (boss battle wins) and `battles_retreated` (battle disappears with 0 enemy damage). Check both thresholds.
 
 ### Multi-Quest Management
-- [ ] **Multitasker** — Have 3 quests active simultaneously (max capacity)
+- [x] **Multitasker** — Have 3 quests active simultaneously (max capacity)
   - *Requires:* 3 entries in `quests` map for player
   - *Detection:* **Snapshot** `map[3]` — count entries belonging to this player (match `player_pub_key` inside packed `QuestConfig`, bits 64-319). If count >= 3, achievement unlocked.
 
 ### Losses and Resilience
-- [ ] **Fallen Hero** — Lose a boss fight (and your abilities with it)
+- [x] **Fallen Hero** — Lose a boss fight (and your abilities with it)
   - *Requires:* `quests_failed >= 1`
   - *Detection:* **DB Counter** — increment `quests_failed` when a boss battle disappears from `map[1]` and `damage_to_player` indicates player HP reached 0 (player lost).
-- [ ] **Persistence** — Lose a boss fight, then defeat the same boss later
+- [x] **Persistence** — Lose a boss fight, then defeat the same boss later
   - *Requires:* `quests_failed >= 1` AND matching `player_boss_progress` entry true
   - *Detection:* **DB Counter + Snapshot** — DB records which biome/difficulty the failed quest was for. Check `map[6]` for that same biome/difficulty being true.
-- [ ] **Tactical Retreat** — Retreat from a boss fight to save your abilities
+- [x] **Tactical Retreat** — Retreat from a boss fight to save your abilities
   - *Requires:* `battles_retreated >= 1`
   - *Detection:* **DB Counter** — increment `battles_retreated` when a battle disappears from `map[1]` with 0 total enemy damage (retreat heuristic).
 

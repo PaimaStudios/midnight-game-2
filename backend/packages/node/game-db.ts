@@ -145,9 +145,33 @@ export async function ensureTables(db: any): Promise<void> {
     CREATE TABLE IF NOT EXISTS d2d_player_stats (
       player_id           TEXT PRIMARY KEY,
       quests_completed    INTEGER NOT NULL DEFAULT 0,
+      quests_failed       INTEGER NOT NULL DEFAULT 0,
       bosses_defeated     INTEGER NOT NULL DEFAULT 0,
       battles_retreated   INTEGER NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Track pending boss fights (quest finalized → boss battle in progress)
+  // Used to detect losses and retreats when the battle resolves
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_pending_boss_fights (
+      player_id       TEXT NOT NULL,
+      biome           BIGINT NOT NULL,
+      difficulty      BIGINT NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (player_id, biome, difficulty)
+    )
+  `);
+
+  // Track failed boss fights per player (for Persistence achievement)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS d2d_boss_failures (
+      player_id       TEXT NOT NULL,
+      biome           BIGINT NOT NULL,
+      difficulty      BIGINT NOT NULL,
+      failed_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (player_id, biome, difficulty)
     )
   `);
 
@@ -686,16 +710,48 @@ async function syncBattles(
               [playerId],
             );
 
+            // Clear pending boss fight (it was won)
+            await db.query(
+              `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+              [playerId, stale.biome, stale.difficulty],
+            );
+
             // Boss combat achievements
-            await checkBossCombatAchievements(db, playerId, dmgToPlayer, round);
+            await checkBossCombatAchievements(db, playerId, dmgToPlayer, round, Number(stale.biome), Number(stale.difficulty));
 
             // Remove from lookup so each completion is only matched once
             bossCompletionsByLevel.delete(levelKey);
+          } else {
+            // No boss completion for this level — check if it was a pending boss fight that was LOST
+            const { rows: pendingRows } = await db.query(
+              `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
+              [stale.biome, stale.difficulty],
+            ) as { rows: Array<{ player_id: string }> };
+            if (pendingRows.length > 0) {
+              const playerId = pendingRows[0].player_id;
+              // Boss fight lost (damage dealt but no boss completion)
+              await checkBossLossAchievements(db, playerId, Number(stale.biome), Number(stale.difficulty));
+              await db.query(
+                `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+                [playerId, stale.biome, stale.difficulty],
+              );
+            }
           }
         } else {
-          // Battle disappeared with 0 enemy damage — retreat heuristic
-          // We can't determine player_id from battle config, so we skip
-          // retreat tracking for now (No Retreat achievement deferred)
+          // Battle disappeared with 0 enemy damage — retreat
+          // Check pending boss fights to identify the player
+          const { rows: pendingRows } = await db.query(
+            `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
+            [stale.biome, stale.difficulty],
+          ) as { rows: Array<{ player_id: string }> };
+          if (pendingRows.length > 0) {
+            const playerId = pendingRows[0].player_id;
+            await checkBossRetreatAchievements(db, playerId);
+            await db.query(
+              `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+              [playerId, stale.biome, stale.difficulty],
+            );
+          }
         }
       }
       console.log(`[game-db] Recorded ${staleBattles.length} battle result(s)`);
@@ -785,8 +841,41 @@ async function syncQuests(
       values,
     );
 
-    // Remove quests no longer on-chain
+    // Detect quests that just disappeared (finalized → boss fight started)
     const activeQuestIds = toUpsert.map((q) => q.questId);
+    const { rows: departedQuests } = await db.query(
+      `SELECT quest_id, raw_config, biome, difficulty FROM d2d_quests WHERE NOT (quest_id = ANY($1))`,
+      [activeQuestIds],
+    ) as { rows: Array<{ quest_id: string; raw_config: string; biome: number; difficulty: number }> };
+
+    if (departedQuests.length > 0) {
+      const PLAYER_KEY_MASK = (1n << 256n) - 1n;
+      for (const dq of departedQuests) {
+        // Extract player_pub_key from the stored raw_config
+        const packed = toBigInt(dq.raw_config);
+        const playerKey = ((packed >> 64n) & PLAYER_KEY_MASK).toString();
+        // Resolve to known player_id
+        const { rows: playerRows } = await db.query(
+          `SELECT player_id FROM d2d_players`,
+        ) as { rows: Array<{ player_id: string }> };
+        for (const pr of playerRows) {
+          try {
+            if (BigInt(pr.player_id) === BigInt(playerKey)) {
+              await db.query(
+                `INSERT INTO d2d_pending_boss_fights (player_id, biome, difficulty)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (player_id, biome, difficulty) DO NOTHING`,
+                [pr.player_id, dq.biome, dq.difficulty],
+              );
+              console.log(`[game-db] Pending boss fight for ${pr.player_id.slice(0, 10)}... biome=${dq.biome} diff=${dq.difficulty}`);
+              break;
+            }
+          } catch { /* skip */ }
+        }
+      }
+    }
+
+    // Remove quests no longer on-chain
     await db.query(
       `DELETE FROM d2d_quests WHERE NOT (quest_id = ANY($1))`,
       [activeQuestIds],
@@ -1137,7 +1226,47 @@ async function checkQuestCompletionAchievements(db: any, playerId: string, quest
   }
 }
 
-async function checkBossCombatAchievements(db: any, playerId: string, damageToPlayer: number, _round: number): Promise<void> {
+async function checkBossLossAchievements(db: any, playerId: string, biome: number, difficulty: number): Promise<void> {
+  // Fallen Hero: lose a boss fight
+  await db.query(
+    `INSERT INTO d2d_player_stats (player_id, quests_failed)
+     VALUES ($1, 1)
+     ON CONFLICT (player_id) DO UPDATE
+       SET quests_failed = d2d_player_stats.quests_failed + 1,
+           updated_at = now()`,
+    [playerId],
+  );
+  await grantAchievement(db, playerId, "fallen_hero");
+
+  // Record the failure for Persistence tracking
+  await db.query(
+    `INSERT INTO d2d_boss_failures (player_id, biome, difficulty)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (player_id, biome, difficulty) DO UPDATE
+       SET failed_at = now()`,
+    [playerId, biome, difficulty],
+  );
+  console.log(`[game-db] Boss fight lost for ${playerId.slice(0, 10)}... biome=${biome} diff=${difficulty}`);
+
+  // Persistence: check if the player previously failed this boss but has now beaten it
+  // (checked on win side — see checkBossCombatAchievements)
+}
+
+async function checkBossRetreatAchievements(db: any, playerId: string): Promise<void> {
+  // Tactical Retreat: retreat from a boss fight
+  await db.query(
+    `INSERT INTO d2d_player_stats (player_id, battles_retreated)
+     VALUES ($1, 1)
+     ON CONFLICT (player_id) DO UPDATE
+       SET battles_retreated = d2d_player_stats.battles_retreated + 1,
+           updated_at = now()`,
+    [playerId],
+  );
+  await grantAchievement(db, playerId, "tactical_retreat");
+  console.log(`[game-db] Boss retreat for ${playerId.slice(0, 10)}...`);
+}
+
+async function checkBossCombatAchievements(db: any, playerId: string, damageToPlayer: number, _round: number, biome: number, difficulty: number): Promise<void> {
   // Flawless Victory: beat a boss taking 0 damage
   if (damageToPlayer === 0) {
     await grantAchievement(db, playerId, "flawless_victory");
@@ -1147,13 +1276,20 @@ async function checkBossCombatAchievements(db: any, playerId: string, damageToPl
     await grantAchievement(db, playerId, "close_call");
   }
   // No Retreat: 10 bosses defeated with 0 retreats
-  // Check current stats
   const { rows } = await db.query(
     `SELECT bosses_defeated, battles_retreated FROM d2d_player_stats WHERE player_id = $1`,
     [playerId],
   ) as { rows: Array<{ bosses_defeated: number; battles_retreated: number }> };
   if (rows.length > 0 && rows[0].bosses_defeated >= 10 && rows[0].battles_retreated === 0) {
     await grantAchievement(db, playerId, "no_retreat");
+  }
+  // Persistence: previously failed this boss, now beat it
+  const { rows: failRows } = await db.query(
+    `SELECT 1 FROM d2d_boss_failures WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+    [playerId, biome, difficulty],
+  );
+  if (failRows.length > 0) {
+    await grantAchievement(db, playerId, "persistence");
   }
 }
 
