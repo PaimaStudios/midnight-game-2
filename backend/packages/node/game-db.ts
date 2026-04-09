@@ -151,6 +151,10 @@ export async function ensureTables(db: any): Promise<void> {
       battles_retreated   INTEGER NOT NULL DEFAULT 0,
       enemies_defeated    INTEGER NOT NULL DEFAULT 0,
       rounds_played       INTEGER NOT NULL DEFAULT 0,
+      total_gold_earned   INTEGER NOT NULL DEFAULT 0,
+      total_gold_spent    INTEGER NOT NULL DEFAULT 0,
+      abilities_upgraded  INTEGER NOT NULL DEFAULT 0,
+      abilities_sold      INTEGER NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -323,6 +327,36 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions, allAbilities);
   await syncQuests(db, quests);
   await syncDelegations(db, delegations);
+  await trackAbilityUpgrades(db, allAbilities, players);
+}
+
+// Track new ability IDs in all_abilities as upgrades
+let previousAbilityIds: Set<string> | null = null;
+
+async function trackAbilityUpgrades(db: any, allAbilities: Record<string, any>, players: Record<string, any>): Promise<void> {
+  const currentIds = new Set(Object.keys(allAbilities));
+  if (previousAbilityIds !== null) {
+    const newIds = [...currentIds].filter((id) => !previousAbilityIds!.has(id));
+    if (newIds.length > 0) {
+      // New abilities appeared — likely from upgrades or reward generation
+      // Attribute to the single player if possible
+      const playerIds = Object.keys(players);
+      if (playerIds.length === 1) {
+        const playerId = playerIds[0];
+        const { rows } = await db.query(
+          `INSERT INTO d2d_player_stats (player_id, abilities_upgraded)
+           VALUES ($1, $2)
+           ON CONFLICT (player_id) DO UPDATE
+             SET abilities_upgraded = d2d_player_stats.abilities_upgraded + $2,
+                 updated_at = now()
+           RETURNING abilities_upgraded`,
+          [playerId, newIds.length],
+        ) as { rows: Array<{ abilities_upgraded: number }> };
+        await checkUpgradeAchievements(db, playerId, rows[0].abilities_upgraded);
+      }
+    }
+  }
+  previousAbilityIds = currentIds;
 }
 
 // ---------------------------------------------------------------------------
@@ -372,6 +406,40 @@ async function syncPlayers(
            updated_at = now()`,
     values,
   );
+
+  // Track gold changes for economy achievements
+  for (const p of toUpsert) {
+    const oldGold = known.get(p.playerId);
+    if (oldGold !== undefined) {
+      const delta = p.gold - oldGold;
+      if (delta > 0) {
+        // Gold earned
+        const { rows } = await db.query(
+          `INSERT INTO d2d_player_stats (player_id, total_gold_earned)
+           VALUES ($1, $2)
+           ON CONFLICT (player_id) DO UPDATE
+             SET total_gold_earned = d2d_player_stats.total_gold_earned + $2,
+                 updated_at = now()
+           RETURNING total_gold_earned`,
+          [p.playerId, delta],
+        ) as { rows: Array<{ total_gold_earned: number }> };
+        await checkGoldEarnedAchievements(db, p.playerId, rows[0].total_gold_earned);
+      } else if (delta < 0) {
+        // Gold spent
+        const spent = -delta;
+        const { rows } = await db.query(
+          `INSERT INTO d2d_player_stats (player_id, total_gold_spent)
+           VALUES ($1, $2)
+           ON CONFLICT (player_id) DO UPDATE
+             SET total_gold_spent = d2d_player_stats.total_gold_spent + $2,
+                 updated_at = now()
+           RETURNING total_gold_spent`,
+          [p.playerId, spent],
+        ) as { rows: Array<{ total_gold_spent: number }> };
+        await checkGoldSpentAchievements(db, p.playerId, rows[0].total_gold_spent);
+      }
+    }
+  }
 
   console.log(`[game-db] Upserted ${toUpsert.length} player(s)`);
 }
@@ -440,6 +508,37 @@ async function syncPlayerAbilities(
         `DELETE FROM d2d_player_abilities WHERE player_id = $1 AND ability_id = $2`,
         [row.player_id, row.ability_id],
       );
+    }
+  }
+
+  // Track ability sells: abilities whose quantity decreased (and weren't bulk-removed by battle start)
+  // Heuristic: individual quantity decreases of 1-2 are sells/upgrades
+  for (const playerId of playerIds) {
+    let soldCount = 0;
+    for (const known of knownRows.filter((r: any) => r.player_id === playerId)) {
+      const currentEntry = entries.find((e) => e.playerId === playerId && e.abilityId === known.ability_id);
+      const currentQty = currentEntry?.quantity ?? 0;
+      const oldQty = Number(known.quantity);
+      if (currentQty < oldQty) {
+        soldCount += oldQty - currentQty;
+      }
+    }
+    // Also count fully removed abilities
+    const removedForPlayer = toDelete.filter((r: any) => r.player_id === playerId);
+    for (const removed of removedForPlayer) {
+      soldCount += Number(removed.quantity);
+    }
+    if (soldCount > 0) {
+      const { rows } = await db.query(
+        `INSERT INTO d2d_player_stats (player_id, abilities_sold)
+         VALUES ($1, $2)
+         ON CONFLICT (player_id) DO UPDATE
+           SET abilities_sold = d2d_player_stats.abilities_sold + $2,
+               updated_at = now()
+         RETURNING abilities_sold`,
+        [playerId, soldCount],
+      ) as { rows: Array<{ abilities_sold: number }> };
+      await checkSellAchievements(db, playerId, rows[0].abilities_sold);
     }
   }
 
@@ -1301,6 +1400,40 @@ async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer
     await grantAchievement(db, playerId, "untouchable");
   }
   if (dmgToPlayer >= 95) await grantAchievement(db, playerId, "survivor");
+}
+
+const GOLD_EARNED_THRESHOLDS: Array<[number, string]> = [
+  [1, "first_coin"],
+  [500, "treasure_hunter"],
+  [2000, "golden_hoard"],
+  [10000, "dragons_vault"],
+];
+
+async function checkGoldEarnedAchievements(db: any, playerId: string, totalGoldEarned: number): Promise<void> {
+  for (const [threshold, name] of GOLD_EARNED_THRESHOLDS) {
+    if (totalGoldEarned >= threshold) await grantAchievement(db, playerId, name);
+  }
+}
+
+async function checkGoldSpentAchievements(db: any, playerId: string, totalGoldSpent: number): Promise<void> {
+  if (totalGoldSpent >= 1000) await grantAchievement(db, playerId, "big_spender");
+}
+
+const UPGRADE_THRESHOLDS: Array<[number, string]> = [
+  [1, "apprentice_smith"],
+  [10, "journeyman_smith"],
+  [25, "master_smith"],
+];
+
+async function checkUpgradeAchievements(db: any, playerId: string, abilitiesUpgraded: number): Promise<void> {
+  for (const [threshold, name] of UPGRADE_THRESHOLDS) {
+    if (abilitiesUpgraded >= threshold) await grantAchievement(db, playerId, name);
+  }
+}
+
+async function checkSellAchievements(db: any, playerId: string, abilitiesSold: number): Promise<void> {
+  if (abilitiesSold >= 10) await grantAchievement(db, playerId, "merchant");
+  if (abilitiesSold >= 50) await grantAchievement(db, playerId, "spirit_trader");
 }
 
 async function checkSpiritCollectionAchievements(

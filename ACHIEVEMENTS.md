@@ -234,13 +234,13 @@ Achievements are detected through three methods:
 ## Upgrade Achievements
 
 ### Upgrade Milestones
-- [ ] **Apprentice Smith** — Upgrade a spirit for the first time
+- [x] **Apprentice Smith** — Upgrade a spirit for the first time
   - *Requires:* `abilities_upgraded >= 1`
   - *Detection:* **DB Counter** — increment `abilities_upgraded` when any ability's `upgrade_level` increases in `map[0]` between snapshots.
-- [ ] **Journeyman Smith** — Upgrade 10 spirits
+- [x] **Journeyman Smith** — Upgrade 10 spirits
   - *Requires:* `abilities_upgraded >= 10`
   - *Detection:* **DB Counter** — same counter, threshold 10.
-- [ ] **Master Smith** — Upgrade 25 spirits
+- [x] **Master Smith** — Upgrade 25 spirits
   - *Requires:* `abilities_upgraded >= 25`
   - *Detection:* **DB Counter** — same counter, threshold 25.
 
@@ -277,29 +277,29 @@ Achievements are detected through three methods:
 ## Economy Achievements
 
 ### Gold Milestones
-- [ ] **First Coin** — Earn your first gold
+- [x] **First Coin** — Earn your first gold
   - *Requires:* `total_gold_earned >= 1`
   - *Detection:* **DB Counter** — increment `total_gold_earned` by the delta when `map[4]` gold increases between snapshots.
-- [ ] **Treasure Hunter** — Earn 500 gold total
+- [x] **Treasure Hunter** — Earn 500 gold total
   - *Requires:* `total_gold_earned >= 500`
   - *Detection:* **DB Counter** — same counter, threshold 500.
-- [ ] **Golden Hoard** — Earn 2000 gold total
+- [x] **Golden Hoard** — Earn 2000 gold total
   - *Requires:* `total_gold_earned >= 2000`
   - *Detection:* **DB Counter** — same counter, threshold 2000.
-- [ ] **Dragon's Vault** — Earn 10000 gold total
+- [x] **Dragon's Vault** — Earn 10000 gold total
   - *Requires:* `total_gold_earned >= 10000`
   - *Detection:* **DB Counter** — same counter, threshold 10000.
 
 ### Spending
-- [ ] **Big Spender** — Spend 1000 gold total
+- [x] **Big Spender** — Spend 1000 gold total
   - *Requires:* `total_gold_spent >= 1000`
   - *Detection:* **DB Counter** — increment `total_gold_spent` by the delta when `map[4]` gold decreases between snapshots.
 
 ### Selling
-- [ ] **Merchant** — Sell 10 spirits
+- [x] **Merchant** — Sell 10 spirits
   - *Requires:* `abilities_sold >= 10`
   - *Detection:* **DB Counter** — increment `abilities_sold` when ability quantities decrease in `map[5]` coinciding with a gold increase in `map[4]`.
-- [ ] **Spirit Trader** — Sell 50 spirits
+- [x] **Spirit Trader** — Sell 50 spirits
   - *Requires:* `abilities_sold >= 50`
   - *Detection:* **DB Counter** — same counter, threshold 50.
 
