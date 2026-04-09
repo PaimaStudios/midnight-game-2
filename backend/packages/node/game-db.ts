@@ -537,28 +537,28 @@ async function syncPlayers(
     if (oldGold !== undefined) {
       const delta = p.gold - oldGold;
       if (delta > 0) {
-        // Gold earned
+        // Gold earned — pass as string to avoid pg int4 overflow
         const { rows } = await db.query(
           `INSERT INTO d2d_player_stats (player_id, total_gold_earned)
-           VALUES ($1, $2)
+           VALUES ($1, $2::bigint)
            ON CONFLICT (player_id) DO UPDATE
-             SET total_gold_earned = d2d_player_stats.total_gold_earned + $2,
+             SET total_gold_earned = d2d_player_stats.total_gold_earned + $2::bigint,
                  updated_at = now()
            RETURNING total_gold_earned`,
-          [p.playerId, delta],
+          [p.playerId, String(delta)],
         ) as { rows: Array<{ total_gold_earned: number }> };
         await checkGoldEarnedAchievements(db, p.playerId, rows[0].total_gold_earned);
       } else if (delta < 0) {
-        // Gold spent
+        // Gold spent — pass as string to avoid pg int4 overflow
         const spent = -delta;
         const { rows } = await db.query(
           `INSERT INTO d2d_player_stats (player_id, total_gold_spent)
-           VALUES ($1, $2)
+           VALUES ($1, $2::bigint)
            ON CONFLICT (player_id) DO UPDATE
-             SET total_gold_spent = d2d_player_stats.total_gold_spent + $2,
+             SET total_gold_spent = d2d_player_stats.total_gold_spent + $2::bigint,
                  updated_at = now()
            RETURNING total_gold_spent`,
-          [p.playerId, spent],
+          [p.playerId, String(spent)],
         ) as { rows: Array<{ total_gold_spent: number }> };
         await checkGoldSpentAchievements(db, p.playerId, rows[0].total_gold_spent);
       }
