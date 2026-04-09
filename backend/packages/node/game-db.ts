@@ -699,13 +699,16 @@ async function syncBossProgress(
 
   for (const [playerId, biomeMap] of Object.entries(progressMap)) {
     if (biomeMap && typeof biomeMap === "object" && !Array.isArray(biomeMap)) {
-      for (const [biome, diffMap] of Object.entries(biomeMap)) {
+      for (const [biomeKey, diffMap] of Object.entries(biomeMap)) {
         if (diffMap && typeof diffMap === "object" && !Array.isArray(diffMap)) {
-          for (const [difficulty, completed] of Object.entries(diffMap as Record<string, any>)) {
+          for (const [diffKey, completed] of Object.entries(diffMap as Record<string, any>)) {
+            // Keys are hex strings like "0x" (=0), "0x01" (=1) — parse with parseInt
+            const biome = parseInt(biomeKey, 16) || 0;
+            const difficulty = parseInt(diffKey, 16) || 0;
             entries.push({
               playerId,
-              biome: Number(biome),
-              difficulty: Number(difficulty),
+              biome,
+              difficulty,
               completed: Boolean(completed),
             });
           }
