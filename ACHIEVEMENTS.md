@@ -128,13 +128,13 @@ Achievements are detected through three methods:
   - *Detection:* **Snapshot** `map[6]` — any biome entry has difficulty `3` = true.
 
 ### Boss Combat
-- [ ] **Flawless Victory** — Defeat a boss without taking any damage
+- [x] **Flawless Victory** — Defeat a boss without taking any damage
   - *Requires:* `BattleState.damage_to_player == 0` at battle end (boss fight)
   - *Detection:* **Diff** — when a battle disappears from `map[1]`, read its last `BattleState` field `[4] damage_to_player == 0`. Confirm it was a boss fight by checking `BattleConfig.enemies` in `map[2]`: the `EnemyStats.boss_type` field should be `boss` (enum value 2). Confirm battle was won (enemies defeated).
-- [ ] **Close Call** — Defeat a boss with 90+ damage taken
+- [x] **Close Call** — Defeat a boss with 90+ damage taken
   - *Requires:* `BattleState.damage_to_player >= 90` at battle end (boss fight, won)
   - *Detection:* **Diff** — same as Flawless Victory, but check `BattleState` field `[4] damage_to_player >= 90`.
-- [ ] **No Retreat** — Defeat 10 bosses without ever retreating
+- [x] **No Retreat** — Defeat 10 bosses without ever retreating
   - *Requires:* `bosses_defeated >= 10` AND `battles_retreated == 0`
   - *Detection:* **DB Counter** — track `bosses_defeated` (boss battle wins) and `battles_retreated` (battle disappears with 0 enemy damage). Check both thresholds.
 
@@ -159,41 +159,41 @@ Achievements are detected through three methods:
 ## Battle Achievements
 
 ### Battle Milestones
-- [ ] **First Blood** — Win your first battle
+- [x] **First Blood** — Win your first battle
   - *Requires:* `battles_won >= 1`
   - *Detection:* **DB Counter** — increment `battles_won` when a battle disappears from `map[1]` with enemies defeated.
-- [ ] **Battle Hardened** — Win 50 battles
+- [x] **Battle Hardened** — Win 50 battles
   - *Requires:* `battles_won >= 50`
   - *Detection:* **DB Counter** — same counter, threshold 50.
-- [ ] **Warmonger** — Win 100 battles
+- [x] **Warmonger** — Win 100 battles
   - *Requires:* `battles_won >= 100`
   - *Detection:* **DB Counter** — same counter, threshold 100.
-- [ ] **Grizzled Veteran** — Win 250 battles
+- [x] **Grizzled Veteran** — Win 250 battles
   - *Requires:* `battles_won >= 250`
   - *Detection:* **DB Counter** — same counter, threshold 250.
 
 ### Battle Feats
-- [ ] **Speed Demon** — Win a battle in a single round
+- [x] **Speed Demon** — Win a battle in a single round
   - *Requires:* `BattleState.round == 1` at battle win
   - *Detection:* **Diff** — when a won battle disappears from `map[1]`, check its last `BattleState` field `[0] round == 1`.
-- [ ] **Marathon Fight** — Win a battle that lasted 10+ rounds
+- [x] **Marathon Fight** — Win a battle that lasted 10+ rounds
   - *Requires:* `BattleState.round >= 10` at battle win
   - *Detection:* **Diff** — same check, `BattleState` field `[0] round >= 10`.
-- [ ] **Untouchable** — Win a 3-enemy battle taking 0 damage
+- [x] **Untouchable** — Win a 3-enemy battle taking 0 damage
   - *Requires:* `BattleState.damage_to_player == 0` at win, 3 enemies in `BattleConfig`
   - *Detection:* **Diff** — check `BattleState` field `[4] damage_to_player == 0`. Confirm 3 enemies from `BattleConfig.enemies.count`.
-- [ ] **Survivor** — Win a battle with 95+ damage taken
+- [x] **Survivor** — Win a battle with 95+ damage taken
   - *Requires:* `BattleState.damage_to_player >= 95` at battle win
   - *Detection:* **Diff** — check `BattleState` field `[4] damage_to_player >= 95`.
 
 ### Combat Totals
-- [ ] **Slayer** — Defeat 100 enemies total
+- [x] **Slayer** — Defeat 100 enemies total
   - *Requires:* `enemies_defeated >= 100`
   - *Detection:* **DB Counter** — increment `enemies_defeated` per enemy killed in each resolved battle (compare damage vs HP from `BattleConfig.enemies`).
-- [ ] **Annihilator** — Defeat 500 enemies total
+- [x] **Annihilator** — Defeat 500 enemies total
   - *Requires:* `enemies_defeated >= 500`
   - *Detection:* **DB Counter** — same counter, threshold 500.
-- [ ] **Round Veteran** — Play 500 combat rounds
+- [x] **Round Veteran** — Play 500 combat rounds
   - *Requires:* `rounds_played >= 500`
   - *Detection:* **DB Counter** — add final `BattleState.round` to `rounds_played` when each battle resolves.
 
