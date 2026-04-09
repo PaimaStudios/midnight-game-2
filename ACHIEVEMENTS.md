@@ -100,30 +100,30 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — same counter, threshold 100.
 
 ### Biome Mastery
-- [ ] **Grasslands Conqueror** — Defeat the Grasslands boss at all 3 difficulties
+- [x] **Grasslands Conqueror** — Defeat the Grasslands boss at all 3 difficulties
   - *Requires:* `player_boss_progress[grasslands][1,2,3]` all true
   - *Detection:* **Snapshot** `map[6]` — for the player's entry, check biome `0` has keys `1`, `2`, `3` all with truthy values.
-- [ ] **Desert Conqueror** — Defeat the Scorched Desert boss at all 3 difficulties
+- [x] **Desert Conqueror** — Defeat the Scorched Desert boss at all 3 difficulties
   - *Requires:* `player_boss_progress[desert][1,2,3]` all true
   - *Detection:* **Snapshot** `map[6]` — check biome `1` has difficulties `1`, `2`, `3` all true.
-- [ ] **Tundra Conqueror** — Defeat the Frozen Tundra boss at all 3 difficulties
+- [x] **Tundra Conqueror** — Defeat the Frozen Tundra boss at all 3 difficulties
   - *Requires:* `player_boss_progress[tundra][1,2,3]` all true
   - *Detection:* **Snapshot** `map[6]` — check biome `2` has difficulties `1`, `2`, `3` all true.
-- [ ] **Cave Conqueror** — Defeat the Goblin Caves boss at all 3 difficulties
+- [x] **Cave Conqueror** — Defeat the Goblin Caves boss at all 3 difficulties
   - *Requires:* `player_boss_progress[caves][1,2,3]` all true
   - *Detection:* **Snapshot** `map[6]` — check biome `3` has difficulties `1`, `2`, `3` all true.
-- [ ] **World Conqueror** — Defeat all bosses in every biome at every difficulty
+- [x] **World Conqueror** — Defeat all bosses in every biome at every difficulty
   - *Requires:* All `player_boss_progress` entries true
   - *Detection:* **Snapshot** `map[6]` — all 4 biomes (0-3) x 3 difficulties (1-3) = 12 entries must be true.
 
 ### Difficulty Progression
-- [ ] **Frontier Scout** — Defeat any Frontier (difficulty 1) boss
+- [x] **Frontier Scout** — Defeat any Frontier (difficulty 1) boss
   - *Requires:* Any `player_boss_progress[*][1]` true
   - *Detection:* **Snapshot** `map[6]` — any biome entry has difficulty `1` = true.
-- [ ] **Interior Breacher** — Defeat any Interior (difficulty 2) boss
+- [x] **Interior Breacher** — Defeat any Interior (difficulty 2) boss
   - *Requires:* Any `player_boss_progress[*][2]` true
   - *Detection:* **Snapshot** `map[6]` — any biome entry has difficulty `2` = true.
-- [ ] **Stronghold Crusher** — Defeat any Stronghold (difficulty 3) boss
+- [x] **Stronghold Crusher** — Defeat any Stronghold (difficulty 3) boss
   - *Requires:* Any `player_boss_progress[*][3]` true
   - *Detection:* **Snapshot** `map[6]` — any biome entry has difficulty `3` = true.
 

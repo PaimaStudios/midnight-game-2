@@ -497,6 +497,12 @@ async function syncBossProgress(
            updated_at = now()`,
     values,
   );
+
+  // Check biome mastery achievements (snapshot-based, read fresh DB state)
+  const playerIds = [...new Set(entries.map((e) => e.playerId))];
+  for (const playerId of playerIds) {
+    await checkBiomeMasteryAchievements(db, playerId);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1059,6 +1065,44 @@ async function checkQuestCompletionAchievements(db: any, playerId: string, quest
       await grantAchievement(db, playerId, name);
     }
   }
+}
+
+// Biome IDs: grasslands=0, desert=1, tundra=2, cave=3. Difficulties: 1, 2, 3.
+const BIOME_CONQUEROR_MAP: Record<number, string> = {
+  0: "grasslands_conqueror",
+  1: "desert_conqueror",
+  2: "tundra_conqueror",
+  3: "cave_conqueror",
+};
+
+async function checkBiomeMasteryAchievements(db: any, playerId: string): Promise<void> {
+  const { rows } = await db.query(
+    `SELECT biome, difficulty, completed FROM d2d_boss_progress WHERE player_id = $1 AND completed = TRUE`,
+    [playerId],
+  ) as { rows: Array<{ biome: number; difficulty: number; completed: boolean }> };
+
+  // Build set of completed biome:difficulty pairs
+  const completed = new Set(rows.map((r: any) => `${r.biome}:${r.difficulty}`));
+
+  // Per-biome conqueror: all 3 difficulties completed
+  let biomesFullyCompleted = 0;
+  for (const [biome, achievement] of Object.entries(BIOME_CONQUEROR_MAP)) {
+    const allThree = [1, 2, 3].every((d) => completed.has(`${biome}:${d}`));
+    if (allThree) {
+      await grantAchievement(db, playerId, achievement);
+      biomesFullyCompleted++;
+    }
+  }
+
+  // World Conqueror: all 4 biomes at all 3 difficulties
+  if (biomesFullyCompleted === 4) {
+    await grantAchievement(db, playerId, "world_conqueror");
+  }
+
+  // Difficulty progression: any biome at difficulty N
+  if (rows.some((r: any) => r.difficulty === 1)) await grantAchievement(db, playerId, "frontier_scout");
+  if (rows.some((r: any) => r.difficulty === 2)) await grantAchievement(db, playerId, "interior_breacher");
+  if (rows.some((r: any) => r.difficulty === 3)) await grantAchievement(db, playerId, "stronghold_crusher");
 }
 
 // ---------------------------------------------------------------------------
