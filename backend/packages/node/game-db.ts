@@ -145,6 +145,8 @@ export async function ensureTables(db: any): Promise<void> {
     CREATE TABLE IF NOT EXISTS d2d_player_stats (
       player_id           TEXT PRIMARY KEY,
       quests_completed    INTEGER NOT NULL DEFAULT 0,
+      bosses_defeated     INTEGER NOT NULL DEFAULT 0,
+      battles_retreated   INTEGER NOT NULL DEFAULT 0,
       updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -289,8 +291,8 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
 
   await syncPlayers(db, players);
   await syncPlayerAbilities(db, playerAbilities);
-  await syncBossProgress(db, playerBossProgress);
-  await syncBattles(db, activeBattleStates, activeBattleConfigs);
+  const newBossCompletions = await syncBossProgress(db, playerBossProgress);
+  await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions);
   await syncQuests(db, quests);
   await syncDelegations(db, delegations);
 }
@@ -419,10 +421,12 @@ async function syncPlayerAbilities(
 // Sync: Boss Progress
 // ---------------------------------------------------------------------------
 
+type BossCompletion = { playerId: string; biome: number; difficulty: number };
+
 async function syncBossProgress(
   db: any,
   progressMap: Record<string, any>,
-): Promise<void> {
+): Promise<BossCompletion[]> {
   // progressMap: playerId -> { biome -> { difficulty -> completed } }
   const entries: Array<{ playerId: string; biome: number; difficulty: number; completed: boolean }> = [];
 
@@ -443,9 +447,10 @@ async function syncBossProgress(
     }
   }
 
-  if (entries.length === 0) return;
+  if (entries.length === 0) return [];
 
   // Detect newly completed bosses (was false/missing, now true)
+  let newBossCompletions: BossCompletion[] = [];
   const completedEntries = entries.filter((e) => e.completed);
   if (completedEntries.length > 0) {
     const playerIds = [...new Set(completedEntries.map((e) => e.playerId))];
@@ -457,12 +462,13 @@ async function syncBossProgress(
       existingRows.filter((r: any) => r.completed).map((r: any) => `${r.player_id}:${r.biome}:${r.difficulty}`),
     );
 
-    // Count new completions per player
+    // Count new completions per player and collect for battle correlation
     const newCompletions = new Map<string, number>();
     for (const entry of completedEntries) {
       const key = `${entry.playerId}:${entry.biome}:${entry.difficulty}`;
       if (!existingSet.has(key)) {
         newCompletions.set(entry.playerId, (newCompletions.get(entry.playerId) ?? 0) + 1);
+        newBossCompletions.push({ playerId: entry.playerId, biome: entry.biome, difficulty: entry.difficulty });
       }
     }
 
@@ -503,6 +509,8 @@ async function syncBossProgress(
   for (const playerId of playerIds) {
     await checkBiomeMasteryAchievements(db, playerId);
   }
+
+  return newBossCompletions;
 }
 
 // ---------------------------------------------------------------------------
@@ -513,6 +521,7 @@ async function syncBattles(
   db: any,
   battleStates: Record<string, any>,
   battleConfigs: Record<string, any>,
+  newBossCompletions: BossCompletion[],
 ): Promise<void> {
   const battleIds = new Set([
     ...Object.keys(battleStates),
@@ -631,30 +640,62 @@ async function syncBattles(
     // Before deleting, record results for leaderboard
     const activeBattleIds = toUpsert.map((b) => b.battleId);
     const { rows: staleBattles } = await db.query(
-      `SELECT battle_id, player_id, biome, difficulty, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2
+      `SELECT battle_id, player_id, biome, difficulty, round, damage_to_player, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2
        FROM d2d_battles WHERE NOT (battle_id = ANY($1))`,
       [activeBattleIds],
     ) as { rows: Array<{
       battle_id: string; player_id: string; biome: number; difficulty: number;
+      round: number; damage_to_player: number;
       damage_to_enemy_0: number; damage_to_enemy_1: number; damage_to_enemy_2: number;
     }> };
 
     if (staleBattles.length > 0) {
-      // A battle is considered "won" if enemies took significant damage
-      // (the battle disappeared because it resolved, not because it was retreated from with 0 damage dealt)
-      // This is a heuristic — retreat also removes the battle, but typically has lower damage totals
+      // Build lookup for new boss completions by biome:difficulty
+      const bossCompletionsByLevel = new Map<string, BossCompletion>();
+      for (const bc of newBossCompletions) {
+        bossCompletionsByLevel.set(`${bc.biome}:${bc.difficulty}`, bc);
+      }
+
       for (const stale of staleBattles) {
-        const totalDmg = stale.damage_to_enemy_0 + stale.damage_to_enemy_1 + stale.damage_to_enemy_2;
-        // If any damage was dealt, consider it a completed battle (win or loss)
-        // We record it as a win since the battle left the chain with damage dealt
-        // Retreats typically preserve the battle until the chain processes the retreat
+        const totalDmg = Number(stale.damage_to_enemy_0) + Number(stale.damage_to_enemy_1) + Number(stale.damage_to_enemy_2);
+        const dmgToPlayer = Number(stale.damage_to_player);
+        const round = Number(stale.round);
+
         if (totalDmg > 0) {
+          // Battle resolved with damage dealt — record as win
           await db.query(
             `INSERT INTO d2d_battle_results (battle_id, player_id, biome, difficulty, won)
              VALUES ($1, $2, $3, $4, TRUE)
              ON CONFLICT (battle_id) DO NOTHING`,
             [stale.battle_id, stale.player_id, stale.biome, stale.difficulty],
           );
+
+          // Check if this was a boss fight by correlating with new boss completions
+          const levelKey = `${stale.biome}:${stale.difficulty}`;
+          const bossCompletion = bossCompletionsByLevel.get(levelKey);
+          if (bossCompletion) {
+            const playerId = bossCompletion.playerId;
+
+            // Increment bosses_defeated
+            await db.query(
+              `INSERT INTO d2d_player_stats (player_id, bosses_defeated)
+               VALUES ($1, 1)
+               ON CONFLICT (player_id) DO UPDATE
+                 SET bosses_defeated = d2d_player_stats.bosses_defeated + 1,
+                     updated_at = now()`,
+              [playerId],
+            );
+
+            // Boss combat achievements
+            await checkBossCombatAchievements(db, playerId, dmgToPlayer, round);
+
+            // Remove from lookup so each completion is only matched once
+            bossCompletionsByLevel.delete(levelKey);
+          }
+        } else {
+          // Battle disappeared with 0 enemy damage — retreat heuristic
+          // We can't determine player_id from battle config, so we skip
+          // retreat tracking for now (No Retreat achievement deferred)
         }
       }
       console.log(`[game-db] Recorded ${staleBattles.length} battle result(s)`);
@@ -752,6 +793,35 @@ async function syncQuests(
     );
 
     console.log(`[game-db] Synced ${toUpsert.length} quest(s)`);
+  }
+
+  // Check Multitasker: 3 quests active simultaneously for same player
+  // Extract player_pub_key from packed QuestConfig (bits 64-319, a 256-bit Field)
+  const PLAYER_KEY_MASK = (1n << 256n) - 1n;
+  const questsByPlayer = new Map<string, number>();
+  for (const [_, value] of entries) {
+    const packed = toBigInt(value);
+    const playerKey = ((packed >> 64n) & PLAYER_KEY_MASK).toString();
+    questsByPlayer.set(playerKey, (questsByPlayer.get(playerKey) ?? 0) + 1);
+  }
+  for (const [playerKey, count] of questsByPlayer) {
+    if (count >= 3) {
+      // playerKey is the raw Field value — need to match with a known player_id format
+      // The player_id in other maps uses the hex representation from the contract
+      // Try matching against d2d_players to find the actual player
+      const { rows } = await db.query(
+        `SELECT player_id FROM d2d_players LIMIT 10`,
+      ) as { rows: Array<{ player_id: string }> };
+      // The quest player_pub_key should match one of our known player IDs
+      for (const row of rows) {
+        try {
+          if (BigInt(row.player_id) === BigInt(playerKey)) {
+            await grantAchievement(db, row.player_id, "multitasker");
+            break;
+          }
+        } catch { /* skip non-numeric player_ids */ }
+      }
+    }
   }
 }
 
@@ -1064,6 +1134,26 @@ async function checkQuestCompletionAchievements(db: any, playerId: string, quest
     if (questsCompleted >= threshold) {
       await grantAchievement(db, playerId, name);
     }
+  }
+}
+
+async function checkBossCombatAchievements(db: any, playerId: string, damageToPlayer: number, _round: number): Promise<void> {
+  // Flawless Victory: beat a boss taking 0 damage
+  if (damageToPlayer === 0) {
+    await grantAchievement(db, playerId, "flawless_victory");
+  }
+  // Close Call: beat a boss with 90+ damage taken
+  if (damageToPlayer >= 90) {
+    await grantAchievement(db, playerId, "close_call");
+  }
+  // No Retreat: 10 bosses defeated with 0 retreats
+  // Check current stats
+  const { rows } = await db.query(
+    `SELECT bosses_defeated, battles_retreated FROM d2d_player_stats WHERE player_id = $1`,
+    [playerId],
+  ) as { rows: Array<{ bosses_defeated: number; battles_retreated: number }> };
+  if (rows.length > 0 && rows[0].bosses_defeated >= 10 && rows[0].battles_retreated === 0) {
+    await grantAchievement(db, playerId, "no_retreat");
   }
 }
 
