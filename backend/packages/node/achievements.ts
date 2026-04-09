@@ -14,8 +14,14 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   // --- Quest Achievements ---
   // Quest Completion
   { name: "first_quest", displayName: "First Quest", description: "Complete your first quest and defeat a boss", category: "quest", isActive: true },
+  { name: "novice_explorer", displayName: "Novice Explorer", description: "Complete 5 quests", category: "quest", isActive: true },
   { name: "seasoned_adventurer", displayName: "Seasoned Adventurer", description: "Complete 10 quests", category: "quest", isActive: true },
-  { name: "veteran_explorer", displayName: "Veteran Explorer", description: "Complete 50 quests", category: "quest", isActive: true },
+  { name: "experienced_adventurer", displayName: "Experienced Adventurer", description: "Complete 15 quests", category: "quest", isActive: true },
+  { name: "skilled_explorer", displayName: "Skilled Explorer", description: "Complete 20 quests", category: "quest", isActive: true },
+  { name: "expert_explorer", displayName: "Expert Explorer", description: "Complete 25 quests", category: "quest", isActive: true },
+  { name: "veteran_explorer", displayName: "Veteran Explorer", description: "Complete 30 quests", category: "quest", isActive: true },
+  { name: "quest_master", displayName: "Quest Master", description: "Complete 50 quests", category: "quest", isActive: true },
+  { name: "legendary_explorer", displayName: "Legendary Explorer", description: "Complete 100 quests", category: "quest", isActive: true },
   // Biome Mastery
   { name: "grasslands_conqueror", displayName: "Grasslands Conqueror", description: "Defeat the Grasslands boss at all 3 difficulties", category: "quest", isActive: true },
   { name: "desert_conqueror", displayName: "Desert Conqueror", description: "Defeat the Scorched Desert boss at all 3 difficulties", category: "quest", isActive: true },
@@ -63,13 +69,18 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   { name: "mono_fire", displayName: "Mono Fire", description: "Win a battle with only fire-attack spirits in your loadout", category: "spirit_deck", isActive: true },
   { name: "mono_ice", displayName: "Mono Ice", description: "Win a battle with only ice-attack spirits in your loadout", category: "spirit_deck", isActive: true },
   { name: "glass_cannon", displayName: "Glass Cannon", description: "Win a battle with no block or heal spirits in your loadout", category: "spirit_deck", isActive: true },
-  { name: "iron_wall", displayName: "Iron Wall", description: "Win a battle with no attack spirits in your loadout (block/heal only)", category: "spirit_deck", isActive: true },
+  { name: "mono_physical", displayName: "Mono Physical", description: "Win a battle with only physical-attack spirits in your loadout", category: "spirit_deck", isActive: true },
 
   // --- Upgrade Achievements ---
   // Upgrade Milestones
   { name: "apprentice_smith", displayName: "Apprentice Smith", description: "Upgrade a spirit for the first time", category: "upgrade", isActive: true },
   { name: "journeyman_smith", displayName: "Journeyman Smith", description: "Upgrade 10 spirits", category: "upgrade", isActive: true },
   { name: "master_smith", displayName: "Master Smith", description: "Upgrade 25 spirits", category: "upgrade", isActive: true },
+  // Upgrade by Type
+  { name: "pyro_forger", displayName: "Pyro Forger", description: "Upgrade 10 fire-attack spirits", category: "upgrade", isActive: true },
+  { name: "cryo_forger", displayName: "Cryo Forger", description: "Upgrade 10 ice-attack spirits", category: "upgrade", isActive: true },
+  { name: "weapons_forger", displayName: "Weapons Forger", description: "Upgrade 10 physical-attack spirits", category: "upgrade", isActive: true },
+  { name: "shield_forger", displayName: "Shield Forger", description: "Upgrade 10 block spirits", category: "upgrade", isActive: true },
   // Upgrade Quality
   { name: "rising_star", displayName: "Rising Star", description: "Own a spirit at 2 stars", category: "upgrade", isActive: true },
   { name: "perfection", displayName: "Perfection", description: "Own a spirit at 3 stars (max)", category: "upgrade", isActive: true },
@@ -87,24 +98,29 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   // Selling
   { name: "merchant", displayName: "Merchant", description: "Sell 10 spirits", category: "economy", isActive: true },
   { name: "spirit_trader", displayName: "Spirit Trader", description: "Sell 50 spirits", category: "economy", isActive: true },
+  // Selling by Type
+  { name: "fire_sale", displayName: "Fire Sale", description: "Sell 15 fire-attack spirits", category: "economy", isActive: true },
+  { name: "cold_surplus", displayName: "Cold Surplus", description: "Sell 15 ice-attack spirits", category: "economy", isActive: true },
+  { name: "disarmed", displayName: "Disarmed", description: "Sell 15 physical-attack spirits", category: "economy", isActive: true },
+  { name: "shields_down", displayName: "Shields Down", description: "Sell 15 block spirits", category: "economy", isActive: true },
 
   // --- Combat Mastery Achievements ---
   // Elemental Mastery
-  { name: "elemental_student", displayName: "Elemental Student", description: "Land 25 super-effective hits", category: "combat_mastery", isActive: true },
-  { name: "elemental_master", displayName: "Elemental Master", description: "Land 100 super-effective hits", category: "combat_mastery", isActive: true },
-  { name: "wrong_element", displayName: "Wrong Element", description: "Hit an immune enemy (deal 0 damage)", category: "combat_mastery", isActive: true },
-  // Energy Combos
-  { name: "spark", displayName: "Spark", description: "Trigger your first energy combo", category: "combat_mastery", isActive: true },
-  { name: "chain_reaction", displayName: "Chain Reaction", description: "Trigger 50 energy combos total", category: "combat_mastery", isActive: true },
-  { name: "combo_maestro", displayName: "Combo Maestro", description: "Trigger 200 energy combos total", category: "combat_mastery", isActive: true },
-  // Damage & Defense
-  { name: "heavy_hitter", displayName: "Heavy Hitter", description: "Deal 100+ damage in a single hit", category: "combat_mastery", isActive: true },
+  { name: "balanced_fighter", displayName: "Balanced Fighter", description: "Win a battle with all 3 attack elements in your loadout (Physical, Fire, and Ice)", category: "combat_mastery", isActive: true },
+  { name: "elemental_focus", displayName: "Elemental Focus", description: "Win a battle where every attack ability in your loadout shares the same element", category: "combat_mastery", isActive: true },
+  { name: "full_spectrum", displayName: "Full Spectrum", description: "Own an upgraded (1+ star) ability of every effect type", category: "combat_mastery", isActive: true },
+  // Energy Synergy
+  { name: "energy_collector", displayName: "Energy Collector", description: "Own abilities generating all 3 energy colors", category: "combat_mastery", isActive: true },
+  { name: "energy_specialist", displayName: "Energy Specialist", description: "Own 3+ abilities that generate the same energy color", category: "combat_mastery", isActive: true },
+  { name: "overcharged", displayName: "Overcharged", description: "Win a battle with 3+ loadout abilities sharing the same energy color", category: "combat_mastery", isActive: true },
+  // Damage Output
+  { name: "damage_dealer", displayName: "Damage Dealer", description: "Deal 300+ total damage to enemies in a single battle", category: "combat_mastery", isActive: true },
+  { name: "overwhelming_force", displayName: "Overwhelming Force", description: "Deal 600+ total damage to enemies in a single battle", category: "combat_mastery", isActive: true },
   { name: "devastator", displayName: "Devastator", description: "Deal 10000 total damage across all battles", category: "combat_mastery", isActive: true },
-  { name: "shieldwall", displayName: "Shieldwall", description: "Block 5000 total damage across all battles", category: "combat_mastery", isActive: true },
-  { name: "field_medic", displayName: "Field Medic", description: "Heal 2000 total HP across all battles", category: "combat_mastery", isActive: true },
-  // AOE
-  { name: "area_denial", displayName: "Area Denial", description: "Use 50 AOE attacks total", category: "combat_mastery", isActive: true },
-  { name: "carpet_bomber", displayName: "Carpet Bomber", description: "Use 200 AOE attacks total", category: "combat_mastery", isActive: true },
+  // Loadout Mastery
+  { name: "fortified", displayName: "Fortified", description: "Win a battle with 3+ block abilities in your loadout", category: "combat_mastery", isActive: true },
+  { name: "aoe_arsenal", displayName: "AOE Arsenal", description: "Own 3+ abilities with AOE effects", category: "combat_mastery", isActive: true },
+  { name: "power_surge", displayName: "Power Surge", description: "Win a battle with a fully upgraded (3-star) ability in your loadout", category: "combat_mastery", isActive: true },
 ];
 
 // ---------------------------------------------------------------------------
