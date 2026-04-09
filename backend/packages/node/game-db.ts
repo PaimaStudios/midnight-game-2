@@ -79,8 +79,8 @@ export async function ensureTables(db: any): Promise<void> {
   await db.query(`
     CREATE TABLE IF NOT EXISTS d2d_boss_progress (
       player_id       TEXT NOT NULL,
-      biome           INTEGER NOT NULL,
-      difficulty      INTEGER NOT NULL,
+      biome           BIGINT NOT NULL,
+      difficulty      BIGINT NOT NULL,
       completed       BOOLEAN NOT NULL DEFAULT FALSE,
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (player_id, biome, difficulty)
@@ -91,13 +91,13 @@ export async function ensureTables(db: any): Promise<void> {
     CREATE TABLE IF NOT EXISTS d2d_battles (
       battle_id           TEXT PRIMARY KEY,
       player_id           TEXT NOT NULL,
-      biome               INTEGER NOT NULL,
-      difficulty          INTEGER NOT NULL,
-      round               INTEGER NOT NULL DEFAULT 0,
-      damage_to_player    INTEGER NOT NULL DEFAULT 0,
-      damage_to_enemy_0   INTEGER NOT NULL DEFAULT 0,
-      damage_to_enemy_1   INTEGER NOT NULL DEFAULT 0,
-      damage_to_enemy_2   INTEGER NOT NULL DEFAULT 0,
+      biome               BIGINT NOT NULL,
+      difficulty          BIGINT NOT NULL,
+      round               BIGINT NOT NULL DEFAULT 0,
+      damage_to_player    BIGINT NOT NULL DEFAULT 0,
+      damage_to_enemy_0   BIGINT NOT NULL DEFAULT 0,
+      damage_to_enemy_1   BIGINT NOT NULL DEFAULT 0,
+      damage_to_enemy_2   BIGINT NOT NULL DEFAULT 0,
       raw_state           TEXT,
       raw_config          TEXT,
       created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -109,8 +109,8 @@ export async function ensureTables(db: any): Promise<void> {
     CREATE TABLE IF NOT EXISTS d2d_quests (
       quest_id        TEXT PRIMARY KEY,
       player_id       TEXT NOT NULL,
-      biome           INTEGER NOT NULL,
-      difficulty      INTEGER NOT NULL,
+      biome           BIGINT NOT NULL,
+      difficulty      BIGINT NOT NULL,
       start_time      BIGINT NOT NULL,
       raw_config      TEXT,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -123,8 +123,8 @@ export async function ensureTables(db: any): Promise<void> {
     CREATE TABLE IF NOT EXISTS d2d_battle_results (
       battle_id       TEXT PRIMARY KEY,
       player_id       TEXT NOT NULL,
-      biome           INTEGER NOT NULL,
-      difficulty      INTEGER NOT NULL,
+      biome           BIGINT NOT NULL,
+      difficulty      BIGINT NOT NULL,
       won             BOOLEAN NOT NULL,
       ended_at        TIMESTAMPTZ NOT NULL DEFAULT now()
     )
@@ -160,6 +160,7 @@ export async function ensureTables(db: any): Promise<void> {
       PRIMARY KEY (player_id, achievement)
     )
   `);
+
 }
 
 // ---------------------------------------------------------------------------
