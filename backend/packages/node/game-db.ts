@@ -119,6 +119,36 @@ function parseAllAbilities(allAbilities: Record<string, any>): Map<string, Parse
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// BattleConfig loadout extraction (7 ability Field IDs)
+// ---------------------------------------------------------------------------
+// BattleConfig byte layout:
+//   [0-7]     Level: biome(4) + difficulty(4)
+//   [8-236]   EnemiesConfig: Vector<3, EnemyStats>(3×76) + count(1) = 229 bytes
+//   [237-268] player_pub_key: Field (32 bytes)
+//   [269-492] loadout: Vector<7, Field> (7×32 = 224 bytes)
+//
+// EnemyStats (76 bytes): boss_type(1) + enemy_type(4) + hp(4) +
+//   moves(Vector<3, EnemyMove>)(3×20) + move_count(4) +
+//   physical_def(1) + fire_def(1) + ice_def(1)
+// EnemyMove (20 bytes): attack(4) + block_self(4) + block_allies(4) +
+//   heal_self(4) + heal_allies(4)
+
+const BATTLE_CONFIG_LOADOUT_START_BYTE = 269; // 8 + 229 + 32
+const FIELD_SIZE_BYTES = 32;
+const FIELD_MASK_256 = (1n << 256n) - 1n;
+
+function extractLoadoutFromBattleConfig(configPacked: bigint): string[] {
+  const loadout: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const bitOffset = BigInt((BATTLE_CONFIG_LOADOUT_START_BYTE + i * FIELD_SIZE_BYTES) * 8);
+    const fieldVal = (configPacked >> bitOffset) & FIELD_MASK_256;
+    // Convert to hex string matching the payload map key format
+    loadout.push("0x" + fieldVal.toString(16));
+  }
+  return loadout;
+}
+
 /** Safely convert a value (number, bigint, or string) to BigInt. */
 function toBigInt(value: any): bigint {
   if (typeof value === "bigint") return value;
@@ -878,13 +908,14 @@ async function syncBattles(
     // Before deleting, record results for leaderboard
     const activeBattleIds = toUpsert.map((b) => b.battleId);
     const { rows: staleBattles } = await db.query(
-      `SELECT battle_id, player_id, biome, difficulty, round, damage_to_player, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2
+      `SELECT battle_id, player_id, biome, difficulty, round, damage_to_player, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2, raw_config
        FROM d2d_battles WHERE NOT (battle_id = ANY($1))`,
       [activeBattleIds],
     ) as { rows: Array<{
       battle_id: string; player_id: string; biome: number; difficulty: number;
       round: number; damage_to_player: number;
       damage_to_enemy_0: number; damage_to_enemy_1: number; damage_to_enemy_2: number;
+      raw_config: string;
     }> };
 
     if (staleBattles.length > 0) {
@@ -957,7 +988,8 @@ async function syncBattles(
 
           // Battle win achievements (applies to ALL won battles, boss or random)
           if (playerId) {
-            await checkBattleWinAchievements(db, playerId, dmgToPlayer, round, totalDmg);
+            const configBigint = toBigInt(stale.raw_config ?? "0");
+            await checkBattleWinAchievements(db, playerId, dmgToPlayer, round, totalDmg, configBigint, parsedAbilities);
           }
         } else {
           // Battle disappeared with 0 enemy damage — retreat
@@ -1459,7 +1491,7 @@ const ENEMIES_DEFEATED_THRESHOLDS: Array<[number, string]> = [
   [500, "annihilator"],
 ];
 
-async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer: number, round: number, totalDmg: number): Promise<void> {
+async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer: number, round: number, totalDmg: number, rawConfig: bigint, parsedAbilities: Map<string, ParsedAbility>): Promise<void> {
   // Increment battles_won, rounds_played, enemies_defeated
   // Estimate enemies defeated: each enemy with damage > 0 is considered killed in a won battle
   // (simplified — true count would need HP comparison)
@@ -1519,6 +1551,42 @@ async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer
     [playerId, totalDmg],
   ) as { rows: Array<{ total_damage_dealt: number }> };
   if (dmgRows[0].total_damage_dealt >= 10000) await grantAchievement(db, playerId, "devastator");
+
+  // Loadout-based achievements: extract 7 ability IDs from BattleConfig
+  const loadoutIds = extractLoadoutFromBattleConfig(rawConfig);
+  const loadoutAbilities = loadoutIds.map((id) => parsedAbilities.get(id)).filter((a): a is ParsedAbility => !!a);
+
+  if (loadoutAbilities.length === 7) {
+    const attackTypes = loadoutAbilities.filter((a) => a.hasEffect && a.effectType <= 2).map((a) => a.effectType);
+    const allTypes = loadoutAbilities.filter((a) => a.hasEffect).map((a) => a.effectType);
+    const uniqueAttackTypes = new Set(attackTypes);
+
+    // Mono Fire: all 7 are fire attack
+    if (allTypes.length === 7 && allTypes.every((t) => t === 1)) await grantAchievement(db, playerId, "mono_fire");
+    // Mono Ice: all 7 are ice attack
+    if (allTypes.length === 7 && allTypes.every((t) => t === 2)) await grantAchievement(db, playerId, "mono_ice");
+    // Mono Physical: all 7 are phys attack
+    if (allTypes.length === 7 && allTypes.every((t) => t === 0)) await grantAchievement(db, playerId, "mono_physical");
+    // Glass Cannon: no block abilities in loadout
+    if (!allTypes.includes(3)) await grantAchievement(db, playerId, "glass_cannon");
+    // Balanced Fighter: all 3 attack elements present
+    if (uniqueAttackTypes.has(0) && uniqueAttackTypes.has(1) && uniqueAttackTypes.has(2)) await grantAchievement(db, playerId, "balanced_fighter");
+    // Elemental Focus: all attack abilities share the same element
+    if (attackTypes.length > 0 && uniqueAttackTypes.size === 1) await grantAchievement(db, playerId, "elemental_focus");
+    // Fortified: 3+ block abilities
+    if (allTypes.filter((t) => t === 3).length >= 3) await grantAchievement(db, playerId, "fortified");
+    // Power Surge: any loadout ability at 3 stars
+    if (loadoutAbilities.some((a) => a.upgradeLevel === 3)) await grantAchievement(db, playerId, "power_surge");
+
+    // Overcharged: 3+ loadout abilities sharing the same energy color
+    const colorCounts = new Map<number, number>();
+    for (const a of loadoutAbilities) {
+      if (a.hasGenerateColor) colorCounts.set(a.generateColor, (colorCounts.get(a.generateColor) ?? 0) + 1);
+    }
+    for (const count of colorCounts.values()) {
+      if (count >= 3) { await grantAchievement(db, playerId, "overcharged"); break; }
+    }
+  }
 }
 
 const GOLD_EARNED_THRESHOLDS: Array<[number, string]> = [

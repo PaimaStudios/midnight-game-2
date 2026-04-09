@@ -216,16 +216,16 @@ Achievements are detected through three methods:
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up each owned ability's `effect.value.effect_type`. Check coverage of `attack_phys` (0), `attack_fire` (1), `attack_ice` (2), `block` (3).
 
 ### Deck Building
-- [ ] **Mono Fire** — Win a battle with only fire-attack spirits in your loadout
+- [x] **Mono Fire** — Win a battle with only fire-attack spirits in your loadout
   - *Requires:* All 7 loadout abilities have fire attack effect, battle won
   - *Detection:* **Diff** + `map[0]` — extract 7 loadout ability IDs from last `BattleConfig`. Look up each in `map[0]`, check all have `effect_type == attack_fire` (1).
-- [ ] **Mono Ice** — Win a battle with only ice-attack spirits in your loadout
+- [x] **Mono Ice** — Win a battle with only ice-attack spirits in your loadout
   - *Requires:* All 7 loadout abilities have ice attack effect, battle won
   - *Detection:* **Diff** + `map[0]` — same, check all have `effect_type == attack_ice` (2).
-- [ ] **Glass Cannon** — Win a battle with no block or heal spirits in your loadout
+- [x] **Glass Cannon** — Win a battle with no block or heal spirits in your loadout
   - *Requires:* No block/heal abilities in loadout, battle won
   - *Detection:* **Diff** + `map[0]` — check no loadout ability has `effect_type == block` (3).
-- [ ] **Mono Physical** — Win a battle with only physical-attack spirits in your loadout
+- [x] **Mono Physical** — Win a battle with only physical-attack spirits in your loadout
   - *Requires:* All 7 loadout abilities have physical attack effect, battle won
   - *Detection:* **Diff** + `map[0]` — same as Mono Fire, check all have `effect_type == attack_phys` (0).
 
@@ -322,10 +322,10 @@ Achievements are detected through three methods:
 ## Combat Mastery Achievements
 
 ### Elemental Mastery
-- [ ] **Balanced Fighter** — Win a battle with all 3 attack elements in your loadout (Physical, Fire, and Ice)
+- [x] **Balanced Fighter** — Win a battle with all 3 attack elements in your loadout (Physical, Fire, and Ice)
   - *Requires:* Loadout contains at least one `attack_phys`, one `attack_fire`, and one `attack_ice` ability, battle won
   - *Detection:* **Diff** + `map[0]` — extract 7 loadout ability IDs from last `BattleConfig`. Look up each in `map[0]`, check `effect_type` coverage includes `attack_phys` (0), `attack_fire` (1), `attack_ice` (2).
-- [ ] **Elemental Focus** — Win a battle where every attack ability in your loadout shares the same element
+- [x] **Elemental Focus** — Win a battle where every attack ability in your loadout shares the same element
   - *Requires:* All attack abilities in loadout have the same `effect_type`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, look up effect types. Filter to attack types only (0, 1, 2). Check all are the same value.
 - [x] **Full Spectrum** — Own an upgraded (1+ star) ability of every effect type
@@ -339,7 +339,7 @@ Achievements are detected through three methods:
 - [x] **Energy Specialist** — Own 3+ abilities that generate the same energy color
   - *Requires:* Any single `generate_color` value appears on 3+ owned abilities
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — group owned abilities by `generate_color`, check any group has size >= 3.
-- [ ] **Overcharged** — Win a battle with 3+ loadout abilities sharing the same energy color
+- [x] **Overcharged** — Win a battle with 3+ loadout abilities sharing the same energy color
   - *Requires:* 3+ abilities in loadout have the same `generate_color`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, group by `generate_color`. Check any group has size >= 3.
 
@@ -355,12 +355,12 @@ Achievements are detected through three methods:
   - *Detection:* **DB Counter** — add `damage_to_enemy_0 + damage_to_enemy_1 + damage_to_enemy_2` to `total_damage_dealt` when each battle resolves.
 
 ### Loadout Mastery
-- [ ] **Fortified** — Win a battle with 3+ block abilities in your loadout
+- [x] **Fortified** — Win a battle with 3+ block abilities in your loadout
   - *Requires:* 3+ loadout abilities have `effect_type == block`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, count abilities with `effect_type == block` (3). Check count >= 3.
 - [x] **AOE Arsenal** — Own 3+ abilities with AOE effects
   - *Requires:* 3+ owned abilities have `effect.is_aoe == true`
   - *Detection:* **Snapshot** `map[5]` + `map[0]` — look up each owned ability, check `effect.is_aoe`. Count >= 3.
-- [ ] **Power Surge** — Win a battle with a fully upgraded (3-star) ability in your loadout
+- [x] **Power Surge** — Win a battle with a fully upgraded (3-star) ability in your loadout
   - *Requires:* Any loadout ability has `upgrade_level == 3`, battle won
   - *Detection:* **Diff** + `map[0]` — extract loadout, look up `upgrade_level` for each. Check any == 3.
