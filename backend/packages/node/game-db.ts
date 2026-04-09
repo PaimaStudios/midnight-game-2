@@ -283,6 +283,7 @@ function extractMaps(payload: any): PayloadIndices | null {
   //   map[9] = quest_durations
   //   map[10] = delegations
   return {
+    allAbilities: maps[0] ?? {},
     activeBattleStates: maps[1] ?? {},
     activeBattleConfigs: maps[2] ?? {},
     quests: maps[3] ?? {},
@@ -307,7 +308,7 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   const extracted = extractMaps(payload);
   if (!extracted) return;
 
-  const { players, playerAbilities, playerBossProgress, activeBattleStates, activeBattleConfigs, quests, delegations } = extracted;
+  const { allAbilities, players, playerAbilities, playerBossProgress, activeBattleStates, activeBattleConfigs, quests, delegations } = extracted;
 
   // Dedup: skip if nothing changed
   const replacer = (_key: string, value: unknown) =>
@@ -317,9 +318,9 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
   lastSnapshotKey = snapshotKey;
 
   await syncPlayers(db, players);
-  await syncPlayerAbilities(db, playerAbilities);
+  await syncPlayerAbilities(db, playerAbilities, allAbilities);
   const newBossCompletions = await syncBossProgress(db, playerBossProgress);
-  await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions);
+  await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions, allAbilities);
   await syncQuests(db, quests);
   await syncDelegations(db, delegations);
 }
@@ -382,6 +383,7 @@ async function syncPlayers(
 async function syncPlayerAbilities(
   db: any,
   abilitiesMap: Record<string, any>,
+  allAbilities: Record<string, any>,
 ): Promise<void> {
   // abilitiesMap: playerId -> { abilityId -> quantity }
   const entries: Array<{ playerId: string; abilityId: string; quantity: number }> = [];
@@ -442,6 +444,12 @@ async function syncPlayerAbilities(
   }
 
   console.log(`[game-db] Upserted ${toUpsert.length} player ability entries, removed ${toDelete.length}`);
+
+  // Check spirit collection achievements per player
+  for (const playerId of playerIds) {
+    const playerEntries = entries.filter((e) => e.playerId === playerId);
+    await checkSpiritCollectionAchievements(db, playerId, playerEntries, allAbilities);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -549,6 +557,7 @@ async function syncBattles(
   battleStates: Record<string, any>,
   battleConfigs: Record<string, any>,
   newBossCompletions: BossCompletion[],
+  allAbilities: Record<string, any>,
 ): Promise<void> {
   const battleIds = new Set([
     ...Object.keys(battleStates),
@@ -1292,6 +1301,24 @@ async function checkBattleWinAchievements(db: any, playerId: string, dmgToPlayer
     await grantAchievement(db, playerId, "untouchable");
   }
   if (dmgToPlayer >= 95) await grantAchievement(db, playerId, "survivor");
+}
+
+async function checkSpiritCollectionAchievements(
+  db: any,
+  playerId: string,
+  playerEntries: Array<{ abilityId: string; quantity: number }>,
+  _allAbilities: Record<string, any>,
+): Promise<void> {
+  const totalSpirits = playerEntries.reduce((sum, e) => sum + e.quantity, 0);
+
+  // Spirit collection milestones
+  if (totalSpirits >= 10) await grantAchievement(db, playerId, "spirit_caller");
+  if (totalSpirits >= 25) await grantAchievement(db, playerId, "spirit_collector");
+  if (totalSpirits >= 50) await grantAchievement(db, playerId, "spirit_hoarder");
+
+  // Full Arsenal: own at least one of each effect type (phys, fire, ice, block)
+  // Requires extracting effect_type from packed Ability struct in allAbilities
+  // TODO: implement once Ability struct bit layout is mapped
 }
 
 async function checkBossLossAchievements(db: any, playerId: string, biome: number, difficulty: number): Promise<void> {

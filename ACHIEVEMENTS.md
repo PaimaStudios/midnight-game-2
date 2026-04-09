@@ -202,13 +202,13 @@ Achievements are detected through three methods:
 ## Spirit & Deck Achievements
 
 ### Spirit Collection
-- [ ] **Spirit Caller** — Own 10 spirits
+- [x] **Spirit Caller** — Own 10 spirits
   - *Requires:* Sum of `player_abilities` counts >= 10
   - *Detection:* **Snapshot** `map[5]` — sum all quantity values for the player. Check sum >= 10.
-- [ ] **Spirit Collector** — Own 25 spirits
+- [x] **Spirit Collector** — Own 25 spirits
   - *Requires:* Sum of `player_abilities` counts >= 25
   - *Detection:* **Snapshot** `map[5]` — same, threshold 25.
-- [ ] **Spirit Hoarder** — Own 50 spirits
+- [x] **Spirit Hoarder** — Own 50 spirits
   - *Requires:* Sum of `player_abilities` counts >= 50
   - *Detection:* **Snapshot** `map[5]` — same, threshold 50.
 - [ ] **Full Arsenal** — Own at least one Fire, Ice, Physical, and Block spirit
