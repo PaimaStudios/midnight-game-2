@@ -8,7 +8,7 @@ import { Button } from "../widgets/button";
 import { Subscription } from "rxjs";
 import { txSpinner } from "../tx-spinner";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, networkId } from "../main";
-import { bech32m } from '@scure/base';
+import { toBech32mDust, toBech32mShieldCpk, shortBech32 } from '../bech32-utils';
 import { ShopMenu } from "./shop/shop";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
@@ -27,7 +27,6 @@ function showDelegationOverlay(content: HTMLElement): void {
     overlay = document.createElement('div');
     overlay.id = 'd2d-delegation-overlay';
     overlay.className = 'd2d-overlay';
-
     const box = document.createElement('div');
     box.className = 'd2d-overlay-box';
 
@@ -48,46 +47,6 @@ function showDelegationOverlay(content: HTMLElement): void {
         if (e.target === overlay) overlay!.remove();
     });
     document.body.appendChild(overlay);
-}
-
-function scaleCompactEncode(value: bigint): Uint8Array {
-    if (value < 64n) {
-        return new Uint8Array([Number(value << 2n)]);
-    } else if (value < 16384n) {
-        const v = Number(value << 2n | 1n);
-        return new Uint8Array([v & 0xff, (v >> 8) & 0xff]);
-    } else if (value < (1n << 30n)) {
-        const v = Number(value << 2n | 2n);
-        return new Uint8Array([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff]);
-    } else {
-        let v = value;
-        const leBytes: number[] = [];
-        while (v > 0n) {
-            leBytes.push(Number(v & 0xffn));
-            v >>= 8n;
-        }
-        const prefix = ((leBytes.length - 4) << 2) | 0b11;
-        const result = new Uint8Array(1 + leBytes.length);
-        result[0] = prefix;
-        result.set(leBytes, 1);
-        return result;
-    }
-}
-
-function toBech32mDust(value: bigint): string {
-    const data = scaleCompactEncode(value);
-    const networkSuffix = networkId === 'mainnet' ? '' : `_${networkId}`;
-    return bech32m.encode(`mn_dust${networkSuffix}`, bech32m.toWords(data), false);
-}
-
-function toBech32mShieldCpk(keyBytes: Uint8Array): string {
-    const networkSuffix = networkId === 'mainnet' ? '' : `_${networkId}`;
-    return bech32m.encode(`mn_shield-cpk${networkSuffix}`, bech32m.toWords(keyBytes), false);
-}
-
-function shortBech32(addr: string): string {
-    if (addr.length <= 30) return addr;
-    return addr.slice(0, 18) + '...' + addr.slice(-8);
 }
 
 function makeWalletDelegationButton(
@@ -169,8 +128,8 @@ function makeWalletDelegationButton(
                 const truncated = keyBytes.slice(0, 31);
                 const addressBigint = BigInt('0x' + Array.from(truncated).map((b: number) => b.toString(16).padStart(2, '0')).join(''));
 
-                const fromLabel = localPublicKey != null ? shortBech32(toBech32mDust(localPublicKey)) : 'your game account';
-                const walletLabel = shortBech32(toBech32mShieldCpk(keyBytes));
+                const fromLabel = localPublicKey != null ? shortBech32(toBech32mDust(localPublicKey, networkId)) : 'your game account';
+                const walletLabel = shortBech32(toBech32mShieldCpk(keyBytes, networkId));
 
                 // Dismiss the overlay and show the tx spinner like other sections
                 if (overlay) overlay.remove();

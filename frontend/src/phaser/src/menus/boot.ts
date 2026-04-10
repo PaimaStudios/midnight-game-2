@@ -5,7 +5,7 @@
 import { DeployedGame2API, Game2DerivedState } from "game2-api";
 import { BrowserDeploymentManager } from "../proving/wallet";
 import { Button } from "../widgets/button";
-import { logger } from "../main";
+import { logger, networkId } from "../main";
 import { MockGame2API } from "../mockapi";
 import { MainMenu } from "./main";
 import { ActiveBattle } from "./battle";
@@ -13,6 +13,7 @@ import { registerStartingContent } from "game-content";
 import { Subscription } from "rxjs";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
+import { toBech32mDust } from "../bech32-utils";
 
 export class BootScene extends Phaser.Scene {
     private deployProvider: BrowserDeploymentManager;
@@ -197,9 +198,12 @@ export class BootScene extends Phaser.Scene {
             // Debug logging
             logger.gameState.info(`Boot state check: player=${state.player !== undefined}, playerId=${state.playerId}, activeBattles=${state.activeBattleConfigs.size}`);
 
-            // Expose player address for the achievements overlay (runs in index.html)
+            // Expose player addresses as Bech32 for the overlays (achievements, leaderboard)
             if (state.playerId) {
-                (window as any).__d2dPlayerAddress = state.playerId.toString(16).padStart(64, '0');
+                (window as any).__d2dPlayerAddress = toBech32mDust(state.playerId, networkId);
+            }
+            if (state.myDelegatedAddress) {
+                (window as any).__d2dWalletAddress = toBech32mDust(state.myDelegatedAddress, networkId);
             }
 
             // Check if player has an active battle

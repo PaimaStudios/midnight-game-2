@@ -1,6 +1,65 @@
 // ---------------------------------------------------------------------------
 // game-db.ts — Database schema, ledger sync, and query functions
 // ---------------------------------------------------------------------------
+
+import { bech32m } from "npm:@scure/base@^2.0.0";
+
+// Module-level network ID for Bech32 address encoding
+let _networkId: string = "undeployed";
+
+/** Set the Midnight network ID used for Bech32 address encoding. */
+export function setAddressNetworkId(id: string): void {
+  _networkId = id;
+}
+
+/** SCALE compact-encode a bigint (must match frontend bech32-utils.ts exactly). */
+function scaleCompactEncode(value: bigint): Uint8Array {
+  if (value < 64n) {
+    return new Uint8Array([Number(value << 2n)]);
+  } else if (value < 16384n) {
+    const v = Number(value << 2n | 1n);
+    return new Uint8Array([v & 0xff, (v >> 8) & 0xff]);
+  } else if (value < (1n << 30n)) {
+    const v = Number(value << 2n | 2n);
+    return new Uint8Array([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff]);
+  } else {
+    let v = value;
+    const leBytes: number[] = [];
+    while (v > 0n) {
+      leBytes.push(Number(v & 0xffn));
+      v >>= 8n;
+    }
+    const prefix = ((leBytes.length - 4) << 2) | 0b11;
+    const result = new Uint8Array(1 + leBytes.length);
+    result[0] = prefix;
+    result.set(leBytes, 1);
+    return result;
+  }
+}
+
+/** Encode a bigint to Bech32m mn_dust address (matches frontend encoding). */
+function toBech32mDust(value: bigint): string {
+  const data = scaleCompactEncode(value);
+  const networkSuffix = _networkId === "mainnet" ? "" : `_${_networkId}`;
+  return bech32m.encode(`mn_dust${networkSuffix}`, bech32m.toWords(data), false);
+}
+
+/** Convert a hex ledger key to a Bech32 mn_dust address.
+ *  Indexer map keys are LE-byte hex (e.g. "0x2b9a...5f"), but the frontend's
+ *  playerId bigint is the natural BE value. Reverse the 32 bytes to match. */
+function hexToBech32(hexKey: string): string {
+  const hex = (hexKey.startsWith("0x") ? hexKey.slice(2) : hexKey).padStart(64, "0");
+  const reversed = hex.match(/.{2}/g)!.reverse().join("");
+  const value = BigInt("0x" + reversed);
+  return toBech32mDust(value);
+}
+
+/** Convert a raw bigint (e.g. extracted from packed struct) to a Bech32 mn_dust address. */
+function bigintToBech32(value: bigint): string {
+  return toBech32mDust(value);
+}
+
+// ---------------------------------------------------------------------------
 //
 // Verified payload layout (from GAME_DB_DEBUG=1 output):
 //
@@ -324,6 +383,7 @@ export async function ensureTables(db: any): Promise<void> {
 // ---------------------------------------------------------------------------
 
 interface PayloadIndices {
+  allAbilities: Record<string, any>;
   players: Record<string, any>;
   playerAbilities: Record<string, any>;
   playerBossProgress: Record<string, any>;
@@ -454,9 +514,9 @@ async function trackAbilityUpgrades(db: any, allAbilities: Record<string, any>, 
   if (previousAbilityIds !== null) {
     const newIds = [...currentIds].filter((id) => !previousAbilityIds!.has(id));
     if (newIds.length > 0) {
-      const playerIds = Object.keys(players);
-      if (playerIds.length === 1) {
-        const playerId = playerIds[0];
+      const playerHexKeys = Object.keys(players);
+      if (playerHexKeys.length === 1) {
+        const playerId = hexToBech32(playerHexKeys[0]);
         // Categorize new abilities by effect type
         const upgByType = [0, 0, 0, 0]; // phys, fire, ice, block
         for (const id of newIds) {
@@ -496,10 +556,10 @@ async function syncPlayers(
 
   // Player is a packed struct: { gold: Uint<32>, rng: Bytes<32> }
   // gold occupies bits 0-31 of the packed LE value
-  const parsed = entries.map(([playerId, value]) => {
+  const parsed = entries.map(([hexKey, value]) => {
     const packed = toBigInt(value);
     const gold = extractU32(packed, 0);
-    return { playerId, gold };
+    return { playerId: hexToBech32(hexKey), gold };
   });
 
   // Fetch known
@@ -577,10 +637,11 @@ async function syncPlayerAbilities(
   abilitiesMap: Record<string, any>,
   parsedAbilities: Map<string, ParsedAbility>,
 ): Promise<void> {
-  // abilitiesMap: playerId -> { abilityId -> quantity }
+  // abilitiesMap: hexPlayerId -> { abilityId -> quantity }
   const entries: Array<{ playerId: string; abilityId: string; quantity: number }> = [];
 
-  for (const [playerId, innerMap] of Object.entries(abilitiesMap)) {
+  for (const [hexKey, innerMap] of Object.entries(abilitiesMap)) {
+    const playerId = hexToBech32(hexKey);
     if (innerMap && typeof innerMap === "object" && !Array.isArray(innerMap)) {
       for (const [abilityId, qty] of Object.entries(innerMap)) {
         entries.push({ playerId, abilityId, quantity: Number(qty) });
@@ -694,10 +755,11 @@ async function syncBossProgress(
   db: any,
   progressMap: Record<string, any>,
 ): Promise<BossCompletion[]> {
-  // progressMap: playerId -> { biome -> { difficulty -> completed } }
+  // progressMap: hexPlayerId -> { biome -> { difficulty -> completed } }
   const entries: Array<{ playerId: string; biome: number; difficulty: number; completed: boolean }> = [];
 
-  for (const [playerId, biomeMap] of Object.entries(progressMap)) {
+  for (const [hexKey, biomeMap] of Object.entries(progressMap)) {
+    const playerId = hexToBech32(hexKey);
     if (biomeMap && typeof biomeMap === "object" && !Array.isArray(biomeMap)) {
       for (const [biomeKey, diffMap] of Object.entries(biomeMap)) {
         if (diffMap && typeof diffMap === "object" && !Array.isArray(diffMap)) {
@@ -1107,26 +1169,24 @@ async function syncQuests(
     if (departedQuests.length > 0) {
       const PLAYER_KEY_MASK = (1n << 256n) - 1n;
       for (const dq of departedQuests) {
-        // Extract player_pub_key from the stored raw_config
+        // Extract player_pub_key from the stored raw_config and convert to Bech32
         const packed = toBigInt(dq.raw_config);
-        const playerKey = ((packed >> 64n) & PLAYER_KEY_MASK).toString();
-        // Resolve to known player_id
-        const { rows: playerRows } = await db.query(
-          `SELECT player_id FROM d2d_players`,
+        const playerKeyBigint = (packed >> 64n) & PLAYER_KEY_MASK;
+        const playerKeyBech32 = bigintToBech32(playerKeyBigint);
+        // Check if this player exists in our DB (player_id is now Bech32)
+        const { rows: matchRows } = await db.query(
+          `SELECT player_id FROM d2d_players WHERE player_id = $1`,
+          [playerKeyBech32],
         ) as { rows: Array<{ player_id: string }> };
-        for (const pr of playerRows) {
-          try {
-            if (BigInt(pr.player_id) === BigInt(playerKey)) {
-              await db.query(
-                `INSERT INTO d2d_pending_boss_fights (player_id, biome, difficulty)
-                 VALUES ($1, $2, $3)
-                 ON CONFLICT (player_id, biome, difficulty) DO NOTHING`,
-                [pr.player_id, dq.biome, dq.difficulty],
-              );
-              console.log(`[game-db] Pending boss fight for ${pr.player_id.slice(0, 10)}... biome=${dq.biome} diff=${dq.difficulty}`);
-              break;
-            }
-          } catch { /* skip */ }
+        if (matchRows.length > 0) {
+          const playerId = matchRows[0].player_id;
+          await db.query(
+            `INSERT INTO d2d_pending_boss_fights (player_id, biome, difficulty)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (player_id, biome, difficulty) DO NOTHING`,
+            [playerId, dq.biome, dq.difficulty],
+          );
+          console.log(`[game-db] Pending boss fight for ${playerId.slice(0, 18)}... biome=${dq.biome} diff=${dq.difficulty}`);
         }
       }
     }
@@ -1142,29 +1202,22 @@ async function syncQuests(
 
   // Check Multitasker: 3 quests active simultaneously for same player
   // Extract player_pub_key from packed QuestConfig (bits 64-319, a 256-bit Field)
-  const PLAYER_KEY_MASK = (1n << 256n) - 1n;
+  const PLAYER_KEY_MASK2 = (1n << 256n) - 1n;
   const questsByPlayer = new Map<string, number>();
   for (const [_, value] of entries) {
     const packed = toBigInt(value);
-    const playerKey = ((packed >> 64n) & PLAYER_KEY_MASK).toString();
-    questsByPlayer.set(playerKey, (questsByPlayer.get(playerKey) ?? 0) + 1);
+    const playerKeyBech32 = bigintToBech32((packed >> 64n) & PLAYER_KEY_MASK2);
+    questsByPlayer.set(playerKeyBech32, (questsByPlayer.get(playerKeyBech32) ?? 0) + 1);
   }
-  for (const [playerKey, count] of questsByPlayer) {
+  for (const [playerBech32, count] of questsByPlayer) {
     if (count >= 3) {
-      // playerKey is the raw Field value — need to match with a known player_id format
-      // The player_id in other maps uses the hex representation from the contract
-      // Try matching against d2d_players to find the actual player
+      // player_id is Bech32 — direct match against d2d_players
       const { rows } = await db.query(
-        `SELECT player_id FROM d2d_players LIMIT 10`,
+        `SELECT player_id FROM d2d_players WHERE player_id = $1`,
+        [playerBech32],
       ) as { rows: Array<{ player_id: string }> };
-      // The quest player_pub_key should match one of our known player IDs
-      for (const row of rows) {
-        try {
-          if (BigInt(row.player_id) === BigInt(playerKey)) {
-            await grantAchievement(db, row.player_id, "multitasker");
-            break;
-          }
-        } catch { /* skip non-numeric player_ids */ }
+      if (rows.length > 0) {
+        await grantAchievement(db, rows[0].player_id, "multitasker");
       }
     }
   }
@@ -1257,8 +1310,8 @@ async function syncDelegations(
   if (entries.length === 0) return;
 
   const parsed = entries.map(([fromAddr, toAddr]) => ({
-    fromAddr,
-    toAddr: String(toAddr),
+    fromAddr: hexToBech32(fromAddr),
+    toAddr: bigintToBech32(toBigInt(toAddr)),
   }));
 
   // Check existing

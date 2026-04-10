@@ -30,6 +30,7 @@ import { valueToBigInt } from "@midnight-ntwrk/compact-runtime";
 import {
   ensureTables,
   processLedgerSnapshot,
+  setAddressNetworkId,
   getPlayers,
   getPlayerDetail,
   getActiveBattles,
@@ -112,6 +113,9 @@ function printEnvTable(title: string, entries: EnvEntry[]): string[] {
 export function validateAndPrintNodeEnv(): void {
   const networkId = midnightNetworkConfig.id as string;
   const isDeployed = networkId !== "undeployed";
+
+  // Configure Bech32 address encoding with the current network ID
+  setAddressNetworkId(networkId);
 
   const entries: EnvEntry[] = [
     {
