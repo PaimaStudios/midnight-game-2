@@ -39,6 +39,7 @@ export class QuestMenu extends Phaser.Scene {
     topBar: TopBar | undefined;
 
     private sceneCreated: boolean = false;
+    private timerEvent: Phaser.Time.TimerEvent | undefined;
 
     constructor(api: DeployedGame2API, questId: bigint, state: Game2DerivedState) {
         super('QuestMenu');
@@ -61,6 +62,13 @@ export class QuestMenu extends Phaser.Scene {
         
         // Mark scene as created so onStateChange can safely manipulate game objects
         this.sceneCreated = true;
+
+        // Update quest timer every second
+        this.timerEvent = this.time.addEvent({
+            delay: 1000,
+            loop: true,
+            callback: () => this.updateQuestStatus(this.state),
+        });
 
         // Initialize with the state we already have
         this.onStateChange(this.state);
@@ -240,7 +248,6 @@ export class QuestMenu extends Phaser.Scene {
             this.battleStarted = true;
             // Clean up subscription before starting battle
             this.subscription?.unsubscribe();
-            txSpinner.hide();
             this.scene.remove('ActiveBattle');
             this.scene.add('ActiveBattle', new ActiveBattle(this.api, battleConfig, this.state));
             this.scene.start('ActiveBattle');
@@ -309,6 +316,7 @@ export class QuestMenu extends Phaser.Scene {
     }
 
     shutdown() {
+        this.timerEvent?.destroy();
         this.subscription?.unsubscribe();
     }
 }

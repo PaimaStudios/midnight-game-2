@@ -20,7 +20,9 @@ export class QuestsMenu extends Phaser.Scene {
     state: Game2DerivedState;
     subscription: Subscription;
     buttons: Button[];
-    
+    private questButtonEntries: { button: Button; quest: QuestConfig }[] = [];
+    private timerEvent: Phaser.Time.TimerEvent | undefined;
+
     // Quest count limit - adjust as needed
     private readonly MAX_ACTIVE_QUESTS = 3;
 
@@ -72,12 +74,24 @@ export class QuestsMenu extends Phaser.Scene {
             }, 'Back to Hub');
         
         this.refreshQuestDisplay();
+
+        // Update quest timers every second
+        this.timerEvent = this.time.addEvent({
+            delay: 1000,
+            loop: true,
+            callback: () => {
+                for (const entry of this.questButtonEntries) {
+                    entry.button.text.setText(this.questStr(entry.quest));
+                }
+            },
+        });
     }
 
     private refreshQuestDisplay() {
         // Clear existing buttons
         this.buttons.forEach((b) => b.destroy());
         this.buttons = [];
+        this.questButtonEntries = [];
 
         const activeQuestCount = this.state.quests.size;
         const canStartNewQuest = activeQuestCount < this.MAX_ACTIVE_QUESTS;
@@ -127,11 +141,13 @@ export class QuestsMenu extends Phaser.Scene {
                 'View quest status and fight boss when ready'
             );
             this.buttons.push(questButton);
+            this.questButtonEntries.push({ button: questButton, quest });
             offset += 1;
         }
     }
 
     shutdown() {
+        this.timerEvent?.destroy();
         this.subscription?.unsubscribe();
     }
 }

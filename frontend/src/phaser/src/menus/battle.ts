@@ -90,6 +90,9 @@ export class ActiveBattle extends Phaser.Scene {
         this.player = new Actor(this, playerX(), playerY(), null);
         this.enemies = this.enemyManager.createEnemies(this.battle);
 
+        // Show spinner until battle state is fully available
+        txSpinner.show("Preparing battle...");
+
         // Initialize spirits and start targeting and set enemy plans (if we have the state updated - if not, state updates will trigger this)
         this.initialize();
     }
@@ -153,6 +156,8 @@ export class ActiveBattle extends Phaser.Scene {
         const playerDamage = Number(battleState.damage_to_player);
         this.player.hp = Math.max(0, this.player.maxHp - playerDamage);
         this.player.hpBar.setValue(this.player.hp);
+
+        txSpinner.hide();
 
         // Create retreat button
         this.uiStateManager.createRetreatButton(
