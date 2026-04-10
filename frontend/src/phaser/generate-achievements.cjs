@@ -265,12 +265,66 @@ async function main() {
     await saveIcon('seasoned-adventurer', await compose(bg, [
       { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
   }
+
+  // Novice Explorer — 5 quests
+  {
+    const bg = await cropBg('bg-grass.png', { brightness: 0.3 });
+    const s = await getSpirit('def', 44);
+    const b = await badge('5');
+    await saveIcon('novice-explorer', await compose(bg, [
+      { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 24, y: SIZE - 16 }]));
+  }
+  // Experienced Adventurer — 15 quests
+  {
+    const bg = await cropBg('bg-tundra.png', { brightness: 0.3 });
+    const s = await getSpirit('ice', 44);
+    const b = await badge('15');
+    await saveIcon('experienced-adventurer', await compose(bg, [
+      { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
+  }
+  // Skilled Explorer — 20 quests
+  {
+    const bg = await cropBg('bg-desert.png', { brightness: 0.3 });
+    const s = await getSpirit('phys', 44);
+    const b = await badge('20');
+    await saveIcon('skilled-explorer', await compose(bg, [
+      { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
+  }
+  // Expert Explorer — 25 quests
+  {
+    const bg = await cropBg('bg-cave.png', { brightness: 0.3 });
+    const s = await getSpirit('fire', 44);
+    const b = await badge('25');
+    await saveIcon('expert-explorer', await compose(bg, [
+      { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
+  }
+  // Veteran Explorer — 30 quests
   {
     const bg = await cropBg('bg-cave.png', { brightness: 0.3 });
     const s = await getSpirit('ice', 44);
-    const b = await badge('50');
+    const b = await badge('30');
     await saveIcon('veteran-explorer', await compose(bg, [
       { input: s.buf, x: cx(s.w), y: cy(s.h, -4) }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
+  }
+  // Quest Master — 50 quests
+  {
+    const bg = await cropBg('bg-hub1.png', { brightness: 0.25 });
+    const circle = await healCircle(212, 168, 67);
+    const s = await getSpirit('phys', 44);
+    const b = await badge('50');
+    await saveIcon('quest-master', await compose(bg, [
+      { input: circle }, { input: s.buf, x: cx(s.w), y: cy(s.h, -4) },
+      { input: b, x: SIZE - 28, y: SIZE - 16 }]), 'gold');
+  }
+  // Legendary Explorer — 100 quests
+  {
+    const bg = await cropBg('bg-hub1.png', { brightness: 0.15 });
+    const circle = await healCircle(212, 168, 67);
+    const s = await getSpirit('fire', 44);
+    const b = await badge('100');
+    await saveIcon('legendary-explorer', await compose(bg, [
+      { input: circle }, { input: s.buf, x: cx(s.w), y: cy(s.h, -4) },
+      { input: b, x: SIZE - 32, y: SIZE - 16 }]), 'gold');
   }
   {
     const bg = await cropBg('bg-hub1.png', { brightness: 0.15 });
@@ -544,12 +598,12 @@ async function main() {
       { input: xm, x: SIZE - 28, y: SIZE - 28 }]), 'red');
   }
   {
-    const bg = await cropBg('bg-tundra.png', { brightness: 0.25, tintB: 60 });
-    const s = await getSpirit('def', 48);
-    const bl = await scaleIcon('block.png', 20);
-    await saveIcon('iron-wall', await compose(bg, [
+    const bg = await cropBg('bg-grass.png', { brightness: 0.25 });
+    const s = await getSpirit('phys', 48);
+    const p = await scaleIcon('physical.png', 20);
+    await saveIcon('mono-physical', await compose(bg, [
       { input: s.buf, x: cx(s.w), y: cy(s.h, -4) },
-      { input: bl, x: SIZE - 24, y: SIZE - 24 }]), 'blue');
+      { input: p, x: SIZE - 24, y: SIZE - 24 }]));
   }
 
   // ── UPGRADES ──
@@ -620,6 +674,24 @@ async function main() {
       { input: stars.buf, x: cx(stars.w), y: SIZE - stars.h - 6 }]), 'gold');
   }
 
+  // ── UPGRADE BY TYPE ──
+  console.log('[Upgrade by Type]');
+  for (const [name, orbType, elemFile, bc] of [
+    ['pyro-forger', 'fire', 'fire.png', 'red'],
+    ['cryo-forger', 'ice', 'ice.png', 'blue'],
+    ['weapons-forger', 'phys', 'physical.png', 'gold'],
+    ['shield-forger', 'def', 'block.png', 'blue'],
+  ]) {
+    const bg = await cropBg('bg-shop.png', { brightness: 0.2 });
+    const o = await getOrb(orbType, 40);
+    const elem = await scaleIcon(elemFile, 20);
+    const b = await badge('10');
+    await saveIcon(name, await compose(bg, [
+      { input: o.buf, x: cx(o.w) - 4, y: cy(o.h) - 6 },
+      { input: elem, x: 4, y: SIZE - 24 },
+      { input: b, x: SIZE - 28, y: SIZE - 16 }]), bc);
+  }
+
   // ── ECONOMY ──
   console.log('[Economy]');
   {
@@ -673,71 +745,114 @@ async function main() {
       { input: coin, x: 34, y: 14 }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
   }
 
-  // ── COMBAT MASTERY ──
-  console.log('[Combat Mastery]');
+  // ── SELLING BY TYPE ──
+  console.log('[Selling by Type]');
+  for (const [name, orbType, elemFile, bc] of [
+    ['fire-sale', 'fire', 'fire.png', 'red'],
+    ['cold-surplus', 'ice', 'ice.png', 'blue'],
+    ['disarmed', 'phys', 'physical.png', 'gold'],
+    ['shields-down', 'def', 'block.png', 'blue'],
+  ]) {
+    const bg = await cropBg('bg-shop.png', { brightness: 0.18 });
+    const o = await getOrb(orbType, 32);
+    const elem = await scaleIcon(elemFile, 18);
+    const coin = await bigCoin(22);
+    const b = await badge('15');
+    await saveIcon(name, await compose(bg, [
+      { input: o.buf, x: 4, y: cy(o.h) - 4 },
+      { input: elem, x: 4, y: 4 },
+      { input: coin, x: 36, y: 16 },
+      { input: b, x: SIZE - 28, y: SIZE - 16 }]), bc);
+  }
+
+  // ── COMBAT MASTERY — Elemental ──
+  console.log('[Combat Mastery — Elemental]');
+  // Balanced Fighter — all 3 attack elements in loadout
   {
     const bg = await cropBg('bg-grass.png', { brightness: 0.2 });
     const f = await scaleIcon('fire.png', 24);
     const i = await scaleIcon('ice.png', 24);
     const p = await scaleIcon('physical.png', 24);
-    await saveIcon('elemental-student', await compose(bg, [
+    await saveIcon('balanced-fighter', await compose(bg, [
       { input: p, x: 20, y: 4 }, { input: f, x: 4, y: 34 }, { input: i, x: 36, y: 34 }]));
   }
+  // Elemental Focus — every attack ability same element
   {
     const bg = await cropBg('bg-desert.png', { brightness: 0.25 });
     const circle = await healCircle(212, 168, 67);
-    const f = await scaleIcon('fire.png', 24);
-    const i = await scaleIcon('ice.png', 24);
-    const p = await scaleIcon('physical.png', 24);
-    await saveIcon('elemental-master', await compose(bg, [
-      { input: circle }, { input: p, x: 20, y: 4 },
-      { input: f, x: 4, y: 34 }, { input: i, x: 36, y: 34 }]), 'gold');
-  }
-  {
-    const bg = await cropBg('bg-cave.png', { brightness: 0.2 });
     const f = await scaleIcon('fire.png', 36);
-    const xm = await sharp(Buffer.from(xMarkSvg(36))).png().toBuffer();
-    await saveIcon('wrong-element', await compose(bg, [
-      { input: f, x: 14, y: 14 }, { input: xm, x: 14, y: 14 }]), 'red');
+    await saveIcon('elemental-focus', await compose(bg, [
+      { input: circle }, { input: f, x: 14, y: 14 }]), 'gold');
   }
+  // Full Spectrum — upgraded ability of every effect type
+  {
+    const bg = await cropBg('bg-hub1.png', { brightness: 0.2 });
+    const f = await scaleIcon('fire.png', 20);
+    const i = await scaleIcon('ice.png', 20);
+    const p = await scaleIcon('physical.png', 20);
+    const bl = await scaleIcon('block.png', 20);
+    const stars = await starRow(1, 1, 12);
+    await saveIcon('full-spectrum', await compose(bg, [
+      { input: f, x: 4, y: 6 }, { input: i, x: 36, y: 6 },
+      { input: p, x: 4, y: 32 }, { input: bl, x: 36, y: 32 },
+      { input: stars.buf, x: cx(stars.w), y: cy(stars.h) }]), 'gold');
+  }
+
+  // ── COMBAT MASTERY — Energy ──
+  console.log('[Combat Mastery — Energy]');
+  // Energy Collector — own abilities generating all 3 energy colors
   {
     const bg = await cropBg('bg-hub1.png', { brightness: 0.18 });
-    const orb = await sharp(Buffer.from(energyOrbSvg(32, 200, 230, 255))).png().toBuffer();
-    const glowSvg = `<svg width="44" height="44" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="22" cy="22" r="20" fill="none" stroke="rgba(200,230,255,0.3)" stroke-width="3"/>
-    </svg>`;
-    const glow = await sharp(Buffer.from(glowSvg)).png().toBuffer();
-    await saveIcon('spark', await compose(bg, [
-      { input: glow, x: 10, y: 10 }, { input: orb, x: 16, y: 16 }]));
+    const orbR = await sharp(Buffer.from(energyOrbSvg(20, 230, 80, 80))).png().toBuffer();
+    const orbG = await sharp(Buffer.from(energyOrbSvg(20, 80, 200, 80))).png().toBuffer();
+    const orbB = await sharp(Buffer.from(energyOrbSvg(20, 80, 160, 230))).png().toBuffer();
+    await saveIcon('energy-collector', await compose(bg, [
+      { input: orbR, x: 6, y: 22 }, { input: orbG, x: 22, y: 10 },
+      { input: orbB, x: 38, y: 22 }]));
   }
+  // Energy Specialist — 3+ abilities same energy color
   {
     const bg = await cropBg('bg-hub1.png', { brightness: 0.15, tintB: 60 });
     const circle = await healCircle(80, 160, 224);
     const orb = await sharp(Buffer.from(energyOrbSvg(14, 140, 200, 255))).png().toBuffer();
-    const arr = await scaleIcon('arrow.png', 10);
-    await saveIcon('chain-reaction', await compose(bg, [
-      { input: circle }, { input: orb, x: 6, y: 24 },
-      { input: arr, x: 22, y: 18 }, { input: orb, x: 26, y: 14 },
-      { input: arr, x: 40, y: 20 }, { input: orb, x: 44, y: 26 }]), 'blue');
+    await saveIcon('energy-specialist', await compose(bg, [
+      { input: circle },
+      { input: orb, x: 16, y: 16 }, { input: orb, x: 34, y: 16 },
+      { input: orb, x: 25, y: 36 }]), 'blue');
   }
+  // Overcharged — 3+ loadout abilities same energy color
   {
     const bg = await cropBg('bg-hub1.png', { brightness: 0.15, tintR: 40, tintB: 80 });
     const circle = await healCircle(160, 100, 220);
     const orb = await sharp(Buffer.from(energyOrbSvg(12, 180, 200, 255))).png().toBuffer();
-    await saveIcon('combo-maestro', await compose(bg, [
+    await saveIcon('overcharged', await compose(bg, [
       { input: circle },
       { input: orb, x: 26, y: 4 }, { input: orb, x: 44, y: 18 },
       { input: orb, x: 40, y: 40 }, { input: orb, x: 18, y: 46 },
       { input: orb, x: 4, y: 28 }]), 'purple');
   }
 
-  // ── DAMAGE & DEFENSE ──
-  console.log('[Damage & Defense]');
+  // ── COMBAT MASTERY — Damage ──
+  console.log('[Combat Mastery — Damage]');
+  // Damage Dealer — 300+ damage in single battle
   {
     const bg = await cropBg('bg-cave.png', { brightness: 0.2, tintR: 100 });
     const sword = await scaleIcon('physical.png', 40);
-    await saveIcon('heavy-hitter', await compose(bg, [{ input: sword, x: 12, y: 12 }]), 'red');
+    const b = await badge('300');
+    await saveIcon('damage-dealer', await compose(bg, [
+      { input: sword, x: 8, y: 6 },
+      { input: b, x: SIZE - 32, y: SIZE - 16 }]), 'red');
   }
+  // Overwhelming Force — 600+ damage in single battle
+  {
+    const bg = await cropBg('bg-cave.png', { brightness: 0.15, tintR: 120 });
+    const expl = await sharp(Buffer.from(explosionSvg(48))).png().toBuffer();
+    const b = await badge('600');
+    await saveIcon('overwhelming-force', await compose(bg, [
+      { input: expl, x: 8, y: 4 },
+      { input: b, x: SIZE - 32, y: SIZE - 16 }]), 'red');
+  }
+  // Devastator — 10000 total damage across all battles
   {
     const bg = await cropBg('bg-desert.png', { brightness: 0.2, tintR: 100 });
     const f = await scaleIcon('fire.png', 24);
@@ -747,33 +862,34 @@ async function main() {
       { input: p, x: 8, y: 10 }, { input: f, x: 30, y: 10 },
       { input: b, x: SIZE - 30, y: SIZE - 16 }]), 'red');
   }
+
+  // ── COMBAT MASTERY — Loadout ──
+  console.log('[Combat Mastery — Loadout]');
+  // Fortified — 3+ block abilities in loadout
   {
     const bg = await cropBg('bg-tundra.png', { brightness: 0.25, tintB: 60 });
     const circle = await healCircle(80, 160, 224);
     const bl = await scaleIcon('block.png', 36);
-    await saveIcon('shieldwall', await compose(bg, [
+    await saveIcon('fortified', await compose(bg, [
       { input: circle }, { input: bl, x: 14, y: 14 }]), 'blue');
   }
-  {
-    const bg = await cropBg('bg-grass.png', { brightness: 0.25, tintG: 60 });
-    const circle = await healCircle(80, 192, 112);
-    const heal = await scaleIcon('heal.png', 32);
-    await saveIcon('field-medic', await compose(bg, [
-      { input: circle }, { input: heal, x: 16, y: 16 }]), 'green');
-  }
+  // AOE Arsenal — 3+ AOE abilities
   {
     const bg = await cropBg('bg-cave.png', { brightness: 0.15 });
     const expl = await sharp(Buffer.from(explosionSvg(48))).png().toBuffer();
-    const b = await badge('50');
-    await saveIcon('area-denial', await compose(bg, [
+    const b = await badge('3+');
+    await saveIcon('aoe-arsenal', await compose(bg, [
       { input: expl, x: 8, y: 4 }, { input: b, x: SIZE - 28, y: SIZE - 16 }]));
   }
+  // Power Surge — battle with fully upgraded 3-star ability
   {
-    const bg = await cropBg('bg-cave.png', { brightness: 0.12, tintR: 100 });
-    const expl = await sharp(Buffer.from(explosionSvg(52, '255,160,40', '230,60,30'))).png().toBuffer();
-    const b = await badge('200');
-    await saveIcon('carpet-bomber', await compose(bg, [
-      { input: expl, x: 6, y: 2 }, { input: b, x: SIZE - 32, y: SIZE - 16 }]), 'red');
+    const bg = await cropBg('bg-hub1.png', { brightness: 0.2 });
+    const circle = await healCircle(212, 168, 67);
+    const s = await getSpirit('fire', 44);
+    const stars = await starRow(3, 3, 10);
+    await saveIcon('power-surge', await compose(bg, [
+      { input: circle }, { input: s.buf, x: cx(s.w), y: cy(s.h, -6) },
+      { input: stars.buf, x: cx(stars.w), y: SIZE - stars.h - 4 }]), 'gold');
   }
 
   // ── Done ──
