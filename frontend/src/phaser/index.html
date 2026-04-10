@@ -45,13 +45,14 @@
       }
       .d2d-footer-link {
         font-family: yana, sans-serif; font-size: 24px;
-        color: #8c8fae; text-decoration: none; letter-spacing: 0.5px;
+        color: #c0c2d8; text-decoration: none; letter-spacing: 0.5px;
         transition: color 0.2s, text-shadow 0.2s;
         cursor: pointer;
+        text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.6);
       }
       .d2d-footer-link:hover {
         color: #aabb44;
-        text-shadow: 0 0 8px rgba(170,187,68,0.4);
+        text-shadow: 0 0 8px rgba(170,187,68,0.4), 0 0 4px rgba(0,0,0,0.6);
       }
       /* Delegation popup styles */
       .d2d-popup-body { font-size: 22px; margin: 8px 0; color: #bbbbaa; }
@@ -151,16 +152,18 @@
       #d2d-tx-spinner {
         position: fixed; bottom: 36px; right: 16px; z-index: 9998;
         display: none; align-items: center; gap: 10px;
-        font-family: yana, sans-serif; color: #8c8fae; font-size: 28px;
+        font-family: yana, sans-serif; color: #e0e0f0; font-size: 28px;
         max-width: 124px; text-align: right;
         pointer-events: none;
+        text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8);
       }
       #d2d-tx-spinner .spinner-ring {
         width: 22px; height: 22px;
-        border: 3px solid #584563;
-        border-top-color: #8c8fae;
+        border: 3px solid rgba(0,0,0,0.4);
+        border-top-color: #e0e0f0;
         border-radius: 50%;
         animation: d2d-spin 0.8s linear infinite;
+        filter: drop-shadow(0 0 3px rgba(0,0,0,0.7));
       }
       @keyframes d2d-spin { to { transform: rotate(360deg); } }
 </style>
@@ -469,9 +472,11 @@
         function renderLeaderboard(data, scoreUnit) {
           var entries = data.entries || [];
           var playerAddr = (window.__d2dPlayerAddress || '').toLowerCase();
+          var walletAddr = (window.__d2dWalletAddress || '').toLowerCase();
+          var myAddr = walletAddr || playerAddr;
           lbCounter.textContent = data.totalPlayers != null ? data.totalPlayers + ' players' : '';
 
-          if (entries.length === 0) {
+          if (entries.length === 0 && !myAddr) {
             lbBody.innerHTML = '<div class="d2d-lb-loading">No entries yet.</div>';
             return;
           }
@@ -480,9 +485,11 @@
             '<th>Rank</th><th>Player</th><th>' + (scoreUnit || 'Score') + '</th>' +
             '</tr></thead><tbody>';
 
+          var foundMe = false;
           for (var i = 0; i < entries.length; i++) {
             var e = entries[i];
-            var isMe = playerAddr && e.address && e.address.toLowerCase() === playerAddr;
+            var isMe = myAddr && e.address && e.address.toLowerCase() === myAddr;
+            if (isMe) foundMe = true;
             var rankClass = 'd2d-lb-rank';
             if (e.rank === 1) rankClass += ' d2d-lb-rank-1';
             else if (e.rank === 2) rankClass += ' d2d-lb-rank-2';
@@ -496,6 +503,16 @@
               '<td class="' + rankClass + '">' + e.rank + '</td>' +
               '<td>' + nameHtml + '</td>' +
               '<td class="d2d-lb-score">' + e.score + '</td>' +
+              '</tr>';
+          }
+
+          // If current player is not in the fetched page, append them at the bottom
+          if (!foundMe && myAddr) {
+            html += '<tr><td colspan="3" style="text-align:center;color:#555544;padding:4px;">&#8942;</td></tr>';
+            html += '<tr class="d2d-lb-me">' +
+              '<td class="d2d-lb-rank">-</td>' +
+              '<td><span class="d2d-lb-addr">' + truncAddr(myAddr) + '</span></td>' +
+              '<td class="d2d-lb-score">0</td>' +
               '</tr>';
           }
 

@@ -289,9 +289,15 @@ export async function ensureTables(db: any): Promise<void> {
       biome           BIGINT NOT NULL,
       difficulty      BIGINT NOT NULL,
       won             BOOLEAN NOT NULL,
+      is_boss         BOOLEAN NOT NULL DEFAULT FALSE,
+      points          INTEGER NOT NULL DEFAULT 0,
       ended_at        TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+
+  // Add columns for existing databases (no-op on fresh installs)
+  await db.query(`ALTER TABLE d2d_battle_results ADD COLUMN IF NOT EXISTS is_boss BOOLEAN NOT NULL DEFAULT FALSE`);
+  await db.query(`ALTER TABLE d2d_battle_results ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 0`);
 
   // Delegation mapping: game address -> wallet address
   await db.query(`
@@ -846,6 +852,223 @@ async function syncBossProgress(
 }
 
 // ---------------------------------------------------------------------------
+// Boss point scoring
+// ---------------------------------------------------------------------------
+
+const BIOME_BASE_POINTS = [10, 20, 30, 50]; // grasslands, desert, tundra, cave
+
+function calculateBossPoints(biome: number, difficulty: number): number {
+  const base = BIOME_BASE_POINTS[biome] ?? 10;
+  return base * Math.max(difficulty, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Record battle results (shared by both zero-active and normal paths)
+// ---------------------------------------------------------------------------
+
+type StaleBattle = {
+  battle_id: string; player_id: string; biome: number; difficulty: number;
+  round: number; damage_to_player: number;
+  damage_to_enemy_0: number; damage_to_enemy_1: number; damage_to_enemy_2: number;
+  raw_config: string;
+};
+
+async function recordBattleResults(
+  db: any,
+  staleBattles: StaleBattle[],
+  newBossCompletions: BossCompletion[],
+  parsedAbilities: Map<string, ParsedAbility>,
+): Promise<void> {
+  const bossCompletionsByLevel = new Map<string, BossCompletion>();
+  for (const bc of newBossCompletions) {
+    bossCompletionsByLevel.set(`${bc.biome}:${bc.difficulty}`, bc);
+  }
+
+  const { rows: allPlayers } = await db.query(`SELECT player_id FROM d2d_players`) as { rows: Array<{ player_id: string }> };
+  const singlePlayerId = allPlayers.length === 1 ? allPlayers[0].player_id : null;
+
+  // Fetch ALL pending boss fights for fallback correlation when battle data is corrupt
+  const { rows: allPending } = await db.query(
+    `SELECT player_id, biome, difficulty FROM d2d_pending_boss_fights`,
+  ) as { rows: Array<{ player_id: string; biome: number; difficulty: number }> };
+
+  console.log(`[game-db] recordBattleResults: ${staleBattles.length} stale, ${newBossCompletions.length} boss completions, ${allPending.length} pending boss fights`);
+
+  for (const stale of staleBattles) {
+    let biome = Number(stale.biome);
+    let difficulty = Number(stale.difficulty);
+    const isValidLevel = biome >= 0 && biome <= 3 && difficulty >= 1 && difficulty <= 3;
+
+    // When battle data is corrupt (BattleConfig decoding issue), try to recover
+    // by correlating with newBossCompletions or pending boss fights
+    let isBossFightWin = false;
+    let playerId: string | null = null;
+    let bossCompletion: BossCompletion | undefined;
+
+    if (isValidLevel) {
+      const levelKey = `${biome}:${difficulty}`;
+      bossCompletion = bossCompletionsByLevel.get(levelKey);
+    } else {
+      // Battle data corrupt — match against any boss completion or pending boss fight
+      console.log(`[game-db]   battle ${stale.battle_id.slice(0, 16)}... has invalid biome=${biome} diff=${difficulty}, attempting recovery`);
+
+      // Try matching a boss completion
+      if (bossCompletionsByLevel.size === 1) {
+        bossCompletion = [...bossCompletionsByLevel.values()][0];
+        biome = bossCompletion.biome;
+        difficulty = bossCompletion.difficulty;
+        console.log(`[game-db]   → recovered from boss completion: biome=${biome} diff=${difficulty}`);
+      } else if (allPending.length === 1) {
+        // Try matching a pending boss fight
+        biome = Number(allPending[0].biome);
+        difficulty = Number(allPending[0].difficulty);
+        playerId = allPending[0].player_id;
+        // Check if there's a matching boss completion
+        const levelKey = `${biome}:${difficulty}`;
+        bossCompletion = bossCompletionsByLevel.get(levelKey);
+        console.log(`[game-db]   → recovered from pending boss fight: biome=${biome} diff=${difficulty} bossWin=${!!bossCompletion}`);
+      } else {
+        console.warn(`[game-db]   → could not recover battle data (${bossCompletionsByLevel.size} completions, ${allPending.length} pending). Skipping.`);
+        continue;
+      }
+    }
+
+    const totalDmg = Number(stale.damage_to_enemy_0) + Number(stale.damage_to_enemy_1) + Number(stale.damage_to_enemy_2);
+    const dmgToPlayer = Number(stale.damage_to_player);
+    const round = Number(stale.round);
+    const levelKey = `${biome}:${difficulty}`;
+
+    // Battles with 0 damage but a boss completion still count as wins
+    // (damage fields may also be corrupt from the same decoding issue)
+    const hasWon = totalDmg > 0 || !!bossCompletion;
+
+    if (hasWon) {
+      isBossFightWin = !!bossCompletion;
+      if (!playerId) playerId = bossCompletion?.playerId ?? null;
+
+      if (!playerId) {
+        // Check pending boss fight for player resolution
+        const { rows: pendingRows } = await db.query(
+          `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
+          [biome, difficulty],
+        ) as { rows: Array<{ player_id: string }> };
+        if (pendingRows.length > 0) {
+          playerId = pendingRows[0].player_id;
+          if (!isBossFightWin) {
+            // Boss fight lost — damage dealt but no completion
+            await checkBossLossAchievements(db, playerId, biome, difficulty);
+          }
+          await db.query(
+            `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+            [playerId, biome, difficulty],
+          );
+        }
+      }
+
+      if (!playerId) playerId = singlePlayerId;
+
+      const points = isBossFightWin ? calculateBossPoints(biome, difficulty) : 0;
+
+      console.log(`[game-db]   battle ${stale.battle_id.slice(0, 16)}... biome=${biome} diff=${difficulty} is_boss=${isBossFightWin} points=${points} player=${playerId?.slice(0, 20) ?? 'unknown'}...`);
+
+      await db.query(
+        `INSERT INTO d2d_battle_results (battle_id, player_id, biome, difficulty, won, is_boss, points)
+         VALUES ($1, $2, $3, $4, TRUE, $5, $6)
+         ON CONFLICT (battle_id) DO NOTHING`,
+        [stale.battle_id, playerId ?? stale.player_id, biome, difficulty, isBossFightWin, points],
+      );
+
+      if (isBossFightWin && playerId) {
+        await db.query(
+          `INSERT INTO d2d_player_stats (player_id, bosses_defeated)
+           VALUES ($1, 1)
+           ON CONFLICT (player_id) DO UPDATE
+             SET bosses_defeated = d2d_player_stats.bosses_defeated + 1,
+                 updated_at = now()`,
+          [playerId],
+        );
+        // Clean up pending entry if from same-block detection path
+        if (bossCompletion) {
+          await db.query(
+            `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+            [playerId, biome, difficulty],
+          );
+        }
+        await checkBossCombatAchievements(db, playerId, dmgToPlayer, round, biome, difficulty);
+        bossCompletionsByLevel.delete(levelKey);
+      }
+
+      // Battle win achievements
+      if (playerId) {
+        const configBigint = toBigInt(stale.raw_config ?? "0");
+        await checkBattleWinAchievements(db, playerId, dmgToPlayer, round, totalDmg, configBigint, parsedAbilities);
+      }
+    } else {
+      // Battle disappeared with 0 damage and no boss completion — retreat
+      const { rows: pendingRows } = await db.query(
+        `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
+        [biome, difficulty],
+      ) as { rows: Array<{ player_id: string }> };
+      let retreatPlayerId: string | null = pendingRows.length > 0 ? pendingRows[0].player_id : singlePlayerId;
+      if (pendingRows.length > 0 && retreatPlayerId) {
+        await checkBossRetreatAchievements(db, retreatPlayerId);
+        await db.query(
+          `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+          [retreatPlayerId, biome, difficulty],
+        );
+      }
+    }
+  }
+  console.log(`[game-db] Recorded ${staleBattles.length} battle result(s)`);
+}
+
+// ---------------------------------------------------------------------------
+// Record boss wins that had no matching battle in d2d_battles
+// (fresh DB catchup, or battle was never tracked)
+// ---------------------------------------------------------------------------
+
+async function recordOrphanedBossCompletions(
+  db: any,
+  newBossCompletions: BossCompletion[],
+): Promise<void> {
+  for (const bc of newBossCompletions) {
+    // Check if this boss completion was already recorded by recordBattleResults
+    const { rows: existing } = await db.query(
+      `SELECT 1 FROM d2d_battle_results WHERE player_id = $1 AND biome = $2 AND difficulty = $3 AND is_boss = TRUE`,
+      [bc.playerId, bc.biome, bc.difficulty],
+    ) as { rows: Array<unknown> };
+    if (existing.length > 0) continue;
+
+    const points = calculateBossPoints(bc.biome, bc.difficulty);
+    const battleId = `boss-${bc.playerId.slice(0, 20)}-${bc.biome}-${bc.difficulty}-${Date.now()}`;
+
+    console.log(`[game-db] Recording orphaned boss win: player=${bc.playerId.slice(0, 20)}... biome=${bc.biome} diff=${bc.difficulty} points=${points}`);
+
+    await db.query(
+      `INSERT INTO d2d_battle_results (battle_id, player_id, biome, difficulty, won, is_boss, points)
+       VALUES ($1, $2, $3, $4, TRUE, TRUE, $5)
+       ON CONFLICT (battle_id) DO NOTHING`,
+      [battleId, bc.playerId, bc.biome, bc.difficulty, points],
+    );
+
+    await db.query(
+      `INSERT INTO d2d_player_stats (player_id, bosses_defeated)
+       VALUES ($1, 1)
+       ON CONFLICT (player_id) DO UPDATE
+         SET bosses_defeated = d2d_player_stats.bosses_defeated + 1,
+             updated_at = now()`,
+      [bc.playerId],
+    );
+
+    // Clean up any pending boss fight entry
+    await db.query(
+      `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
+      [bc.playerId, bc.biome, bc.difficulty],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Sync: Battles
 // ---------------------------------------------------------------------------
 
@@ -856,13 +1079,36 @@ async function syncBattles(
   newBossCompletions: BossCompletion[],
   parsedAbilities: Map<string, ParsedAbility>,
 ): Promise<void> {
+  const stateKeys = Object.keys(battleStates);
+  const configKeys = Object.keys(battleConfigs);
+  if (stateKeys.length > 0 || configKeys.length > 0) {
+    console.log(`[game-db] syncBattles: stateKeys=[${stateKeys.map(k => k.slice(0, 16)).join(', ')}] configKeys=[${configKeys.map(k => k.slice(0, 16)).join(', ')}]`);
+  }
   const battleIds = new Set([
-    ...Object.keys(battleStates),
-    ...Object.keys(battleConfigs),
+    ...stateKeys,
+    ...configKeys,
   ]);
 
   if (battleIds.size === 0) {
-    // No active battles — clean up any stale DB entries
+    // No active battles — but there may be stale battles that need result recording
+    // (e.g. boss fight just ended, leaving zero active battles)
+    const { rows: staleBattlesAll } = await db.query(
+      `SELECT battle_id, player_id, biome, difficulty, round, damage_to_player, damage_to_enemy_0, damage_to_enemy_1, damage_to_enemy_2, raw_config
+       FROM d2d_battles`,
+    ) as { rows: Array<{
+      battle_id: string; player_id: string; biome: number; difficulty: number;
+      round: number; damage_to_player: number;
+      damage_to_enemy_0: number; damage_to_enemy_1: number; damage_to_enemy_2: number;
+      raw_config: string;
+    }> };
+    if (staleBattlesAll.length > 0) {
+      await recordBattleResults(db, staleBattlesAll, newBossCompletions, parsedAbilities);
+    }
+    // Handle boss completions that had no matching battle in d2d_battles
+    // (e.g. node started after the battle already ended, or fresh DB catchup)
+    if (newBossCompletions.length > 0) {
+      await recordOrphanedBossCompletions(db, newBossCompletions);
+    }
     await db.query(`DELETE FROM d2d_battles`);
     return;
   }
@@ -905,8 +1151,14 @@ async function syncBattles(
     const stateVal = battleStates[battleId];
     const configVal = battleConfigs[battleId];
 
-    const statePacked = toBigInt(stateVal ?? 0);
-    const configPacked = toBigInt(configVal ?? 0);
+    // Skip battles where one side is missing (key in states but not configs, or vice versa)
+    if (stateVal == null || configVal == null) {
+      console.warn(`[game-db] Skipping battle ${battleId.slice(0, 16)}...: missing ${stateVal == null ? 'state' : 'config'}`);
+      continue;
+    }
+
+    const statePacked = toBigInt(stateVal);
+    const configPacked = toBigInt(configVal);
 
     // Extract BattleState fields
     const round = extractU32(statePacked, 0);
@@ -918,6 +1170,12 @@ async function syncBattles(
     // Extract Level from BattleConfig (first two Uint<32> fields)
     const biome = extractU32(configPacked, 0);
     const difficulty = extractU32(configPacked, 1);
+
+    // Validate: biome must be 0-3, difficulty must be 1-3
+    if (biome > 3 || difficulty < 1 || difficulty > 3) {
+      console.warn(`[game-db] Skipping battle ${battleId.slice(0, 16)}...: invalid biome=${biome} difficulty=${difficulty} (raw config starts with ${configPacked.toString().slice(0, 30)}...)`);
+      continue;
+    }
 
     // player_pub_key is deep inside the packed config after EnemiesConfig;
     // for now, store "unknown" and use raw_config for debugging
@@ -984,95 +1242,11 @@ async function syncBattles(
     }> };
 
     if (staleBattles.length > 0) {
-      // Build lookup for new boss completions by biome:difficulty
-      const bossCompletionsByLevel = new Map<string, BossCompletion>();
-      for (const bc of newBossCompletions) {
-        bossCompletionsByLevel.set(`${bc.biome}:${bc.difficulty}`, bc);
-      }
-
-      // Fallback player resolution: if only one player exists, attribute to them
-      const { rows: allPlayers } = await db.query(`SELECT player_id FROM d2d_players`) as { rows: Array<{ player_id: string }> };
-      const singlePlayerId = allPlayers.length === 1 ? allPlayers[0].player_id : null;
-
-      for (const stale of staleBattles) {
-        const totalDmg = Number(stale.damage_to_enemy_0) + Number(stale.damage_to_enemy_1) + Number(stale.damage_to_enemy_2);
-        const dmgToPlayer = Number(stale.damage_to_player);
-        const round = Number(stale.round);
-        const levelKey = `${stale.biome}:${stale.difficulty}`;
-
-        if (totalDmg > 0) {
-          // Battle resolved with damage dealt
-          await db.query(
-            `INSERT INTO d2d_battle_results (battle_id, player_id, biome, difficulty, won)
-             VALUES ($1, $2, $3, $4, TRUE)
-             ON CONFLICT (battle_id) DO NOTHING`,
-            [stale.battle_id, stale.player_id, stale.biome, stale.difficulty],
-          );
-
-          // Resolve player_id: boss completion > pending boss fight > single player
-          const bossCompletion = bossCompletionsByLevel.get(levelKey);
-          const isBossFightWin = !!bossCompletion;
-          let playerId: string | null = bossCompletion?.playerId ?? null;
-
-          if (!playerId) {
-            // Check pending boss fight (boss fight lost — damage dealt but no completion)
-            const { rows: pendingRows } = await db.query(
-              `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
-              [stale.biome, stale.difficulty],
-            ) as { rows: Array<{ player_id: string }> };
-            if (pendingRows.length > 0) {
-              playerId = pendingRows[0].player_id;
-              // Boss fight lost
-              await checkBossLossAchievements(db, playerId, Number(stale.biome), Number(stale.difficulty));
-              await db.query(
-                `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
-                [playerId, stale.biome, stale.difficulty],
-              );
-            }
-          }
-
-          if (!playerId) playerId = singlePlayerId;
-
-          if (isBossFightWin && playerId) {
-            // Boss fight won
-            await db.query(
-              `INSERT INTO d2d_player_stats (player_id, bosses_defeated)
-               VALUES ($1, 1)
-               ON CONFLICT (player_id) DO UPDATE
-                 SET bosses_defeated = d2d_player_stats.bosses_defeated + 1,
-                     updated_at = now()`,
-              [playerId],
-            );
-            await db.query(
-              `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
-              [playerId, stale.biome, stale.difficulty],
-            );
-            await checkBossCombatAchievements(db, playerId, dmgToPlayer, round, Number(stale.biome), Number(stale.difficulty));
-            bossCompletionsByLevel.delete(levelKey);
-          }
-
-          // Battle win achievements (applies to ALL won battles, boss or random)
-          if (playerId) {
-            const configBigint = toBigInt(stale.raw_config ?? "0");
-            await checkBattleWinAchievements(db, playerId, dmgToPlayer, round, totalDmg, configBigint, parsedAbilities);
-          }
-        } else {
-          // Battle disappeared with 0 enemy damage — retreat
-          const { rows: pendingRows } = await db.query(
-            `SELECT player_id FROM d2d_pending_boss_fights WHERE biome = $1 AND difficulty = $2`,
-            [stale.biome, stale.difficulty],
-          ) as { rows: Array<{ player_id: string }> };
-          let playerId: string | null = pendingRows.length > 0 ? pendingRows[0].player_id : singlePlayerId;
-          if (pendingRows.length > 0 && playerId) {
-            await checkBossRetreatAchievements(db, playerId);
-            await db.query(
-              `DELETE FROM d2d_pending_boss_fights WHERE player_id = $1 AND biome = $2 AND difficulty = $3`,
-              [playerId, stale.biome, stale.difficulty],
-            );
-          }
-        }
-      }
-      console.log(`[game-db] Recorded ${staleBattles.length} battle result(s)`);
+      await recordBattleResults(db, staleBattles, newBossCompletions, parsedAbilities);
+    }
+    // Handle boss completions that had no matching stale battle
+    if (newBossCompletions.length > 0) {
+      await recordOrphanedBossCompletions(db, newBossCompletions);
     }
 
     // Remove battles no longer on-chain
@@ -1384,16 +1558,19 @@ export async function getLeaderboard(
 
   const { rows } = await db.query(
     `SELECT
-       COALESCE(d.to_address, r.player_id)              AS address,
-       COUNT(*)::int                                    AS score,
-       RANK() OVER (ORDER BY COUNT(*) DESC)::int        AS rank
-     FROM d2d_battle_results r
-     LEFT JOIN d2d_delegations d ON r.player_id = d.from_address
-     WHERE r.won = TRUE
+       COALESCE(d.to_address, p.player_id)                        AS address,
+       COALESCE(SUM(r.points), 0)::int                            AS score,
+       RANK() OVER (ORDER BY COALESCE(SUM(r.points), 0) DESC)::int AS rank
+     FROM d2d_players p
+     LEFT JOIN d2d_battle_results r
+       ON r.player_id = p.player_id
+       AND r.won = TRUE
+       AND r.points > 0
        AND r.ended_at >= $1
        AND r.ended_at <= $2
-     GROUP BY COALESCE(d.to_address, r.player_id)
-     ORDER BY score DESC
+     LEFT JOIN d2d_delegations d ON p.player_id = d.from_address
+     GROUP BY COALESCE(d.to_address, p.player_id)
+     ORDER BY score DESC, address ASC
      LIMIT $3 OFFSET $4`,
     [startDate, endDate, limit, offset],
   ) as { rows: Array<{ address: string; score: number; rank: number }> };
@@ -1436,15 +1613,18 @@ export async function getUserLeaderboardStats(
      ),
      ranked AS (
        SELECT
-         COALESCE(d.to_address, r.player_id)              AS address,
-         COUNT(*)::int                                    AS score,
-         RANK() OVER (ORDER BY COUNT(*) DESC)::int        AS rank
-       FROM d2d_battle_results r
-       LEFT JOIN d2d_delegations d ON r.player_id = d.from_address
-       WHERE r.won = TRUE
+         COALESCE(d.to_address, p.player_id)                        AS address,
+         COALESCE(SUM(r.points), 0)::int                            AS score,
+         RANK() OVER (ORDER BY COALESCE(SUM(r.points), 0) DESC)::int AS rank
+       FROM d2d_players p
+       LEFT JOIN d2d_battle_results r
+         ON r.player_id = p.player_id
+         AND r.won = TRUE
+         AND r.points > 0
          AND r.ended_at >= $1
          AND r.ended_at <= $2
-       GROUP BY COALESCE(d.to_address, r.player_id)
+       LEFT JOIN d2d_delegations d ON p.player_id = d.from_address
+       GROUP BY COALESCE(d.to_address, p.player_id)
      )
      SELECT
        r.score,

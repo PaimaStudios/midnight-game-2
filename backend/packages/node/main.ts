@@ -381,9 +381,9 @@ export const apiRouter: StartConfigApiRouter = async function (
       channels: [
         {
           id: "leaderboard",
-          name: "Wins",
-          description: "Total battles won per player.",
-          scoreUnit: "Wins",
+          name: "Boss Points",
+          description: "Points earned from quest boss victories. Harder biomes and higher difficulties award more points.",
+          scoreUnit: "Points",
           sortOrder: "DESC",
         },
       ],
