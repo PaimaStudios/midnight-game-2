@@ -224,10 +224,22 @@ function decodeCell(av: AlignedValue): number | bigint | string {
     case 'bytes': {
       let result = 0n;
       let shift = 0n;
-      for (const chunk of av.value) {
+      for (let atomIdx = 0; atomIdx < av.value.length; atomIdx++) {
+        const chunk = av.value[atomIdx];
+        const atomAlign = av.alignment[atomIdx];
         for (let i = 0; i < chunk.length; i++) {
           result |= BigInt(chunk[i]) << shift;
           shift += 8n;
+        }
+        // Pad to declared atom width to preserve struct field boundaries.
+        // The Compact runtime trims trailing zero bytes from each atom's chunk,
+        // so a Uint<32> holding value 1 is [1] (1 byte) not [1,0,0,0] (4 bytes).
+        // Without padding, extractU32() reads across compressed field boundaries.
+        if (atomAlign?.tag === 'atom' && atomAlign.value?.tag === 'bytes') {
+          const declaredLen = atomAlign.value.length;
+          if (declaredLen > chunk.length) {
+            shift += BigInt(declaredLen - chunk.length) * 8n;
+          }
         }
       }
       return result <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(result) : result;
