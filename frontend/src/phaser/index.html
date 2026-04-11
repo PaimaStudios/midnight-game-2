@@ -302,13 +302,15 @@
 
         // --- Mute toggle ---
         var muteLink = document.getElementById('d2d-mute-link');
+        var isMuted = false;
         muteLink.addEventListener('click', function(e) {
           e.preventDefault();
+          isMuted = !isMuted;
           var game = window.__phaserGame;
           if (game && game.sound) {
-            game.sound.mute = !game.sound.mute;
-            muteLink.textContent = game.sound.mute ? '🔇' : '🔊';
+            game.sound.mute = isMuted;
           }
+          muteLink.textContent = isMuted ? '🔇' : '🔊';
         });
 
         // --- Address info helper ---
