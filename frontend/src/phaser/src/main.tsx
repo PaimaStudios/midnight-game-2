@@ -97,3 +97,4 @@ const config = {
 };
 
 export const game = new Phaser.Game(config);
+(window as any).__phaserGame = game;

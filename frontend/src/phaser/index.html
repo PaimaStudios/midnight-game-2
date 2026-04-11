@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Midnight Game #2</title>
     <style media='screen' type='text/css'>
@@ -192,7 +195,10 @@
         Leaderboard
       </a>
       <a href="#" id="d2d-about-link" class="d2d-footer-link">
-        Report Bug / About Dust 2 Dust
+        Report / About
+      </a>
+      <a href="#" id="d2d-mute-link" class="d2d-footer-link" title="Toggle music">
+        🔊
       </a>
     </div>
 
@@ -292,6 +298,17 @@
         overlay.addEventListener('click', function(e) {
           e.stopPropagation();
           if (e.target === overlay) overlay.style.display = 'none';
+        });
+
+        // --- Mute toggle ---
+        var muteLink = document.getElementById('d2d-mute-link');
+        muteLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          var game = window.__phaserGame;
+          if (game && game.sound) {
+            game.sound.mute = !game.sound.mute;
+            muteLink.textContent = game.sound.mute ? '🔇' : '🔊';
+          }
         });
 
         // --- Address info helper ---
