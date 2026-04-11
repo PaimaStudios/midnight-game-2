@@ -175,6 +175,7 @@ export class MainMenu extends Phaser.Scene {
     delegationButton: Button | undefined;
     menuMusic: Phaser.Sound.BaseSound | undefined;
     private isDestroyed: boolean = false;
+    private registering: boolean = false;
 
     constructor(api: DeployedGame2API, state?: Game2DerivedState) {
         super('MainMenu');
@@ -270,19 +271,13 @@ export class MainMenu extends Phaser.Scene {
                 logger.gameState.info('Registering new player...');
                 txSpinner.show("Generating Proof");
                 this.input.enabled = false;
+                this.registering = true;
 
-                this.events.once('stateChange', () => {
-                    logger.gameState.info('Registered new player');
-                    txSpinner.hide();
-                    this.input.enabled = true;
-                });
-
-                this.api!.register_new_player().then(() => {
-                    txSpinner.show("Waiting Transaction");
-                }).catch((e) => {
+                this.api!.register_new_player().catch((e) => {
                     logger.network.error(`Error registering new player: ${e}`);
                     txSpinner.hide();
                     this.input.enabled = true;
+                    this.registering = false;
 
                     if (!this.scene.get('NetworkError')) {
                         this.scene.add('NetworkError', new NetworkError());
@@ -297,8 +292,6 @@ export class MainMenu extends Phaser.Scene {
 
     private onStateChange(state: Game2DerivedState) {
         this.state = state;
-
-        this.events.emit('stateChange', state);
 
         // Guard: Check if scene has been destroyed
         if (this.isDestroyed) {
@@ -324,6 +317,14 @@ export class MainMenu extends Phaser.Scene {
         this.updateDelegationButton(state);
 
         if (state.player !== undefined) {
+            // Registration just completed — hide spinner if it was showing
+            if (this.registering) {
+                logger.gameState.info('Registered new player');
+                txSpinner.hide();
+                this.input.enabled = true;
+                this.registering = false;
+            }
+
             // Main menu buttons in vertical column with proper spacing
             this.buttons.push(new Button(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 280, 80, 'New Battle', 14, () => {
                 this.scene.remove('BiomeSelectMenu');
@@ -348,19 +349,13 @@ export class MainMenu extends Phaser.Scene {
                 logger.gameState.info('Registering new player...');
                 txSpinner.show("Generating Proof");
                 this.input.enabled = false;
+                this.registering = true;
 
-                this.events.once('stateChange', () => {
-                    logger.gameState.info('Registered new player');
-                    txSpinner.hide();
-                    this.input.enabled = true;
-                });
-
-                this.api!.register_new_player().then(() => {
-                    txSpinner.show("Waiting Transaction");
-                }).catch((e) => {
+                this.api!.register_new_player().catch((e) => {
                     logger.network.error(`Error registering new player: ${e}`);
                     txSpinner.hide();
                     this.input.enabled = true;
+                    this.registering = false;
 
                     // Show network error overlay
                     if (!this.scene.get('NetworkError')) {
