@@ -222,8 +222,12 @@ function extractLoadoutFromBattleConfig(configPacked: bigint): string[] {
   for (let i = 0; i < 7; i++) {
     const bitOffset = BigInt((BATTLE_CONFIG_LOADOUT_START_BYTE + i * FIELD_SIZE_BYTES) * 8);
     const fieldVal = (configPacked >> bitOffset) & FIELD_MASK_256;
-    // Convert to hex string matching the payload map key format
-    loadout.push("0x" + fieldVal.toString(16));
+    // Indexer Field map keys are LE-byte hex, zero-padded to 32 bytes (see
+    // hexToBech32 above). The extracted bigint is BE-natural, so reverse the
+    // byte pairs and pad so lookups into allAbilities hit.
+    const hexBE = fieldVal.toString(16).padStart(64, "0");
+    const hexLE = hexBE.match(/.{2}/g)!.reverse().join("");
+    loadout.push("0x" + hexLE);
   }
   return loadout;
 }
@@ -1486,8 +1490,13 @@ async function syncBattles(
         cmpInt("dmg_e2", dmg2_B, parsedState_A.damage_to_enemy_2);
         cmpInt("player_pub_key", playerKey_B, parsedConfig_A.player_pub_key);
         for (let i = 0; i < 7; i++) {
+          // Path A gives BE-natural bigints; loadout_B holds LE-byte hex
+          // strings (for allAbilities lookup), so re-derive the raw bigint
+          // from configPacked directly to compare on the same footing.
+          const bitOffset = BigInt((BATTLE_CONFIG_LOADOUT_START_BYTE + i * FIELD_SIZE_BYTES) * 8);
+          const rawB = (configPacked >> bitOffset) & FIELD_MASK_256;
           const aVal = parsedConfig_A.loadout.abilities[i];
-          cmpInt(`loadout[${i}]`, BigInt(loadout_B[i]), aVal);
+          cmpInt(`loadout[${i}]`, rawB, aVal);
         }
         if (mismatches.length > 0) {
           console.warn(`[game-db] WARN battle ${battleTag} Path A vs B mismatch:`);
