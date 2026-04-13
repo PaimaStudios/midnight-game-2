@@ -258,11 +258,40 @@ function alignedValueToHex(av: AlignedValue): string {
     .join("");
 }
 
+function uint8ArrayToHexString(u8: Uint8Array): string {
+  return Array.from(u8).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Wrapper marker for struct cells (multi-atom).
+ *
+ * Background: the framework JSON-roundtrips the parsed payload (see
+ * paima sync-protocols/midnight/fetcher.ts), which destroys class identity
+ * and converts Uint8Array atoms into plain `{0:b,1:b,...}` objects. To make
+ * the raw atoms survive that roundtrip we encode them as hex strings and
+ * use a sentinel field (`__cell: true`) instead of an instanceof check.
+ *
+ * Single-atom scalar cells (Field, Uint<N>, Boolean, Bytes<N> by themselves)
+ * are NOT wrapped — they continue to come through as primitives so existing
+ * consumers (`extractMaps`, `toBigInt`, `Number(qty)`, `Boolean(completed)`)
+ * keep working unchanged.
+ */
 function parseStateValue(sv: StateValue): any {
   const t = sv.type();
 
   if (t === "null") return null;
-  if (t === "cell") return decodeCell(sv.asCell());
+  if (t === "cell") {
+    const av = sv.asCell();
+    const packed = decodeCell(av);
+    if (av.value.length > 1) {
+      return {
+        __cell: true,
+        packed,
+        atomsHex: av.value.map(uint8ArrayToHexString),
+      };
+    }
+    return packed;
+  }
   if (t === "array") return sv.asArray()!.map(parseStateValue);
 
   if (t === "map") {
