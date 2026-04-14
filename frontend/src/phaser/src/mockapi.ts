@@ -296,8 +296,8 @@ export class MockGame2API implements DeployedGame2API {
         this.stateSubject.next(this.mockState);
     }
 
-    public async registerDelegation(walletAddress: bigint): Promise<void> {
-        logger.network.info(`[mock] registerDelegation(${walletAddress})`);
+    public async registerDelegation(walletAddress: Uint8Array): Promise<void> {
+        logger.network.info(`[mock] registerDelegation(len=${walletAddress.length})`);
         this.mockState.myDelegatedAddress = walletAddress;
         this.stateSubject.next(this.mockState);
     }

@@ -45,6 +45,17 @@ export function toBech32mShieldCpk(keyBytes: Uint8Array, networkId: string): str
     return bech32m.encode(`mn_shield-cpk${networkSuffix}`, bech32m.toWords(keyBytes), false);
 }
 
+/** Encode 64 raw bytes (coin_pub_key || enc_pub_key) as Bech32m mn_shield-addr address. */
+export function toBech32mShieldAddr(data: Uint8Array, networkId: string): string {
+    const networkSuffix = networkId === 'mainnet' ? '' : `_${networkId}`;
+    return bech32m.encode(`mn_shield-addr${networkSuffix}`, bech32m.toWords(data), false);
+}
+
+/** Decode a Bech32m address string to its raw data bytes. */
+export function decodeBech32mBytes(address: string): Uint8Array {
+    return new Uint8Array(bech32m.decodeToBytes(address).bytes);
+}
+
 /** Shorten a Bech32 address for display. */
 export function shortBech32(addr: string): string {
     if (addr.length <= 30) return addr;

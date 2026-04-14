@@ -13,7 +13,7 @@ import { registerStartingContent } from "game-content";
 import { Subscription } from "rxjs";
 import { createSpiritAnimations } from "../animations/spirit";
 import { createEnemyAnimations } from "../animations/enemy";
-import { toBech32mDust } from "../bech32-utils";
+import { toBech32mDust, toBech32mShieldAddr } from "../bech32-utils";
 
 export class BootScene extends Phaser.Scene {
     private deployProvider: BrowserDeploymentManager;
@@ -203,7 +203,8 @@ export class BootScene extends Phaser.Scene {
                 (window as any).__d2dPlayerAddress = toBech32mDust(state.playerId, networkId);
             }
             if (state.myDelegatedAddress) {
-                (window as any).__d2dWalletAddress = toBech32mDust(state.myDelegatedAddress, networkId);
+                // On-chain stores the full 64-byte shielded address; bech32m-encode for display.
+                (window as any).__d2dWalletAddress = toBech32mShieldAddr(state.myDelegatedAddress, networkId);
             }
 
             // Check if player has an active battle

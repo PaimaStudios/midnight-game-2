@@ -907,8 +907,13 @@ export ledger bosses: Map<Level, EnemiesConfig>;
 // quest durations in seconds, per level. 0 or missing means default (1200 = 20 minutes)
 export ledger quest_durations: Map<Level, Uint<64>>;
 
-// Maps game public key (Field) to real wallet address (Field) for leaderboard delegation
-export ledger delegations: Map<Field, Field>;
+// Shielded address (coin_pub_key || enc_pub_key = 64 bytes) wrapper for ledger storage
+export struct ShieldedAddressData {
+    data: Bytes<64>,
+}
+
+// Maps game public key (Field) to real wallet shielded address (64 bytes) for leaderboard delegation
+export ledger delegations: Map<Field, ShieldedAddressData>;
 
 circuit get_quest_duration(level: Level): Uint<64> {
     // default quest duration: 20 minutes (1200 seconds)
@@ -939,9 +944,10 @@ circuit admin_verify(): [] {
     assert(derive_player_pub_key(disclose(player_secret_key())) == deployer, "Admin auth failed");
 }
 
-// Register a delegation from the caller's game public key to their real wallet address.
+// Register a delegation from the caller's game public key to their real wallet shielded address.
+// wallet_address is the full 64-byte raw shielded address (coin_pub_key || enc_pub_key).
 // This is a global per-player operation (not per-battle).
-export circuit register_delegation(wallet_address: Field): [] {
+export circuit register_delegation(wallet_address: Bytes<64>): [] {
     const my_key = derive_player_pub_key(disclose(player_secret_key()));
-    delegations.insert(my_key, disclose(wallet_address));
+    delegations.insert(my_key, disclose(ShieldedAddressData { data: wallet_address }));
 }

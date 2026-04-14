@@ -5,7 +5,6 @@
 import { bech32m } from "npm:@scure/base@^2.0.0";
 import {
   CompactTypeBoolean,
-  CompactTypeBytes,
   CompactTypeEnum,
   CompactTypeField,
   CompactTypeUnsignedInteger,
@@ -50,6 +49,12 @@ function toBech32mDust(value: bigint): string {
   const data = scaleCompactEncode(value);
   const networkSuffix = _networkId === "mainnet" ? "" : `_${_networkId}`;
   return bech32m.encode(`mn_dust${networkSuffix}`, bech32m.toWords(data), false);
+}
+
+/** Encode 64 raw bytes (coin_pub_key || enc_pub_key) as Bech32m mn_shield-addr string. */
+function bytesToBech32Shield(data: Uint8Array): string {
+  const networkSuffix = _networkId === "mainnet" ? "" : `_${_networkId}`;
+  return bech32m.encode(`mn_shield-addr${networkSuffix}`, bech32m.toWords(data), false);
 }
 
 /** Convert a hex ledger key to a Bech32 mn_dust address.
@@ -1822,10 +1827,33 @@ async function syncDelegations(
   const entries = Object.entries(delegationsMap);
   if (entries.length === 0) return;
 
-  const parsed = entries.map(([fromAddr, toAddr]) => ({
-    fromAddr: hexToBech32(fromAddr),
-    toAddr: bigintToBech32(toBigInt(toAddr)),
-  }));
+  const parsed: Array<{ fromAddr: string; toAddr: string }> = [];
+  for (const [fromAddr, toValue] of entries) {
+    // toValue is ShieldedAddressData { data: Bytes<64> }, emitted by the indexer
+    // as a decimal BigInt string representing the 64 bytes in LE order (same
+    // convention as the map keys). Parse → 64 BE bytes → reverse to natural
+    // order → bech32m-encode.
+    let value: bigint;
+    try {
+      value = typeof toValue === "bigint" ? toValue : BigInt(toValue);
+    } catch (e) {
+      console.warn(`[syncDelegations] ${fromAddr}: BigInt parse failed:`, e);
+      continue;
+    }
+    const hex = value.toString(16).padStart(128, "0");
+    if (hex.length > 128) {
+      console.warn(`[syncDelegations] ${fromAddr}: value too large, ${hex.length} hex chars; skipping`);
+      continue;
+    }
+    const leBytes = hexToUint8Array(hex);
+    const addrBytes = new Uint8Array(Array.from(leBytes).reverse());
+
+    parsed.push({
+      fromAddr: hexToBech32(fromAddr),
+      toAddr: bytesToBech32Shield(addrBytes),
+    });
+  }
+  if (parsed.length === 0) return;
 
   // Check existing
   const fromKeys = parsed.map((e) => e.fromAddr);

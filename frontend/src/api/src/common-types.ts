@@ -75,6 +75,6 @@ export type Game2DerivedState = {
   playerBossProgress: Map<bigint, Map<bigint, boolean>>;
   // quest durations in seconds per level: biome -> difficulty -> seconds (missing means default 1200)
   questDurations: Map<bigint, Map<bigint, bigint>>;
-  /** Current player's delegated wallet address, or null if not delegated. */
-  myDelegatedAddress: bigint | null;
+  /** Current player's delegated wallet shielded address (64 raw bytes: coin_pk || enc_pk), or null if not delegated. */
+  myDelegatedAddress: Uint8Array | null;
 }

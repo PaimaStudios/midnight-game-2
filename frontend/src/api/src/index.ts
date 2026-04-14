@@ -166,10 +166,10 @@ export interface DeployedGame2API {
     admin_set_quest_duration: (level: Level, duration: bigint) => Promise<void>;
 
     /**
-     * Register a delegation from the caller's game public key to their real wallet address.
-     * @param walletAddress The wallet address (Field) to delegate to
+     * Register a delegation from the caller's game public key to their real wallet shielded address.
+     * @param walletAddress The raw 64-byte shielded address (coin_pub_key || enc_pub_key).
      */
-    registerDelegation: (walletAddress: bigint) => Promise<void>;
+    registerDelegation: (walletAddress: Uint8Array) => Promise<void>;
 }
 
 /**
@@ -291,11 +291,11 @@ export class Game2API implements DeployedGame2API {
                     }
                     return durationsByBiomes;
                 };
-                // Resolve delegation for this player
+                // Resolve delegation for this player (64-byte raw shielded address)
                 const ledgerAny = ledgerState as any;
-                const myDelegatedAddress: bigint | null =
+                const myDelegatedAddress: Uint8Array | null =
                     playerId !== null && ledgerAny.delegations?.member(playerId)
-                        ? ledgerAny.delegations.lookup(playerId)
+                        ? ledgerAny.delegations.lookup(playerId).data
                         : null;
 
                 // Filter battles and quests to only include those belonging to the current player
@@ -495,8 +495,11 @@ export class Game2API implements DeployedGame2API {
         });
     }
 
-    async registerDelegation(walletAddress: bigint): Promise<void> {
-        this.logger?.info(`registerDelegation(walletAddress=${walletAddress})`);
+    async registerDelegation(walletAddress: Uint8Array): Promise<void> {
+        if (walletAddress.length !== 64) {
+            throw new Error(`registerDelegation: expected 64 bytes, got ${walletAddress.length}`);
+        }
+        this.logger?.info(`registerDelegation(len=${walletAddress.length})`);
         await (this.deployedContract.callTx as any).register_delegation(walletAddress);
         this.logger?.info('registerDelegation done');
     }

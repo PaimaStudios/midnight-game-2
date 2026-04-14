@@ -8,7 +8,7 @@ import { Button } from "../widgets/button";
 import { Subscription } from "rxjs";
 import { txSpinner } from "../tx-spinner";
 import { fontStyle, GAME_HEIGHT, GAME_WIDTH, logger, networkId } from "../main";
-import { toBech32mDust, toBech32mShieldCpk, shortBech32 } from '../bech32-utils';
+import { toBech32mDust, shortBech32, decodeBech32mBytes } from '../bech32-utils';
 import { ShopMenu } from "./shop/shop";
 import { BiomeSelectMenu } from "./biome-select";
 import { QuestsMenu } from "./quests";
@@ -114,28 +114,30 @@ function makeWalletDelegationButton(
                 const connected = await walletApi.connect(networkId);
 
                 const addresses = await connected.getShieldedAddresses();
-                const coinPubKey = addresses.shieldedCoinPublicKey;
-                if (!coinPubKey) {
-                    logger.network.warn('[wallet-delegation] Could not get coin public key from wallet');
+                const shieldedAddrStr = addresses.shieldedAddress;
+                if (!shieldedAddrStr || typeof shieldedAddrStr !== 'string' || !shieldedAddrStr.startsWith('mn_shield-addr')) {
+                    logger.network.warn(`[wallet-delegation] Unexpected shieldedAddress: ${shieldedAddrStr}`);
                     return;
                 }
 
-                // CoinPublicKey may be larger than a Compact Field (~255 bits).
-                // Use only the first 31 bytes (248 bits) which fits in a Field.
-                const keyBytes = coinPubKey instanceof Uint8Array
-                    ? coinPubKey
-                    : new Uint8Array(Object.values(coinPubKey as Record<string, number>));
-                const truncated = keyBytes.slice(0, 31);
-                const addressBigint = BigInt('0x' + Array.from(truncated).map((b: number) => b.toString(16).padStart(2, '0')).join(''));
+                // Decode the bech32m mn_shield-addr to 64 raw bytes (coin_pub_key || enc_pub_key).
+                const addressBytes = decodeBech32mBytes(shieldedAddrStr);
+                if (addressBytes.length !== 64) {
+                    logger.network.warn(`[wallet-delegation] Expected 64 bytes from shieldedAddress, got ${addressBytes.length}`);
+                    return;
+                }
 
                 const fromLabel = localPublicKey != null ? shortBech32(toBech32mDust(localPublicKey, networkId)) : 'your game account';
-                const walletLabel = shortBech32(toBech32mShieldCpk(keyBytes, networkId));
+                const walletLabel = shortBech32(shieldedAddrStr);
 
                 // Dismiss the overlay and show the tx spinner like other sections
                 if (overlay) overlay.remove();
                 txSpinner.show("Generating Proof");
 
-                await api.registerDelegation(addressBigint);
+                await api.registerDelegation(addressBytes);
+
+                // Update live window var since boot.ts only runs once and may have missed this delegation.
+                (window as any).__d2dWalletAddress = shieldedAddrStr;
 
                 txSpinner.hide();
                 const successContent = document.createElement('div');
