@@ -1258,14 +1258,20 @@ async function recordBattleResults(
         );
         // Still count each boss kill toward the defeated counter, so
         // `bosses_defeated` reflects actual victories, not just first-evers.
-        await db.query(
-          `INSERT INTO d2d_player_stats (player_id, bosses_defeated)
-           VALUES ($1, 1)
+        // Replays don't flip player_boss_progress, so syncBossProgress
+        // cannot increment quests_completed for them — do it here instead
+        // so quest-milestone achievements fire past the first-clear cap.
+        const { rows: questRows } = await db.query(
+          `INSERT INTO d2d_player_stats (player_id, bosses_defeated, quests_completed)
+           VALUES ($1, 1, 1)
            ON CONFLICT (player_id) DO UPDATE
              SET bosses_defeated = d2d_player_stats.bosses_defeated + 1,
-                 updated_at = now()`,
+                 quests_completed = d2d_player_stats.quests_completed + 1,
+                 updated_at = now()
+           RETURNING quests_completed`,
           [playerId],
-        );
+        ) as { rows: Array<{ quests_completed: number }> };
+        await checkQuestCompletionAchievements(db, playerId, questRows[0].quests_completed);
         await checkBossCombatAchievements(db, playerId, dmgToPlayer, round, biome, difficulty);
         await checkBattleWinAchievements(db, playerId, dmgToPlayer, round, totalDmg, configBigint, parsedAbilities);
       } else if (totalDmg > 0) {
@@ -2246,20 +2252,8 @@ async function checkSpiritCollectionAchievements(
   const totalSpirits = playerEntries.reduce((sum, e) => sum + e.quantity, 0);
 
   // Spirit collection milestones
-  if (totalSpirits >= 10) await grantAchievement(db, playerId, "spirit_caller");
   if (totalSpirits >= 25) await grantAchievement(db, playerId, "spirit_collector");
   if (totalSpirits >= 50) await grantAchievement(db, playerId, "spirit_hoarder");
-
-  // Full Arsenal: own at least one of each effect type (phys=0, fire=1, ice=2, block=3)
-  const ownedTypes = new Set<number>();
-  for (const entry of playerEntries) {
-    if (entry.quantity <= 0) continue;
-    const ability = parsedAbilities.get(entry.abilityId);
-    if (ability?.hasEffect) ownedTypes.add(ability.effectType);
-  }
-  if (ownedTypes.has(0) && ownedTypes.has(1) && ownedTypes.has(2) && ownedTypes.has(3)) {
-    await grantAchievement(db, playerId, "full_arsenal");
-  }
 
   // Upgrade Quality achievements (snapshot-based)
   let countUpgrade2 = 0;
@@ -2302,11 +2296,6 @@ async function checkSpiritCollectionAchievements(
   // Full Spectrum: upgraded (1+ star) ability of every effect type
   if (maxUpgradeByType.has(0) && maxUpgradeByType.has(1) && maxUpgradeByType.has(2) && maxUpgradeByType.has(3)) {
     await grantAchievement(db, playerId, "full_spectrum");
-  }
-
-  // Energy Collector: own abilities generating all 3 energy colors
-  if (colorCounts.has(0) && colorCounts.has(1) && colorCounts.has(2)) {
-    await grantAchievement(db, playerId, "energy_collector");
   }
 
   // Energy Specialist: 3+ abilities generating the same energy color

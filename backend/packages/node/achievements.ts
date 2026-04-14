@@ -61,10 +61,8 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
 
   // --- Spirit & Deck Achievements ---
   // Spirit Collection
-  { name: "spirit_caller", displayName: "Spirit Caller", description: "Own 10 spirits", category: "spirit_deck", isActive: true },
   { name: "spirit_collector", displayName: "Spirit Collector", description: "Own 25 spirits", category: "spirit_deck", isActive: true },
   { name: "spirit_hoarder", displayName: "Spirit Hoarder", description: "Own 50 spirits", category: "spirit_deck", isActive: true },
-  { name: "full_arsenal", displayName: "Full Arsenal", description: "Own at least one Fire, Ice, Physical, and Block spirit", category: "spirit_deck", isActive: true },
   // Deck Building
   { name: "mono_fire", displayName: "Mono Fire", description: "Win a battle with only fire-attack spirits in your loadout", category: "spirit_deck", isActive: true },
   { name: "mono_ice", displayName: "Mono Ice", description: "Win a battle with only ice-attack spirits in your loadout", category: "spirit_deck", isActive: true },
@@ -110,7 +108,6 @@ export const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   { name: "elemental_focus", displayName: "Elemental Focus", description: "Win a battle where every attack ability in your loadout shares the same element", category: "combat_mastery", isActive: true },
   { name: "full_spectrum", displayName: "Full Spectrum", description: "Own an upgraded (1+ star) ability of every effect type", category: "combat_mastery", isActive: true },
   // Energy Synergy
-  { name: "energy_collector", displayName: "Energy Collector", description: "Own abilities generating all 3 energy colors", category: "combat_mastery", isActive: true },
   { name: "energy_specialist", displayName: "Energy Specialist", description: "Own 3+ abilities that generate the same energy color", category: "combat_mastery", isActive: true },
   { name: "overcharged", displayName: "Overcharged", description: "Win a battle with 3+ loadout abilities sharing the same energy color", category: "combat_mastery", isActive: true },
   // Damage Output
