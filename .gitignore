@@ -17,7 +17,6 @@ backend/node_modules/
 backend/midnight-level-db*
 backend/packages/midnight/midnight-level-db*
 backend/packages/midnight/contract-game2/src/managed
-backend/packages/midnight/contract-game2/src/game2.compact
 backend/packages/node/midnight-level-db*
 
 # Shared
