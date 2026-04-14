@@ -754,8 +754,29 @@ export async function processLedgerSnapshot(db: any, payload: any): Promise<void
 
   const parsedAbilities = parseAllAbilities(allAbilities);
 
+  // Capture old gold before syncPlayers mutates it, then derive gold delta per
+  // player vs the snapshot. syncPlayerAbilities uses this to gate sell detection
+  // — a sell is the only circuit that increases gold AND decreases inventory in
+  // the same transition, so we only count inventory decreases as sells when the
+  // player's gold also went up. Battles/quests decrease inventory (verify_loadout)
+  // without touching gold; upgrades decrease both inventory and gold; rewards
+  // increase gold without decreasing inventory — none of those get counted.
+  const { rows: prevPlayerRows } = await db.query(
+    `SELECT player_id, gold FROM d2d_players`,
+  ) as { rows: Array<{ player_id: string; gold: string | number }> };
+  const oldGoldByPlayer = new Map<string, number>(
+    prevPlayerRows.map((r) => [r.player_id, Number(r.gold)]),
+  );
+  const goldDeltaByPlayer = new Map<string, number>();
+  for (const [hexKey, val] of Object.entries(players)) {
+    const playerId = hexToBech32(hexKey);
+    const newGold = extractU32(toBigInt(val), 0);
+    const oldGold = oldGoldByPlayer.get(playerId) ?? 0;
+    goldDeltaByPlayer.set(playerId, newGold - oldGold);
+  }
+
   await syncPlayers(db, players);
-  await syncPlayerAbilities(db, playerAbilities, parsedAbilities);
+  await syncPlayerAbilities(db, playerAbilities, parsedAbilities, goldDeltaByPlayer);
   const newBossCompletions = await syncBossProgress(db, playerBossProgress);
   await syncBattles(db, activeBattleStates, activeBattleConfigs, newBossCompletions, parsedAbilities);
   await syncQuests(db, quests);
@@ -926,6 +947,7 @@ async function syncPlayerAbilities(
   db: any,
   abilitiesMap: Record<string, any>,
   parsedAbilities: Map<string, ParsedAbility>,
+  goldDeltaByPlayer: Map<string, number>,
 ): Promise<void> {
   // abilitiesMap: hexPlayerId -> { abilityId -> quantity }
   const entries: Array<{ playerId: string; abilityId: string; quantity: number }> = [];
@@ -987,9 +1009,24 @@ async function syncPlayerAbilities(
   }
 
   // Track ability sells by type: abilities whose quantity decreased
+  //
+  // Signal: sell_ability is the only circuit that both increases gold AND
+  // decreases inventory in the same transition. verify_loadout (battle/quest
+  // start) decreases inventory without touching gold, upgrade_ability decreases
+  // both, and battle rewards increase gold without decreasing inventory. So we
+  // only count inventory decreases as sells when the player's gold ALSO went
+  // up in the same snapshot. This keeps battles/quests out of sell accounting
+  // entirely, which is the desired semantics.
   for (const playerId of playerIds) {
+    const goldDelta = goldDeltaByPlayer.get(playerId) ?? 0;
+    if (goldDelta <= 0) continue; // no sell possible without a gold increase
+
     let soldCount = 0;
     const soldByType = [0, 0, 0, 0]; // phys, fire, ice, block
+    // knownRows is the DB pre-state. Walking it covers both "quantity dropped"
+    // and "row fully removed" cases in one pass: for fully-removed rows,
+    // entries.find() returns undefined, currentQty is 0, and the full oldQty
+    // is counted. A second pass over toDelete would double-count every removal.
     for (const known of knownRows.filter((r: any) => r.player_id === playerId)) {
       const currentEntry = entries.find((e) => e.playerId === playerId && e.abilityId === known.ability_id);
       const currentQty = currentEntry?.quantity ?? 0;
@@ -1000,13 +1037,6 @@ async function syncPlayerAbilities(
         const ability = parsedAbilities.get(known.ability_id);
         if (ability?.hasEffect) soldByType[ability.effectType] += delta;
       }
-    }
-    const removedForPlayer = toDelete.filter((r: any) => r.player_id === playerId);
-    for (const removed of removedForPlayer) {
-      const qty = Number(removed.quantity);
-      soldCount += qty;
-      const ability = parsedAbilities.get(removed.ability_id);
-      if (ability?.hasEffect) soldByType[ability.effectType] += qty;
     }
     if (soldCount > 0) {
       const { rows } = await db.query(
