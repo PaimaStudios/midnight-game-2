@@ -715,6 +715,10 @@ export circuit combat_round(battle_id: Field, ability_targets: Vector<3, Uint<0.
 
     active_battle_states.insert(disclose(battle_id), result);
     if (result.damage_to_player >= 100) {
+        // if we don't  return them the player can end up with <7 spirits, softlocking them from doing any quests/battles
+        // it is also just far too punishing regardless of this
+        return_loadout(loadout);
+
         active_battle_configs.remove(disclose(battle_id));
         active_battle_states.remove(disclose(battle_id));
 
