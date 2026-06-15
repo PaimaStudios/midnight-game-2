@@ -1,0 +1,37 @@
+{
+  "name": "dust-to-dust",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.12",
+  "workspaces": [
+    "frontend",
+    "frontend/src/contract",
+    "frontend/src/api",
+    "frontend/src/content",
+    "frontend/src/phaser",
+    "backend/packages/node",
+    "backend/packages/batcher",
+    "backend/packages/midnight",
+    "backend/packages/midnight/contract-game2"
+  ],
+  "scripts": {
+    "check": "bun x tsc --noEmit -p tsconfig.check.json",
+    "lint": "bun x oxlint backend/packages frontend/src",
+    "lint:fix": "bun x oxlint --fix backend/packages frontend/src",
+    "build:midnight": "bun run --filter '@dust2dust-backend/midnight-contracts' compact",
+    "dev": "bun run --filter '@dust2dust-backend/node' dev",
+    "testnet": "bun run --filter '@dust2dust-backend/node' testnet",
+    "mainnet": "bun run --filter '@dust2dust-backend/node' mainnet"
+  },
+  "resolutions": {
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
+    "@midnight-ntwrk/wallet-sdk-abstractions": "2.1.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.11",
+    "typescript": "5.6.3"
+  }
+}

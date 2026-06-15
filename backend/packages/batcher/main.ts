@@ -1,5 +1,5 @@
 import { main, suspend } from "effection";
-import { createNewBatcher } from "@paimaexample/batcher";
+import { createNewBatcher } from "@effectstream/batcher-sdk";
 import { config, storage, validateAndPrintBatcherEnv } from "./config.ts";
 
 validateAndPrintBatcherEnv();

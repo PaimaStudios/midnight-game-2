@@ -1,24 +1,9 @@
-import {
-  OrchestratorConfig,
-  start,
-} from "@paimaexample/orchestrator";
-import { ComponentNames } from "@paimaexample/log";
-import { Value } from "@sinclair/typebox/value";
+import type { OrchestratorConfig } from "@effectstream/orchestrator/config";
 
-// Mainnet: no local Midnight services (node/indexer/proof-server).
-// Only EffectStream DB + Batcher are launched locally.
-const config = Value.Parse(OrchestratorConfig, {
-  packageName: "@paimaexample",
-  logs: "stdout",
-  processes: {
-    [ComponentNames.EFFECTSTREAM_PGLITE]: false,
-    [ComponentNames.COLLECTOR]: false,
-    [ComponentNames.TMUX]: false,
-    [ComponentNames.TUI]: false,
-    [ComponentNames.LOKI]: false,
-  },
+// Mainnet: no locally-launched processes (Midnight services + batcher run as
+// externally-managed infrastructure). Orchestrator only supervises an empty set.
+const config: OrchestratorConfig = {
+  processes: [],
+};
 
-  processesToLaunch: [],
-});
-
-await start(config);
+export default config;

@@ -2,14 +2,14 @@ import {
   type BatcherConfig,
   FileStorage,
   MidnightBalancingAdapter,
-} from "@paimaexample/batcher";
-import { readMidnightContract } from "@paimaexample/midnight-contracts/read-contract";
-import { midnightNetworkConfig } from "@paimaexample/midnight-contracts/midnight-env";
-import * as path from "@std/path";
+} from "@effectstream/batcher-sdk";
+import { readMidnightContract } from "@effectstream/midnight-contracts/read-contract";
+import { midnightNetworkConfig } from "@effectstream/midnight-contracts/midnight-env";
+import * as path from "node:path";
 import process from "node:process";
 
 const batchIntervalMs = 1000;
-const port = Number(Deno.env.get("BATCHER_PORT") ?? "3334");
+const port = Number(process.env["BATCHER_PORT"] ?? "3334");
 
 let midnightContractData: ReturnType<typeof readMidnightContract> | null = null;
 try {
@@ -66,7 +66,7 @@ export const config: BatcherConfig = {
     ...({ midnight_balancing: midnightBalancingAdapter }),
   },
   defaultTarget: "midnight_balancing",
-  namespace: "",
+  namespace: "dust2dust",
   batchingCriteria: {
     ...({ midnight_balancing: { criteriaType: "time", timeWindowMs: batchIntervalMs } }),
   },
@@ -140,21 +140,21 @@ export function validateAndPrintBatcherEnv(): void {
     {
       name: "MIDNIGHT_NETWORK_ID",
       value: networkId,
-      isSet: !!Deno.env.get("MIDNIGHT_NETWORK_ID"),
+      isSet: !!process.env["MIDNIGHT_NETWORK_ID"],
       secret: false,
       requiredWhenDeployed: false,
     },
     {
       name: "MIDNIGHT_WALLET_SEED",
-      value: Deno.env.get("MIDNIGHT_WALLET_SEED") ?? "",
-      isSet: !!Deno.env.get("MIDNIGHT_WALLET_SEED"),
+      value: process.env["MIDNIGHT_WALLET_SEED"] ?? "",
+      isSet: !!process.env["MIDNIGHT_WALLET_SEED"],
       secret: true,
       requiredWhenDeployed: false,
     },
     {
       name: "MIDNIGHT_WALLET_MNEMONIC",
-      value: Deno.env.get("MIDNIGHT_WALLET_MNEMONIC") ?? "",
-      isSet: !!Deno.env.get("MIDNIGHT_WALLET_MNEMONIC")?.trim(),
+      value: process.env["MIDNIGHT_WALLET_MNEMONIC"] ?? "",
+      isSet: !!process.env["MIDNIGHT_WALLET_MNEMONIC"]?.trim(),
       secret: true,
       requiredWhenDeployed: false,
     },
@@ -168,35 +168,35 @@ export function validateAndPrintBatcherEnv(): void {
     {
       name: "MIDNIGHT_INDEXER_HTTP",
       value: midnightNetworkConfig.indexer,
-      isSet: !!Deno.env.get("MIDNIGHT_INDEXER_HTTP"),
+      isSet: !!process.env["MIDNIGHT_INDEXER_HTTP"],
       secret: false,
       requiredWhenDeployed: false,
     },
     {
       name: "MIDNIGHT_INDEXER_WS",
       value: midnightNetworkConfig.indexerWS,
-      isSet: !!Deno.env.get("MIDNIGHT_INDEXER_WS"),
+      isSet: !!process.env["MIDNIGHT_INDEXER_WS"],
       secret: false,
       requiredWhenDeployed: false,
     },
     {
       name: "MIDNIGHT_NODE_HTTP",
       value: midnightNetworkConfig.node,
-      isSet: !!Deno.env.get("MIDNIGHT_NODE_HTTP"),
+      isSet: !!process.env["MIDNIGHT_NODE_HTTP"],
       secret: false,
       requiredWhenDeployed: false,
     },
     {
       name: "MIDNIGHT_PROOF_SERVER_URL",
       value: midnightNetworkConfig.proofServer,
-      isSet: !!(Deno.env.get("MIDNIGHT_PROOF_SERVER_URL") || Deno.env.get("MIDNIGHT_PROOF_SERVER")),
+      isSet: !!(process.env["MIDNIGHT_PROOF_SERVER_URL"] || process.env["MIDNIGHT_PROOF_SERVER"]),
       secret: false,
       requiredWhenDeployed: false,
     },
     {
       name: "BATCHER_PORT",
       value: String(port),
-      isSet: !!Deno.env.get("BATCHER_PORT"),
+      isSet: !!process.env["BATCHER_PORT"],
       secret: false,
       requiredWhenDeployed: false,
     },
@@ -212,6 +212,6 @@ export function validateAndPrintBatcherEnv(): void {
 
   if (isDeployed && errors.length > 0) {
     for (const err of errors) console.error(err);
-    Deno.exit(1);
+    process.exit(1);
   }
 }

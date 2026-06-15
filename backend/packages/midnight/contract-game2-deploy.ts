@@ -9,15 +9,17 @@
  * if interrupted, re-running picks up where it left off.
  */
 
-import { midnightNetworkConfig } from "@paimaexample/midnight-contracts/midnight-env";
-import { buildWalletFacade, getInitialShieldedState, configureMidnightNodeProviders, syncAndWaitForFunds } from "@paimaexample/midnight-contracts";
+import { midnightNetworkConfig } from "@effectstream/midnight-contracts/midnight-env";
+import { buildWalletFacade, getInitialShieldedState, configureMidnightNodeProviders, syncAndWaitForFunds } from "@effectstream/midnight-contracts";
 import {
   Contract,
   createGame2PrivateState,
   type Game2PrivateState,
   witnesses,
 } from "./contract-game2/src/index.ts";
-import { fromFileUrl, dirname, join } from "@std/path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as fs from "node:fs";
 import { setNetworkId, getNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { CompiledContract, ContractExecutable } from "@midnight-ntwrk/compact-js";
 import {
@@ -106,10 +108,10 @@ function getEnvMapping(networkId: string): EnvMapping {
 }
 
 if (midnightNetworkConfig.id === "mainnet") {
-  if (!Deno.env.get("MIDNIGHT_NODE_URL")) {
+  if (!process.env["MIDNIGHT_NODE_URL"]) {
     throw new Error("MIDNIGHT_NODE_URL is not set");
   }
-  midnightNetworkConfig.node = Deno.env.get("MIDNIGHT_NODE_URL")!;
+  midnightNetworkConfig.node = process.env["MIDNIGHT_NODE_URL"]!;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -122,8 +124,8 @@ function hasManagedArtifacts(dir: string): boolean {
   const requiredDirs = ["contract", "compiler"];
   try {
     return requiredDirs.every((name) => {
-      const stats = Deno.statSync(join(dir, name));
-      return stats.isDirectory;
+      const stats = fs.statSync(join(dir, name));
+      return stats.isDirectory();
     });
   } catch {
     return false;
@@ -132,8 +134,8 @@ function hasManagedArtifacts(dir: string): boolean {
 
 function findCompilerSubdirectory(managedDir: string): string {
   try {
-    for (const entry of Deno.readDirSync(managedDir)) {
-      if (!entry.isDirectory) continue;
+    for (const entry of fs.readdirSync(managedDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
       const candidate = join(managedDir, entry.name);
       if (hasManagedArtifacts(candidate)) {
         return entry.name;
@@ -156,20 +158,20 @@ async function updateFrontendEnv(contractAddress: string): Promise<void> {
   const networkId = midnightNetworkConfig.id;
   const mapping = getEnvMapping(networkId);
 
-  const here = dirname(fromFileUrl(import.meta.url));
+  const here = dirname(fileURLToPath(import.meta.url));
   const root = join(here, "../../..");
 
   const envPath = join(root, "frontend/src/phaser", mapping.envFile);
   try {
-    const envContent = await Deno.readTextFile(envPath);
+    const envContent = await fs.promises.readFile(envPath, "utf8");
     if (envContent.match(/^VITE_CONTRACT_ADDRESS=/m)) {
       const updatedEnv = envContent.replace(
         /^VITE_CONTRACT_ADDRESS=.*$/m,
         `VITE_CONTRACT_ADDRESS=${contractAddress}`,
       );
-      await Deno.writeTextFile(envPath, updatedEnv);
+      await fs.promises.writeFile(envPath, updatedEnv);
     } else {
-      await Deno.writeTextFile(envPath, envContent.trimEnd() + `\nVITE_CONTRACT_ADDRESS=${contractAddress}\n`);
+      await fs.promises.writeFile(envPath, envContent.trimEnd() + `\nVITE_CONTRACT_ADDRESS=${contractAddress}\n`);
     }
     console.log(`Updated ${envPath} with VITE_CONTRACT_ADDRESS=${contractAddress}`);
   } catch (e) {
@@ -178,7 +180,7 @@ async function updateFrontendEnv(contractAddress: string): Promise<void> {
 
   const addrPath = join(root, "frontend/src/phaser/src/contract-addresses.ts");
   try {
-    const addrContent = await Deno.readTextFile(addrPath);
+    const addrContent = await fs.promises.readFile(addrPath, "utf8");
     const exportPattern = new RegExp(
       `^export const ${mapping.addressExport} = '.*';$`,
       "m",
@@ -187,7 +189,7 @@ async function updateFrontendEnv(contractAddress: string): Promise<void> {
       exportPattern,
       `export const ${mapping.addressExport} = '${contractAddress}';`,
     );
-    await Deno.writeTextFile(addrPath, updatedAddr);
+    await fs.promises.writeFile(addrPath, updatedAddr);
     console.log(`Updated ${addrPath} with ${mapping.addressExport}=${contractAddress}`);
   } catch (e) {
     console.warn(`Could not update ${addrPath}: ${(e as Error).message}`);
@@ -286,7 +288,7 @@ async function deployWithLimitedVerifierKeys(
 
   // Check for resumable state
   try {
-    const content = await Deno.readTextFile(stateFilePath);
+    const content = await fs.promises.readFile(stateFilePath, "utf8");
     deploymentState = JSON.parse(content);
     console.log(
       `[INFO] Resuming deployment for contract: ${deploymentState.contractAddress}`,
@@ -394,7 +396,7 @@ async function deployWithLimitedVerifierKeys(
 
     // Save deployment progress state
     deploymentState.contractAddress = contractAddress;
-    await Deno.writeTextFile(stateFilePath, JSON.stringify(deploymentState, null, 2));
+    await fs.promises.writeFile(stateFilePath, JSON.stringify(deploymentState, null, 2));
   } else {
     // Resuming — we need to ensure signing key is available.
     // Re-derive and save it since it may not have been persisted.
@@ -463,14 +465,14 @@ async function deployWithLimitedVerifierKeys(
 
     console.log(`[INFO] Verifier key inserted for circuit: ${circuitId}`);
     deploymentState.deployedCircuits.push(circuitId as string);
-    await Deno.writeTextFile(stateFilePath, JSON.stringify(deploymentState, null, 2));
+    await fs.promises.writeFile(stateFilePath, JSON.stringify(deploymentState, null, 2));
   }
 
   console.log("[INFO] All verifier keys inserted successfully.");
 
   // Clean up state file
   try {
-    await Deno.remove(stateFilePath);
+    await fs.promises.rm(stateFilePath);
   } catch (_e) {
     // Ignore
   }
@@ -480,21 +482,21 @@ async function deployWithLimitedVerifierKeys(
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
-const command = Deno.args[0];
+const command = process.argv[2];
 
 if (command === "patch-frontend-env") {
-  const { readMidnightContract } = await import("@paimaexample/midnight-contracts/read-contract");
+  const { readMidnightContract } = await import("@effectstream/midnight-contracts/read-contract");
   const data = readMidnightContract(CONTRACT_NAME, {
-    baseDir: dirname(fromFileUrl(import.meta.url)),
+    baseDir: dirname(fileURLToPath(import.meta.url)),
     networkId: midnightNetworkConfig.id,
   });
   if (!data.contractAddress) {
     console.error("No deployed contract address found for network:", midnightNetworkConfig.id);
-    Deno.exit(1);
+    process.exit(1);
   }
   console.log(`Patching frontend env for network "${midnightNetworkConfig.id}" with address: ${data.contractAddress}`);
   await updateFrontendEnv(data.contractAddress);
-  Deno.exit(0);
+  process.exit(0);
 }
 
 // ── Deploy ──────────────────────────────────────────────────────────────────
@@ -505,12 +507,12 @@ const resolvedNetworkId = midnightNetworkConfig.id as NetworkId.NetworkId;
 setNetworkId(resolvedNetworkId);
 
 // Set default storage password if not set
-if (!Deno.env.get("MIDNIGHT_STORAGE_PASSWORD")) {
-  Deno.env.set("MIDNIGHT_STORAGE_PASSWORD", "YourPasswordMy1!");
+if (!process.env["MIDNIGHT_STORAGE_PASSWORD"]) {
+  process.env["MIDNIGHT_STORAGE_PASSWORD"] = "YourPasswordMy1!";
   console.log("[INFO] MIDNIGHT_STORAGE_PASSWORD not set, using default for local dev");
 }
 
-const here = dirname(fromFileUrl(import.meta.url));
+const here = dirname(fileURLToPath(import.meta.url));
 const managedDir = join(here, CONTRACT_NAME, "src/managed");
 const compilerSubdir = findCompilerSubdirectory(managedDir);
 const zkConfigPath = join(here, CONTRACT_NAME, "src/managed", compilerSubdir);
@@ -587,13 +589,13 @@ try {
   // Save contract address to file
   const networkSuffix = `.${resolvedNetworkId}`;
   const outputPath = join(here, `contract-game2${networkSuffix}.json`);
-  await Deno.writeTextFile(outputPath, JSON.stringify({ contractAddress }, null, 2));
+  await fs.promises.writeFile(outputPath, JSON.stringify({ contractAddress }, null, 2));
   console.log(`[INFO] Contract address saved to ${outputPath}`);
 
-  Deno.exit(0);
+  process.exit(0);
 } catch (e) {
   console.error("[ERROR] Deployment failed:", e);
-  Deno.exit(1);
+  process.exit(1);
 } finally {
   try {
     await walletResult.wallet.stop();

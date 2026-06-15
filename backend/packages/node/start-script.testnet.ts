@@ -1,35 +1,28 @@
-import {
-  OrchestratorConfig,
-  start,
-} from "@paimaexample/orchestrator";
-import { ComponentNames } from "@paimaexample/log";
-import { Value } from "@sinclair/typebox/value";
+import type { OrchestratorConfig, ProcessConfig } from "@effectstream/orchestrator/config";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const batcherCwd = resolve(here, "../batcher");
 
 // Testnet: no local Midnight services (node/indexer/proof-server).
-// Only EffectStream DB + Batcher are launched locally.
-const config = Value.Parse(OrchestratorConfig, {
-  packageName: "@paimaexample",
-  logs: "stdout",
-  processes: {
-    [ComponentNames.EFFECTSTREAM_PGLITE]: false,
-    [ComponentNames.COLLECTOR]: false,
-    [ComponentNames.TMUX]: false,
-    [ComponentNames.TUI]: false,
+// Only the batcher is launched locally.
+const batcher: ProcessConfig = {
+  name: "batcher",
+  command: "bun",
+  args: ["run", "start"],
+  cwd: batcherCwd,
+  env: {
+    MIDNIGHT_NETWORK_ID: "preprod",
   },
+  waitToExit: false,
+  type: "system-dependency",
+  link: "http://localhost:3334",
+  stopProcessAtPort: [3334],
+};
 
-  processesToLaunch: [
-    {
-      name: "batcher",
-      args: ["task", "-f", "@dust2dust-backend/batcher", "start"],
-      env: {
-        MIDNIGHT_NETWORK_ID: "preprod",
-      },
-      waitToExit: false,
-      type: "system-dependency",
-      link: "http://localhost:3334",
-      stopProcessAtPort: [3334],
-    },
-  ],
-});
+const config: OrchestratorConfig = {
+  processes: [batcher],
+};
 
-await start(config);
+export default config;

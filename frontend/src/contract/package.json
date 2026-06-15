@@ -15,14 +15,14 @@
   "scripts": {
     "compact": "echo 'Contract is compiled by the backend. Run the compact command from backend/ first.'",
     "test": "jest --passWithNoTests",
-    "prepack": "yarn build",
+    "prepack": "bun run build",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp ./src/game2.compact ./dist",
-    "lint": "eslint src",
+    "lint": "bun x oxlint src",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.15.0",
-    "eslint": "^8.52.0",
+    "@jest/types": "^29.6.3",
     "jest": "^29.7.0",
     "typescript": "^5.2.2"
   }

@@ -1,4 +1,4 @@
-import { Ledger } from './managed/game2/contract/index.cjs';
+import { Ledger } from './managed/game2/contract/index.js';
 import { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 export type Game2PrivateState = {
     readonly secretKey: Uint8Array;

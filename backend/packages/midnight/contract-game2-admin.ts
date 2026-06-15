@@ -7,10 +7,12 @@
 
 import { Command } from 'commander';
 import { Buffer } from 'node:buffer';
-import { readMidnightContract } from "@paimaexample/midnight-contracts/read-contract";
-import { midnightNetworkConfig } from "@paimaexample/midnight-contracts/midnight-env";
-import { buildWalletFacade, getInitialShieldedState } from "@paimaexample/midnight-contracts";
-import { fromFileUrl, dirname, join } from "@std/path";
+import { readMidnightContract } from "@effectstream/midnight-contracts/read-contract";
+import { midnightNetworkConfig } from "@effectstream/midnight-contracts/midnight-env";
+import { buildWalletFacade, getInitialShieldedState } from "@effectstream/midnight-contracts";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as fs from "node:fs";
 import { Game2API } from "game2-api";
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
@@ -36,7 +38,7 @@ const logger = {
   fatal: (...args: any[]) => console.error('[FATAL]', ...args),
 }
 
-const here = dirname(fromFileUrl(import.meta.url));
+const here = dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_BATCHER_URL = process.env.BATCHER_URL || 'http://localhost:3334';
 
@@ -234,7 +236,7 @@ function toLevel(l: { biome: number; difficulty: number }) {
 const DEFAULT_CONTENT_JSON = join(here, '..', '..', '..', 'frontend', 'src', 'content', 'dist', 'game-content.json');
 
 function loadContentJSON(path: string): ContentJSON {
-  const raw = Deno.readTextFileSync(path);
+  const raw = fs.readFileSync(path, "utf8");
   return JSON.parse(raw) as ContentJSON;
 }
 
