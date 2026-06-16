@@ -15,6 +15,8 @@
     "backend/packages/midnight/contract-game2"
   ],
   "scripts": {
+    "postinstall": "bash patch.sh",
+    "patch": "bash patch.sh",
     "check": "bun x tsc --noEmit -p tsconfig.check.json",
     "lint": "bun x oxlint backend/packages frontend/src",
     "lint:fix": "bun x oxlint --fix backend/packages frontend/src",
