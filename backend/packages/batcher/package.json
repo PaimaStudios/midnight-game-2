@@ -8,9 +8,9 @@
     "start": "bun run main.ts"
   },
   "dependencies": {
-    "@effectstream/batcher-sdk": "0.100.28",
-    "@effectstream/midnight-contracts": "0.100.28",
-    "@effectstream/utils": "0.100.28",
+    "@effectstream/batcher-sdk": "0.101.1",
+    "@effectstream/midnight-contracts": "0.101.1",
+    "@effectstream/utils": "0.101.1",
     "effection": "^3.5.0",
     "@midnight-ntwrk/ledger-v8": "8.0.3",
     "@midnight-ntwrk/midnight-js-utils": "4.0.4",
