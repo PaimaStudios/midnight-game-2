@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "customConditions": ["bun"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "jsx": "react-jsx",
+    "types": ["bun-types"],
+    "baseUrl": ".",
+    "paths": {
+      "@effectstream/runtime": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/config": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/concise": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/coroutine": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/sm": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/sm/builtin": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/sm/grammar": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/midnight-contracts": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/midnight-contracts/midnight-env": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/midnight-contracts/read-contract": ["./backend/packages/node/_effectstream-stub.ts"],
+      "@effectstream/batcher-sdk": ["./backend/packages/node/_effectstream-stub.ts"]
+    }
+  },
+  "include": [
+    "backend/packages/node/**/*.ts",
+    "backend/packages/batcher/**/*.ts"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "backend/packages/node/start-script.dev.ts",
+    "backend/packages/node/start-script.testnet.ts",
+    "backend/packages/node/start-script.mainnet.ts"
+  ]
+}

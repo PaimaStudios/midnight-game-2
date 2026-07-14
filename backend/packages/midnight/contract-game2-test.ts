@@ -23,10 +23,12 @@
 
 import { Command } from 'commander';
 import { Buffer } from 'node:buffer';
-import { readMidnightContract } from "@paimaexample/midnight-contracts/read-contract";
-import { midnightNetworkConfig } from "@paimaexample/midnight-contracts/midnight-env";
-import { buildWalletFacade } from "@paimaexample/midnight-contracts";
-import { fromFileUrl, dirname, join } from "@std/path";
+import { readMidnightContract } from "@effectstream/midnight-contracts/read-contract";
+import { midnightNetworkConfig } from "@effectstream/midnight-contracts/midnight-env";
+import { buildWalletFacade } from "@effectstream/midnight-contracts";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as fs from "node:fs";
 import { Game2API } from "game2-api";
 import type { Game2DerivedState } from "game2-api";
 import {
@@ -66,7 +68,7 @@ const log = {
   fatal: (...args: any[]) => console.error('\x1b[31m[FATAL]\x1b[0m', ...args),
 };
 
-const here = dirname(fromFileUrl(import.meta.url));
+const here = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_BATCHER_URL = process.env.BATCHER_URL || 'http://localhost:3334';
 
 // Timeout for waiting on state changes after a transaction (ms)

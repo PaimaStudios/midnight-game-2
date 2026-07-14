@@ -12,14 +12,23 @@ export default defineConfig({
     minify: false,
   },
   plugins: [
-    // crypto-browserify lacks timingSafeEqual. Patch the level-private-state-provider
-    // dist directly: strip it from the crypto import and inject an inline implementation.
+    // crypto-browserify lacks timingSafeEqual.
+    //
+    // - midnight-js-level-private-state-provider <= 4.0.2 imports `timingSafeEqual`
+    //   directly from 'crypto', which crypto-browserify does not provide. We strip
+    //   it from the import and inject an inline implementation.
+    // - >= 4.0.4 already ships its own `const timingSafeEqual` (guarded by a
+    //   `'timingSafeEqual' in crypto` native check that falls back to pure JS in the
+    //   browser), so no patch is needed — and appending ours would collide
+    //   ("Identifier 'timingSafeEqual' has already been declared"). Skip in that case.
     {
       name: 'patch-crypto-timingsafeequal',
       enforce: 'pre',
       transform(code: string, id: string) {
         if (!id.includes('@midnight-ntwrk/midnight-js-level-private-state-provider')) return;
         if (!code.includes('timingSafeEqual')) return;
+        // Package already declares its own timingSafeEqual (4.0.4+) — leave it alone.
+        if (/(?:const|let|var|function)\s+timingSafeEqual\b/.test(code)) return;
         const patched = code
           .replace(/,\s*timingSafeEqual(?=[,\s}])/g, '')
           .replace(/timingSafeEqual\s*,\s*/g, '');

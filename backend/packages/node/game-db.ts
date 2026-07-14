@@ -2,7 +2,7 @@
 // game-db.ts — Database schema, ledger sync, and query functions
 // ---------------------------------------------------------------------------
 
-import { bech32m } from "npm:@scure/base@^2.0.0";
+import { bech32m } from "@scure/base";
 import {
   CompactTypeBoolean,
   CompactTypeEnum,
@@ -638,7 +638,7 @@ let debugDumped = false;
 // Opt-in verbose debug logging. Set GAME_DB_DEBUG=1 in the node env to enable
 // the full per-block payload dump and map-indices summary. Otherwise the node
 // runs quiet in steady state.
-const DEBUG_ENABLED = Deno.env.get("GAME_DB_DEBUG") === "1";
+const DEBUG_ENABLED = process.env["GAME_DB_DEBUG"] === "1";
 
 function extractMaps(payload: any): PayloadIndices | null {
   // Full payload dump — opt-in, first block only. The dump is ~40KB with

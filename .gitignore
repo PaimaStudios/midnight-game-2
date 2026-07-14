@@ -24,3 +24,4 @@ backend/packages/node/midnight-level-db*
 .env.local
 midnight-level-db/
 .midnight-dust-to-dust/
+node_modules
